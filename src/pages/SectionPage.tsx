@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Search, Users, Building } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { departmentsData } from "../data/navigation";
+import { employeesData, departmentsOverview } from "../data/employees";
+import EmployeeCard from "../components/EmployeeCard";
+import EmployeeDetail from "../components/EmployeeDetail";
+import DepartmentCard from "../components/DepartmentCard";
 
 export default function SectionPage({
   departmentId,
@@ -9,8 +14,11 @@ export default function SectionPage({
   departmentId: string;
   sectionId: string;
 }) {
+  const navigate = useNavigate();
   const department = departmentsData.find((d) => d.id === departmentId);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Find the specific item (e.g., "Receivables")
   let sectionItem: any = null;
@@ -46,6 +54,36 @@ export default function SectionPage({
     (item: string) => item !== "Add Employee",
   );
 
+  // Show employee detail view if an employee is selected
+  if (selectedEmployee && sectionItem.name === "Employees") {
+    const employee = employeesData.find((e) => e.id === selectedEmployee);
+    if (employee) {
+      return (
+        <EmployeeDetail
+          employee={employee}
+          onBack={() => setSelectedEmployee(null)}
+        />
+      );
+    }
+  }
+
+  // Filter employees based on search
+  const filteredEmployees = employeesData.filter(
+    (emp) =>
+      emp.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      emp.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      emp.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      emp.role.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  // Filter departments based on search
+  const filteredDepartments = departmentsOverview.filter(
+    (dept) =>
+      dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      dept.manager.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      dept.description.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
@@ -61,7 +99,7 @@ export default function SectionPage({
         )}
       </div>
 
-      {/* Tabs */}
+      {/* Sub-item Tabs */}
       {displayTabs.length > 0 && (
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
@@ -86,20 +124,112 @@ export default function SectionPage({
       )}
 
       {/* Content Area */}
-      <div className="bg-white rounded-lg border border-gray-200 p-8 flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 mb-4 border border-gray-100">
-            <sectionItem.icon className="w-8 h-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900">
-            {activeTab || sectionItem.name}
-          </h3>
-          <p className="mt-2 text-sm text-gray-500 max-w-sm mx-auto">
-            This is the {activeTab || sectionItem.name} component view. Data
-            tables and charts for this specific section will be rendered here.
-          </p>
+      {sectionItem.name === "Employees" ? (
+        <div className="space-y-4">
+          {/* Search Bar */}
+          {activeTab === "All Employees" && (
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search employees by name, email, department, or role..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          )}
+
+          {activeTab === "All Employees" && (
+            <>
+              {/* Employee List */}
+              {filteredEmployees.length > 0 ? (
+                <div className="space-y-3">
+                  {filteredEmployees.map((employee) => (
+                    <EmployeeCard
+                      key={employee.id}
+                      employee={employee}
+                      onClick={() => setSelectedEmployee(employee.id)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg border border-gray-200 p-12 flex flex-col items-center justify-center min-h-[300px]">
+                  <Users className="w-16 h-16 text-gray-300 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No employees found
+                  </h3>
+                  <p className="text-sm text-gray-500 text-center">
+                    {searchQuery
+                      ? "Try adjusting your search terms"
+                      : "Get started by adding your first employee"}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === "Departments" && (
+            <>
+              {/* Search Bar */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search departments by name, manager, or description..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Department List */}
+              {filteredDepartments.length > 0 ? (
+                <div className="space-y-3">
+                  {filteredDepartments.map((dept) => (
+                    <DepartmentCard
+                      key={dept.id}
+                      department={dept}
+                      onClick={() => navigate({ to: `/${dept.id}` })}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg border border-gray-200 p-12 flex flex-col items-center justify-center min-h-[300px]">
+                  <Building className="w-16 h-16 text-gray-300 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No departments found
+                  </h3>
+                  <p className="text-sm text-gray-500 text-center">
+                    {searchQuery
+                      ? "Try adjusting your search terms"
+                      : "No departments available"}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-lg border border-gray-200 p-8 flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 mb-4 border border-gray-100">
+              <sectionItem.icon className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900">
+              {activeTab || sectionItem.name}
+            </h3>
+            <p className="mt-2 text-sm text-gray-500 max-w-sm mx-auto">
+              This is the {activeTab || sectionItem.name} component view. Data
+              tables and charts for this specific section will be rendered here.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Add Employee Modal */}
       {showAddEmployeeModal && (
