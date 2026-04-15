@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate, useLocation } from '@tanstack/react-router';
 import {
   LifeBuoy,
   ChevronDown,
@@ -10,10 +11,11 @@ import { sharedMenu, departmentsData } from '../data/navigation';
 
 interface SidebarProps {
   currentDepartmentId: string;
-  onDepartmentChange: (id: string) => void;
 }
 
-export default function Sidebar({ currentDepartmentId, onDepartmentChange }: SidebarProps) {
+export default function Sidebar({ currentDepartmentId }: SidebarProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
   const [showSupport, setShowSupport] = useState(true);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
@@ -25,6 +27,19 @@ export default function Sidebar({ currentDepartmentId, onDepartmentChange }: Sid
       ...prev,
       [itemName]: !prev[itemName]
     }));
+  };
+
+  const handleDepartmentChange = (deptId: string) => {
+    setIsDeptDropdownOpen(false);
+    navigate({ to: `/${deptId}` });
+  };
+
+  const handleSectionClick = (itemName: string, hasSubItems: boolean) => {
+    if (hasSubItems) {
+      toggleExpand(itemName);
+    }
+    const sectionId = itemName.toLowerCase().replace(/\s+/g, '-');
+    navigate({ to: `/${currentDepartmentId}/${sectionId}` });
   };
 
   return (
@@ -44,25 +59,31 @@ export default function Sidebar({ currentDepartmentId, onDepartmentChange }: Sid
             {sharedMenu.title}
           </h3>
           <ul className="space-y-1">
-            {sharedMenu.items.map((item, itemIdx) => (
-              <li key={itemIdx}>
-                <a
-                  href="#"
-                  className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                    item.active
-                      ? 'bg-gray-100 text-gray-900'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <item.icon
-                    className={`mr-3 h-4 w-4 ${
-                      item.active ? 'text-gray-900' : 'text-gray-400'
+            {sharedMenu.items.map((item, itemIdx) => {
+              const isActive = item.name === 'Dashboard' 
+                ? location.pathname === '/' || location.pathname === `/${currentDepartmentId}`
+                : false;
+              
+              return (
+                <li key={itemIdx}>
+                  <button
+                    onClick={() => item.name === 'Dashboard' && navigate({ to: `/${currentDepartmentId}` })}
+                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                      isActive
+                        ? 'bg-gray-100 text-gray-900'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
-                  />
-                  {item.name}
-                </a>
-              </li>
-            ))}
+                  >
+                    <item.icon
+                      className={`mr-3 h-4 w-4 ${
+                        isActive ? 'text-gray-900' : 'text-gray-400'
+                      }`}
+                    />
+                    {item.name}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>
 
@@ -76,19 +97,25 @@ export default function Sidebar({ currentDepartmentId, onDepartmentChange }: Sid
               {section.items.map((item, itemIdx) => {
                 const isExpanded = expandedItems[item.name];
                 const hasSubItems = item.subItems && item.subItems.length > 0;
+                const sectionId = item.name.toLowerCase().replace(/\s+/g, '-');
+                const isActive = location.pathname.includes(`/${currentDepartmentId}/${sectionId}`);
                 
                 return (
                   <li key={itemIdx}>
                     <button
-                      onClick={() => hasSubItems ? toggleExpand(item.name) : null}
-                      className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      onClick={() => handleSectionClick(item.name, !!hasSubItems)}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md ${
+                        isActive 
+                          ? 'bg-blue-50 text-blue-700' 
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
                     >
                       <div className="flex items-center">
-                        <item.icon className="mr-3 h-4 w-4 text-gray-400" />
+                        <item.icon className={`mr-3 h-4 w-4 ${isActive ? 'text-blue-700' : 'text-gray-400'}`} />
                         {item.name}
                       </div>
                       {hasSubItems && (
-                        isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />
+                        isExpanded ? <ChevronUp className={`h-4 w-4 ${isActive ? 'text-blue-700' : 'text-gray-400'}`} /> : <ChevronDown className={`h-4 w-4 ${isActive ? 'text-blue-700' : 'text-gray-400'}`} />
                       )}
                     </button>
                     
@@ -96,12 +123,11 @@ export default function Sidebar({ currentDepartmentId, onDepartmentChange }: Sid
                       <ul className="mt-1 space-y-1 pl-10 pr-3">
                         {item.subItems!.map((subItem, subIdx) => (
                           <li key={subIdx}>
-                            <a
-                              href="#"
-                              className="block py-1.5 text-sm text-gray-500 hover:text-gray-900"
+                            <button
+                              className="w-full text-left block py-1.5 text-sm text-gray-500 hover:text-gray-900"
                             >
                               {subItem}
-                            </a>
+                            </button>
                           </li>
                         ))}
                       </ul>
@@ -160,10 +186,7 @@ export default function Sidebar({ currentDepartmentId, onDepartmentChange }: Sid
                 {departmentsData.map((dept) => (
                   <button
                     key={dept.id}
-                    onClick={() => {
-                      onDepartmentChange(dept.id);
-                      setIsDeptDropdownOpen(false);
-                    }}
+                    onClick={() => handleDepartmentChange(dept.id)}
                     className={`w-full text-left px-4 py-2 text-sm ${
                       currentDepartmentId === dept.id 
                         ? 'bg-blue-50 text-blue-700 font-medium' 

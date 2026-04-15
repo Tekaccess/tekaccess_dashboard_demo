@@ -29,7 +29,6 @@ export const sharedMenu = {
   title: 'Main menu',
   items: [
     { name: 'Dashboard', icon: LayoutDashboard, active: true },
-    { name: 'Alerts & Notifications', icon: Bell },
     { name: 'Reports', icon: FileText },
     { name: 'Calendar', icon: Calendar },
     { name: 'Task management', icon: Briefcase },
