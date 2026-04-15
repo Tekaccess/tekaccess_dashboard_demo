@@ -1,0 +1,6 @@
+{
+  "name": "TekAccess Dashboard",
+  "description": "A comprehensive dashboard UI with sidebar navigation, statistical cards, block-style charts, and a recent transactions table.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
