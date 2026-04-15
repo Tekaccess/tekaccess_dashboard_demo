@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MoreHorizontal, Plus, Search } from 'lucide-react';
 import {
   createColumnHelper,
@@ -25,12 +25,65 @@ const transactions: Transaction[] = [
   { id: '#04912', customer: 'Abram Bergson', product: 'Eco Bookshelf', status: 'Pending', qty: 22, price: '$1,750', total: '$75,900' },
 ];
 
+const columnHelper = createColumnHelper<Transaction>();
+
+const ActionCell = ({ transaction, onSelect }: { transaction: Transaction, onSelect: (tx: Transaction) => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative flex justify-end" ref={dropdownRef}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className="text-gray-400 hover:text-gray-600 border border-gray-200 rounded p-1 inline-flex"
+      >
+        <MoreHorizontal className="w-4 h-4" />
+      </button>
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-50 overflow-hidden">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(false);
+              onSelect(transaction);
+            }}
+            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            View Details
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(false);
+              onSelect(transaction);
+            }}
+            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            Edit Transaction
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function RecentTransactions() {
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
 
-  const columnHelper = createColumnHelper<Transaction>();
-
-  const columns = [
+  const columns = useMemo(() => [
     columnHelper.display({
       id: 'select',
       header: () => <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />,
@@ -81,21 +134,9 @@ export default function RecentTransactions() {
     columnHelper.display({
       id: 'actions',
       header: () => <div className="text-right">ACTIONS</div>,
-      cell: ({ row }) => (
-        <div className="text-right">
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedTx(row.original);
-            }}
-            className="text-gray-400 hover:text-gray-600 border border-gray-200 rounded p-1 inline-flex"
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-        </div>
-      ),
+      cell: ({ row }) => <ActionCell transaction={row.original} onSelect={setSelectedTx} />,
     }),
-  ];
+  ], []);
 
   const table = useReactTable({
     data: transactions,
@@ -106,20 +147,20 @@ export default function RecentTransactions() {
   return (
     <>
       <div className="bg-white rounded-lg border border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
+        <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 bg-gray-50 rounded-t-lg">
           <div className="flex items-center space-x-2">
             <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Recent Transactions</h2>
             <div className="w-4 h-4 rounded-full bg-gray-200"></div>
           </div>
-          <div className="flex items-center space-x-3">
-            <div className="relative">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="relative flex-1 sm:flex-none">
               <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
                 <Search className="h-3.5 w-3.5 text-gray-400" />
               </div>
               <input
                 type="text"
                 placeholder="Search transactions..."
-                className="block w-48 pl-8 pr-3 py-1.5 border border-gray-200 rounded-md leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
+                className="block w-full sm:w-48 pl-8 pr-3 py-1.5 border border-gray-200 rounded-md leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
               />
             </div>
             <button className="flex items-center px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-50">
@@ -132,7 +173,7 @@ export default function RecentTransactions() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto min-h-[250px]">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-white">
               {table.getHeaderGroups().map(headerGroup => (

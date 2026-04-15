@@ -1,9 +1,9 @@
 import React from 'react';
 import { Calendar, Download } from 'lucide-react';
-import StatCard from './StatCard';
-import SalesTrend from './SalesTrend';
-import RevenueBreakdown from './RevenueBreakdown';
-import RecentTransactions from './RecentTransactions';
+import StatCard from '../components/StatCard';
+import SalesTrend from '../components/SalesTrend';
+import RevenueBreakdown from '../components/RevenueBreakdown';
+import RecentTransactions from '../components/RecentTransactions';
 import { departmentsData } from '../data/navigation';
 
 interface DashboardProps {
@@ -35,20 +35,20 @@ export default function Dashboard({ currentDepartmentId }: DashboardProps) {
   });
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* Welcome & Actions */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Welcome back , Thierry</h2>
-        <div className="flex items-center space-x-3">
-          <button className="flex items-center px-4 py-2 bg-white border border-gray-200 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Welcome back , Thierry</h2>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <button className="flex items-center px-3 sm:px-4 py-2 bg-white border border-gray-200 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
             Daily
             <svg className="ml-2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
-          <button className="flex items-center px-4 py-2 bg-white border border-gray-200 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+          <button className="flex items-center px-3 sm:px-4 py-2 bg-white border border-gray-200 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
             <Calendar className="w-4 h-4 mr-2 text-gray-400" />
             6 Nov 2025
           </button>
-          <button className="flex items-center px-4 py-2 bg-[#4A4B4D] text-white rounded-md text-sm font-medium hover:bg-[#3a3b3d]">
+          <button className="flex items-center px-3 sm:px-4 py-2 bg-[#4A4B4D] text-white rounded-md text-sm font-medium hover:bg-[#3a3b3d]">
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </button>
@@ -56,7 +56,7 @@ export default function Dashboard({ currentDepartmentId }: DashboardProps) {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {displayStats.map((stat, idx) => (
           <StatCard 
             key={idx}
@@ -69,11 +69,11 @@ export default function Dashboard({ currentDepartmentId }: DashboardProps) {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[400px]">
-        <div className="lg:col-span-2 h-full">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:h-[400px]">
+        <div className="lg:col-span-2 h-[300px] lg:h-full">
           <SalesTrend />
         </div>
-        <div className="h-full">
+        <div className="h-[300px] lg:h-full">
           <RevenueBreakdown />
         </div>
       </div>

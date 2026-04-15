@@ -127,30 +127,32 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
           </div>
 
           {/* Chevron Pipeline */}
-          <div className="flex h-8 text-xs font-medium">
-            {['New Leads', 'Request Rec...', 'In Draft', 'Proposal Sent', 'Approved', 'Paid'].map((stage, i, arr) => {
-              const isCurrent = transaction.status === 'Success' ? stage === 'Paid' : stage === 'Proposal Sent';
-              const isPast = transaction.status === 'Success' || i < 3; // Simplified logic for demo
-              
-              let bgClass = 'bg-gray-100 text-gray-500';
-              if (isCurrent) bgClass = 'bg-[#bbf7d0] text-green-800';
-              else if (isPast) bgClass = 'bg-[#86efac] text-green-900';
+          <div className="overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex h-8 text-xs font-medium min-w-[600px]">
+              {['New Leads', 'Request Rec...', 'In Draft', 'Proposal Sent', 'Approved', 'Paid'].map((stage, i, arr) => {
+                const isCurrent = transaction.status === 'Success' ? stage === 'Paid' : stage === 'Proposal Sent';
+                const isPast = transaction.status === 'Success' || i < 3; // Simplified logic for demo
+                
+                let bgClass = 'bg-gray-100 text-gray-500';
+                if (isCurrent) bgClass = 'bg-[#bbf7d0] text-green-800';
+                else if (isPast) bgClass = 'bg-[#86efac] text-green-900';
 
-              return (
-                <div key={stage} className={`relative flex-1 flex items-center justify-center ${bgClass} ${i === 0 ? 'rounded-l-full' : ''} ${i === arr.length - 1 ? 'rounded-r-full' : ''} border-r border-white last:border-r-0`}>
-                  <span className="z-10 truncate px-2">{stage}</span>
-                  {i < arr.length - 1 && (
-                    <div className="absolute right-[-10px] top-0 w-0 h-0 border-t-[16px] border-t-transparent border-b-[16px] border-b-transparent border-l-[10px] border-l-inherit z-20" style={{ borderLeftColor: 'inherit' }}></div>
-                  )}
-                </div>
-              );
-            })}
+                return (
+                  <div key={stage} className={`relative flex-1 flex items-center justify-center ${bgClass} ${i === 0 ? 'rounded-l-full' : ''} ${i === arr.length - 1 ? 'rounded-r-full' : ''} border-r border-white last:border-r-0`}>
+                    <span className="z-10 truncate px-2">{stage}</span>
+                    {i < arr.length - 1 && (
+                      <div className="absolute right-[-10px] top-0 w-0 h-0 border-t-[16px] border-t-transparent border-b-[16px] border-b-transparent border-l-[10px] border-l-inherit z-20" style={{ borderLeftColor: 'inherit' }}></div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Sequence Info */}
-          <div className="flex items-center mt-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+          <div className="flex flex-col sm:flex-row sm:items-center mt-6 p-4 bg-gray-50 rounded-lg border border-gray-100 gap-4 sm:gap-0">
             <div className="flex-1 flex items-center">
-              <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center mr-3">
+              <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center mr-3 shrink-0">
                 <FileText className="w-4 h-4 text-gray-500" />
               </div>
               <div>
@@ -159,8 +161,8 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
                 <button className="text-xs text-green-600 font-medium mt-0.5">Change</button>
               </div>
             </div>
-            <div className="flex-1 flex items-center border-l border-gray-200 pl-6">
-              <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center mr-3">
+            <div className="flex-1 flex items-center sm:border-l sm:border-gray-200 sm:pl-6 pt-4 sm:pt-0 border-t border-gray-200 sm:border-t-0">
+              <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center mr-3 shrink-0">
                 <Clock className="w-4 h-4 text-gray-500" />
               </div>
               <div>
@@ -231,34 +233,34 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
 
               {/* Appointments Section */}
               <div>
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-2 sm:gap-0">
                   <h3 className="text-lg font-bold text-gray-900">Appointments</h3>
-                  <button className="text-sm font-medium text-green-600 flex items-center hover:text-green-700">
+                  <button className="text-sm font-medium text-green-600 flex items-center hover:text-green-700 self-start sm:self-auto">
                     <Calendar className="w-4 h-4 mr-1.5" />
                     Create appointment
                   </button>
                 </div>
                 
-                <div className="bg-white border border-gray-200 rounded-lg p-4 flex items-center">
-                  <div className="w-48 pr-4 border-r border-gray-100">
+                <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-0">
+                  <div className="w-full sm:w-48 sm:pr-4 sm:border-r sm:border-gray-100 border-b border-gray-100 sm:border-b-0 pb-4 sm:pb-0">
                     <div className="text-sm text-green-600 font-medium mb-1">Monday</div>
                     <div className="text-lg font-bold text-gray-900 mb-1">January 19, 2024</div>
                     <div className="text-xs text-gray-500">10 AM - 10:30 AM</div>
                   </div>
-                  <div className="flex-1 pl-6">
+                  <div className="flex-1 sm:pl-6">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center text-sm font-bold text-gray-900">
-                        <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
+                      <div className="flex items-center text-sm font-bold text-gray-900 flex-wrap">
+                        <div className="w-2 h-2 rounded-full bg-green-500 mr-2 shrink-0"></div>
                         On-Site Estimate <span className="text-gray-500 font-normal mx-1">with</span> {transaction.customer}
                       </div>
-                      <button className="text-gray-400 hover:text-gray-600"><MoreHorizontal className="w-4 h-4" /></button>
+                      <button className="text-gray-400 hover:text-gray-600 shrink-0 ml-2"><MoreHorizontal className="w-4 h-4" /></button>
                     </div>
-                    <div className="text-sm text-gray-500 flex items-center mb-2">
-                      <Globe className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
-                      4517 Washington Avenue, Manchester, KY 39495
+                    <div className="text-sm text-gray-500 flex items-start sm:items-center mb-2">
+                      <Globe className="w-3.5 h-3.5 mr-1.5 text-gray-400 shrink-0 mt-0.5 sm:mt-0" />
+                      <span>4517 Washington Avenue, Manchester, KY 39495</span>
                     </div>
                     <div className="flex items-center text-xs text-gray-500">
-                      <img src="https://picsum.photos/seed/sales/100/100" alt="Salesperson" className="w-4 h-4 rounded-full mr-1.5" referrerPolicy="no-referrer" />
+                      <img src="https://picsum.photos/seed/sales/100/100" alt="Salesperson" className="w-4 h-4 rounded-full mr-1.5 shrink-0" referrerPolicy="no-referrer" />
                       Ahmad Fawaid
                     </div>
                   </div>
