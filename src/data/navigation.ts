@@ -22,251 +22,293 @@ import {
   RefreshCw,
   ClipboardList,
   AlertTriangle,
-  Server
-} from 'lucide-react';
+  Server,
+} from "lucide-react";
 
 export const sharedMenu = {
-  title: 'Main menu',
+  title: "Main menu",
   items: [
-    { name: 'Dashboard', icon: LayoutDashboard, active: true },
-    { name: 'Reports', icon: FileText },
-    { name: 'Calendar', icon: Calendar },
-    { name: 'Task management', icon: Briefcase },
-  ]
+    { name: "Dashboard", icon: LayoutDashboard, active: true },
+    { name: "Reports", icon: FileText },
+    { name: "Calendar", icon: Calendar },
+    { name: "Task management", icon: Briefcase },
+  ],
 };
 
 export const departmentsData = [
   {
-    id: 'executive',
-    name: 'Executive Department',
-    role: 'Executive',
+    id: "executive",
+    name: "Executive Department",
+    role: "Executive",
     sections: [
       {
-        title: 'User Management',
+        title: "Departments",
         items: [
-          { name: 'All Users', icon: Users },
-          { name: 'Add User', icon: Users },
-          { name: 'Roles & Permissions', icon: Settings },
-        ]
+          { name: "Finance Overview", icon: BarChart3 },
+          { name: "Transport Overview", icon: Truck },
+          { name: "Operations Overview", icon: Activity },
+          { name: "Inventory Overview", icon: Box },
+          { name: "Procurement Overview", icon: ShoppingCart },
+        ],
       },
       {
-        title: 'Departments',
+        title: "Company",
         items: [
-          { name: 'Finance Overview', icon: BarChart3 },
-          { name: 'Transport Overview', icon: Truck },
-          { name: 'Operations Overview', icon: Activity },
-          { name: 'Inventory Overview', icon: Box },
-          { name: 'Procurement Overview', icon: ShoppingCart },
-        ]
+          { name: "Company Settings", icon: Building },
+          {
+            name: "Employees",
+            icon: Users,
+            subItems: ["All Employees", "Add Employee", "Departments"],
+          },
+        ],
       },
-      {
-        title: 'Company',
-        items: [
-          { name: 'Company Settings', icon: Building },
-        ]
-      }
-    ]
+    ],
   },
   {
-    id: 'finance',
-    name: 'Finance Department',
-    role: 'Finance Manager',
+    id: "finance",
+    name: "Finance Department",
+    role: "Finance Manager",
     sections: [
       {
-        title: 'Finance Department',
+        title: "Finance Department",
         items: [
-          { 
-            name: 'Receivables', 
+          {
+            name: "Receivables",
             icon: Receipt,
-            subItems: ['Invoices', 'Client Payments', 'Aging Report']
+            subItems: ["Invoices", "Client Payments", "Aging Report"],
           },
-          { 
-            name: 'Payables', 
+          {
+            name: "Payables",
             icon: CreditCard,
-            subItems: ['Supplier Bills', 'Payment Schedule', 'Overdue Payables']
+            subItems: [
+              "Supplier Bills",
+              "Payment Schedule",
+              "Overdue Payables",
+            ],
           },
-          { 
-            name: 'Banking', 
+          {
+            name: "Banking",
             icon: Building,
-            subItems: ['Bank Accounts', 'Cash Flow Forecast', 'Bank Facility Usage']
+            subItems: [
+              "Bank Accounts",
+              "Cash Flow Forecast",
+              "Bank Facility Usage",
+            ],
           },
-          { 
-            name: 'Expenses', 
+          {
+            name: "Expenses",
             icon: FileSpreadsheet,
-            subItems: ['All Expenses', 'Pending Approval', 'By Category']
+            subItems: ["All Expenses", "Pending Approval", "By Category"],
           },
-          { 
-            name: 'Tax & Compliance', 
+          {
+            name: "Tax & Compliance",
             icon: FileCheck,
-            subItems: ['Tax Periods', 'Filing Status']
+            subItems: ["Tax Periods", "Filing Status"],
           },
-        ]
-      }
-    ]
+        ],
+      },
+    ],
   },
   {
-    id: 'transport',
-    name: 'Transport Department',
-    role: 'Transport Manager',
+    id: "transport",
+    name: "Transport Department",
+    role: "Transport Manager",
     sections: [
       {
-        title: 'Transport Department',
+        title: "Transport Department",
         items: [
           {
-            name: 'Fleet',
+            name: "Fleet",
             icon: Truck,
-            subItems: ['All Trucks', 'Operating', 'Idle', 'In Maintenance']
+            subItems: ["All Trucks", "Operating", "Idle", "In Maintenance"],
           },
           {
-            name: 'Trips',
+            name: "Trips",
             icon: MapPin,
-            subItems: ['Active Trips', 'Trip History', 'Schedule']
+            subItems: ["Active Trips", "Trip History", "Schedule"],
           },
           {
-            name: 'Fuel',
+            name: "Fuel",
             icon: Activity,
-            subItems: ['Fuel Logs', 'Fuel Stock', 'Anomaly Flags']
+            subItems: ["Fuel Logs", "Fuel Stock", "Anomaly Flags"],
           },
           {
-            name: 'Maintenance',
+            name: "Maintenance",
             icon: Settings,
-            subItems: ['Open Records', 'Scheduled Services', 'Maintenance History']
-          }
-        ]
-      }
-    ]
+            subItems: [
+              "Open Records",
+              "Scheduled Services",
+              "Maintenance History",
+            ],
+          },
+        ],
+      },
+    ],
   },
   {
-    id: 'operations',
-    name: 'Operations Department',
-    role: 'Operations Manager',
+    id: "operations",
+    name: "Operations Department",
+    role: "Operations Manager",
     sections: [
       {
-        title: 'Operations Department',
+        title: "Operations Department",
         items: [
           {
-            name: 'Contracts',
+            name: "Contracts",
             icon: FileText,
-            subItems: ['Active Contracts', 'Contract Progress', 'Draft / Closed']
+            subItems: [
+              "Active Contracts",
+              "Contract Progress",
+              "Draft / Closed",
+            ],
           },
           {
-            name: 'Deliveries',
+            name: "Deliveries",
             icon: Package,
-            subItems: ['Pending Confirmation', 'Confirmed', 'Disputed', 'Delivery History']
+            subItems: [
+              "Pending Confirmation",
+              "Confirmed",
+              "Disputed",
+              "Delivery History",
+            ],
           },
           {
-            name: 'Sites',
+            name: "Sites",
             icon: MapPin,
-            subItems: ['Loading Sites', 'Offloading Sites', 'Site Activity']
+            subItems: ["Loading Sites", "Offloading Sites", "Site Activity"],
           },
           {
-            name: 'Clients',
+            name: "Clients",
             icon: Users,
-            subItems: ['Client List', 'Satisfaction Ratings']
-          }
-        ]
-      }
-    ]
+            subItems: ["Client List", "Satisfaction Ratings"],
+          },
+        ],
+      },
+    ],
   },
   {
-    id: 'inventory',
-    name: 'Inventory Department',
-    role: 'Inventory Manager',
+    id: "inventory",
+    name: "Inventory Department",
+    role: "Inventory Manager",
     sections: [
       {
-        title: 'Inventory Department',
+        title: "Inventory Department",
         items: [
           {
-            name: 'Stock',
+            name: "Stock",
             icon: Box,
-            subItems: ['All Stock Items', 'By Warehouse', 'By Category', 'Reserved Stock']
+            subItems: [
+              "All Stock Items",
+              "By Warehouse",
+              "By Category",
+              "Reserved Stock",
+            ],
           },
           {
-            name: 'Movements',
+            name: "Movements",
             icon: RefreshCw,
-            subItems: ['Inbound', 'Outbound', 'Transfers', 'Adjustments']
+            subItems: ["Inbound", "Outbound", "Transfers", "Adjustments"],
           },
           {
-            name: 'Warehouses',
+            name: "Warehouses",
             icon: Building,
-            subItems: ['Warehouse List', 'Capacity Usage']
+            subItems: ["Warehouse List", "Capacity Usage"],
           },
           {
-            name: 'Stock Counts',
+            name: "Stock Counts",
             icon: ClipboardList,
-            subItems: ['Reconciliation', 'Discrepancy Log']
-          }
-        ]
-      }
-    ]
+            subItems: ["Reconciliation", "Discrepancy Log"],
+          },
+        ],
+      },
+    ],
   },
   {
-    id: 'procurement',
-    name: 'Procurement Department',
-    role: 'Procurement Manager',
+    id: "procurement",
+    name: "Procurement Department",
+    role: "Procurement Manager",
     sections: [
       {
-        title: 'Procurement Department',
+        title: "Procurement Department",
         items: [
           {
-            name: 'Purchase Orders',
+            name: "Purchase Orders",
             icon: ShoppingCart,
-            subItems: ['Active Orders', 'Pending / Draft', 'Overdue', 'Order History']
+            subItems: [
+              "Active Orders",
+              "Pending / Draft",
+              "Overdue",
+              "Order History",
+            ],
           },
           {
-            name: 'Suppliers',
+            name: "Suppliers",
             icon: Users,
-            subItems: ['Supplier List', 'Performance & Ranking', 'Payment Status']
+            subItems: [
+              "Supplier List",
+              "Performance & Ranking",
+              "Payment Status",
+            ],
           },
           {
-            name: 'Shipments',
+            name: "Shipments",
             icon: Truck,
-            subItems: ['Incoming Shipments', 'In Transit', 'Delayed']
+            subItems: ["Incoming Shipments", "In Transit", "Delayed"],
           },
           {
-            name: 'Spare Parts',
+            name: "Spare Parts",
             icon: Settings,
-            subItems: ['Parts Inventory', 'Low Stock / Reorder Alerts']
+            subItems: ["Parts Inventory", "Low Stock / Reorder Alerts"],
           },
           {
-            name: 'Reports',
+            name: "Reports",
             icon: FileText,
-            subItems: ['Cost per Ton', 'Savings', 'Price Trends', 'Cycle Time']
-          }
-        ]
-      }
-    ]
+            subItems: ["Cost per Ton", "Savings", "Price Trends", "Cycle Time"],
+          },
+        ],
+      },
+    ],
   },
   {
-    id: 'data_team',
-    name: 'Data Team Dashboard',
-    role: 'Data Engineer',
+    id: "data_team",
+    name: "Data Team Dashboard",
+    role: "Data Engineer",
     sections: [
       {
-        title: 'Data Team',
+        title: "Data Team",
         items: [
           {
-            name: 'Pipelines & Jobs',
+            name: "Pipelines & Jobs",
             icon: Database,
-            subItems: ['All Integrations', 'Snapshot Jobs', 'Data Feeds', 'Backups']
+            subItems: [
+              "All Integrations",
+              "Snapshot Jobs",
+              "Data Feeds",
+              "Backups",
+            ],
           },
           {
-            name: 'Data Quality',
+            name: "Data Quality",
             icon: AlertTriangle,
-            subItems: ['Open Issues', 'By Department', 'Validation Errors', 'Consistency Errors']
+            subItems: [
+              "Open Issues",
+              "By Department",
+              "Validation Errors",
+              "Consistency Errors",
+            ],
           },
           {
-            name: 'Data Requests',
+            name: "Data Requests",
             icon: FileText,
-            subItems: ['Pending Requests', 'Resolved']
+            subItems: ["Pending Requests", "Resolved"],
           },
           {
-            name: 'System',
+            name: "System",
             icon: Server,
-            subItems: ['Platform Uptime', 'Alert History']
-          }
-        ]
-      }
-    ]
-  }
+            subItems: ["Platform Uptime", "Alert History"],
+          },
+        ],
+      },
+    ],
+  },
 ];

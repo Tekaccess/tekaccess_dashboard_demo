@@ -1,13 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from '@tanstack/react-router';
-import {
-  LifeBuoy,
-  ChevronDown,
-  ChevronUp,
-  X,
-  Monitor
-} from 'lucide-react';
-import { sharedMenu, departmentsData } from '../data/navigation';
+import React, { useState } from "react";
+import { useNavigate, useLocation } from "@tanstack/react-router";
+import { LifeBuoy, ChevronDown, ChevronUp, X, Monitor } from "lucide-react";
+import { sharedMenu, departmentsData } from "../data/navigation";
 
 interface SidebarProps {
   currentDepartmentId: string;
@@ -15,19 +9,27 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }: SidebarProps) {
+export default function Sidebar({
+  currentDepartmentId,
+  isOpen = true,
+  onClose,
+}: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
   const [showSupport, setShowSupport] = useState(true);
-  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
+    {},
+  );
 
-  const currentDepartment = departmentsData.find(d => d.id === currentDepartmentId) || departmentsData[0];
+  const currentDepartment =
+    departmentsData.find((d) => d.id === currentDepartmentId) ||
+    departmentsData[0];
 
   const toggleExpand = (itemName: string) => {
-    setExpandedItems(prev => ({
+    setExpandedItems((prev) => ({
       ...prev,
-      [itemName]: !prev[itemName]
+      [itemName]: !prev[itemName],
     }));
   };
 
@@ -41,7 +43,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
     if (hasSubItems) {
       toggleExpand(itemName);
     }
-    const sectionId = itemName.toLowerCase().replace(/\s+/g, '-');
+    const sectionId = itemName.toLowerCase().replace(/\s+/g, "-");
     navigate({ to: `/${currentDepartmentId}/${sectionId}` });
     if (!hasSubItems && onClose) onClose();
   };
@@ -50,25 +52,34 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
     <>
       {/* Mobile Backdrop */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-gray-900/50 z-40 lg:hidden"
           onClick={onClose}
         />
       )}
 
       {/* Sidebar */}
-      <aside className={`
+      <aside
+        className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col h-full overflow-hidden shrink-0
         transform transition-transform duration-300 ease-in-out
         lg:relative lg:translate-x-0
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+        ${isOpen ? "translate-x-0" : "-translate-x-full"}
+      `}
+      >
         {/* Logo */}
         <div className="p-6 flex items-center justify-between shrink-0">
-          <div className="text-2xl font-bold text-[#1e1b4b] tracking-tighter flex items-center">
-            <span className="text-red-600 italic mr-1">TEK</span>ACCESS
+          <div className="flex items-center">
+            <img
+              src="/logo.jpg"
+              alt="TEKACCESS"
+              className="h-12 w-auto object-contain"
+            />
           </div>
-          <button onClick={onClose} className="lg:hidden text-gray-500 hover:text-gray-700">
+          <button
+            onClick={onClose}
+            className="lg:hidden text-gray-500 hover:text-gray-700"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -82,28 +93,30 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
             </h3>
             <ul className="space-y-1">
               {sharedMenu.items.map((item, itemIdx) => {
-                const isActive = item.name === 'Dashboard' 
-                  ? location.pathname === '/' || location.pathname === `/${currentDepartmentId}`
-                  : false;
-                
+                const isActive =
+                  item.name === "Dashboard"
+                    ? location.pathname === "/" ||
+                      location.pathname === `/${currentDepartmentId}`
+                    : false;
+
                 return (
                   <li key={itemIdx}>
                     <button
                       onClick={() => {
-                        if (item.name === 'Dashboard') {
+                        if (item.name === "Dashboard") {
                           navigate({ to: `/${currentDepartmentId}` });
                           if (onClose) onClose();
                         }
                       }}
                       className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
                         isActive
-                          ? 'bg-gray-100 text-gray-900'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          ? "bg-gray-100 text-gray-900"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                       }`}
                     >
                       <item.icon
                         className={`mr-3 h-4 w-4 ${
-                          isActive ? 'text-gray-900' : 'text-gray-400'
+                          isActive ? "text-gray-900" : "text-gray-400"
                         }`}
                       />
                       {item.name}
@@ -124,28 +137,43 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
                 {section.items.map((item, itemIdx) => {
                   const isExpanded = expandedItems[item.name];
                   const hasSubItems = item.subItems && item.subItems.length > 0;
-                  const sectionId = item.name.toLowerCase().replace(/\s+/g, '-');
-                  const isActive = location.pathname.includes(`/${currentDepartmentId}/${sectionId}`);
-                  
+                  const sectionId = item.name
+                    .toLowerCase()
+                    .replace(/\s+/g, "-");
+                  const isActive = location.pathname.includes(
+                    `/${currentDepartmentId}/${sectionId}`,
+                  );
+
                   return (
                     <li key={itemIdx}>
                       <button
-                        onClick={() => handleSectionClick(item.name, !!hasSubItems)}
+                        onClick={() =>
+                          handleSectionClick(item.name, !!hasSubItems)
+                        }
                         className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md ${
-                          isActive 
-                            ? 'bg-blue-50 text-blue-700' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          isActive
+                            ? "bg-blue-50 text-blue-700"
+                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                         }`}
                       >
                         <div className="flex items-center">
-                          <item.icon className={`mr-3 h-4 w-4 ${isActive ? 'text-blue-700' : 'text-gray-400'}`} />
+                          <item.icon
+                            className={`mr-3 h-4 w-4 ${isActive ? "text-blue-700" : "text-gray-400"}`}
+                          />
                           {item.name}
                         </div>
-                        {hasSubItems && (
-                          isExpanded ? <ChevronUp className={`h-4 w-4 ${isActive ? 'text-blue-700' : 'text-gray-400'}`} /> : <ChevronDown className={`h-4 w-4 ${isActive ? 'text-blue-700' : 'text-gray-400'}`} />
-                        )}
+                        {hasSubItems &&
+                          (isExpanded ? (
+                            <ChevronUp
+                              className={`h-4 w-4 ${isActive ? "text-blue-700" : "text-gray-400"}`}
+                            />
+                          ) : (
+                            <ChevronDown
+                              className={`h-4 w-4 ${isActive ? "text-blue-700" : "text-gray-400"}`}
+                            />
+                          ))}
                       </button>
-                      
+
                       {hasSubItems && isExpanded && (
                         <ul className="mt-1 space-y-1 pl-10 pr-3">
                           {item.subItems!.map((subItem, subIdx) => (
@@ -175,7 +203,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
         <div className="p-4 border-t border-gray-200 shrink-0 space-y-4 bg-white">
           {showSupport && (
             <div className="relative border border-gray-200 rounded-lg p-4 bg-white">
-              <button 
+              <button
                 onClick={() => setShowSupport(false)}
                 className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               >
@@ -193,16 +221,20 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
               </button>
             </div>
           )}
-          
+
           <div className="relative">
-            <button 
+            <button
               onClick={() => setIsDeptDropdownOpen(!isDeptDropdownOpen)}
               className="w-full flex items-center p-2 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
             >
               <div className="h-8 w-8 rounded bg-gray-200 flex-shrink-0 mr-3"></div>
               <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium text-gray-900 truncate">Gusenga thierry</p>
-                <p className="text-xs text-gray-500 truncate">{currentDepartment.role}</p>
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  Gusenga thierry
+                </p>
+                <p className="text-xs text-gray-500 truncate">
+                  {currentDepartment.role}
+                </p>
               </div>
               {isDeptDropdownOpen ? (
                 <ChevronUp className="h-4 w-4 text-gray-400 flex-shrink-0" />
@@ -219,9 +251,9 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
                       key={dept.id}
                       onClick={() => handleDepartmentChange(dept.id)}
                       className={`w-full text-left px-4 py-2 text-sm ${
-                        currentDepartmentId === dept.id 
-                          ? 'bg-blue-50 text-blue-700 font-medium' 
-                          : 'text-gray-700 hover:bg-gray-50'
+                        currentDepartmentId === dept.id
+                          ? "bg-blue-50 text-blue-700 font-medium"
+                          : "text-gray-700 hover:bg-gray-50"
                       }`}
                     >
                       {dept.name}
