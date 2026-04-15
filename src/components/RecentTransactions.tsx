@@ -1,13 +1,98 @@
 import React from 'react';
 import { MoreHorizontal, Plus, Search } from 'lucide-react';
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
 
-const transactions = [
+type Transaction = {
+  id: string;
+  customer: string;
+  product: string;
+  status: 'Success' | 'Pending';
+  qty: number;
+  price: string;
+  total: string;
+};
+
+const transactions: Transaction[] = [
   { id: '#04910', customer: 'Ryan Korsgaard', product: 'Ergo Office Chair', status: 'Success', qty: 12, price: '$3,450', total: '$41,400' },
   { id: '#04911', customer: 'Madelyn Lubin', product: 'Sunset Desk 02', status: 'Success', qty: 20, price: '$2,980', total: '$89,200' },
   { id: '#04912', customer: 'Abram Bergson', product: 'Eco Bookshelf', status: 'Pending', qty: 22, price: '$1,750', total: '$75,900' },
 ];
 
+const columnHelper = createColumnHelper<Transaction>();
+
+const columns = [
+  columnHelper.display({
+    id: 'select',
+    header: () => <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />,
+    cell: () => <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />,
+  }),
+  columnHelper.accessor('id', {
+    header: 'ID :',
+    cell: info => <span className="text-sm text-gray-500">{info.getValue()}</span>,
+  }),
+  columnHelper.accessor('customer', {
+    header: 'CUSTOMER :',
+    cell: info => <span className="text-sm font-medium text-gray-900">{info.getValue()}</span>,
+  }),
+  columnHelper.accessor('product', {
+    header: 'PRODUCT :',
+    cell: info => <span className="text-sm text-gray-500">{info.getValue()}</span>,
+  }),
+  columnHelper.accessor('status', {
+    header: 'STATUS :',
+    cell: info => {
+      const status = info.getValue();
+      return (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+          status === 'Success' 
+            ? 'bg-green-50 text-green-700 border-green-200' 
+            : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+            status === 'Success' ? 'bg-green-500' : 'bg-yellow-500'
+          }`}></span>
+          {status}
+        </span>
+      );
+    },
+  }),
+  columnHelper.accessor('qty', {
+    header: 'QTY :',
+    cell: info => <span className="text-sm font-bold text-gray-900">{info.getValue()}</span>,
+  }),
+  columnHelper.accessor('price', {
+    header: 'UNIT PRICE :',
+    cell: info => <span className="text-sm font-bold text-gray-900">{info.getValue()}</span>,
+  }),
+  columnHelper.accessor('total', {
+    header: 'TOTAL REVENUE :',
+    cell: info => <span className="text-sm font-bold text-gray-900">{info.getValue()}</span>,
+  }),
+  columnHelper.display({
+    id: 'actions',
+    header: () => <div className="text-right">ACTIONS</div>,
+    cell: () => (
+      <div className="text-right">
+        <button className="text-gray-400 hover:text-gray-600 border border-gray-200 rounded p-1 inline-flex">
+          <MoreHorizontal className="w-4 h-4" />
+        </button>
+      </div>
+    ),
+  }),
+];
+
 export default function RecentTransactions() {
+  const table = useReactTable({
+    data: transactions,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 flex flex-col">
       <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
@@ -39,49 +124,33 @@ export default function RecentTransactions() {
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-white">
-            <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider w-10">
-                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">ID :</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Customer :</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Product :</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Status :</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Qty :</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Unit Price :</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Total Revenue :</th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
-            </tr>
+            {table.getHeaderGroups().map(headerGroup => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map(header => (
+                  <th 
+                    key={header.id} 
+                    scope="col" 
+                    className={`px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider ${header.id === 'select' ? 'w-10' : ''}`}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </th>
+                ))}
+              </tr>
+            ))}
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
-            {transactions.map((tx, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tx.id}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{tx.customer}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tx.product}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                    tx.status === 'Success' 
-                      ? 'bg-green-50 text-green-700 border-green-200' 
-                      : 'bg-yellow-50 text-yellow-700 border-yellow-200'
-                  }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                      tx.status === 'Success' ? 'bg-green-500' : 'bg-yellow-500'
-                    }`}></span>
-                    {tx.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{tx.qty}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{tx.price}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{tx.total}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button className="text-gray-400 hover:text-gray-600 border border-gray-200 rounded p-1">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
-                </td>
+            {table.getRowModel().rows.map(row => (
+              <tr key={row.id} className="hover:bg-gray-50">
+                {row.getVisibleCells().map(cell => (
+                  <td key={cell.id} className="px-6 py-4 whitespace-nowrap">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
