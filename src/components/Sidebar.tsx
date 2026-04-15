@@ -97,7 +97,13 @@ export default function Sidebar({
                   item.name === "Dashboard"
                     ? location.pathname === "/" ||
                       location.pathname === `/${currentDepartmentId}`
-                    : false;
+                    : item.name === "Reports"
+                      ? location.pathname === "/reports"
+                      : item.name === "Calendar"
+                        ? location.pathname === "/calendar"
+                        : item.name === "Task management"
+                          ? location.pathname === "/tasks"
+                          : false;
 
                 return (
                   <li key={itemIdx}>
@@ -105,8 +111,14 @@ export default function Sidebar({
                       onClick={() => {
                         if (item.name === "Dashboard") {
                           navigate({ to: `/${currentDepartmentId}` });
-                          if (onClose) onClose();
+                        } else if (item.name === "Reports") {
+                          navigate({ to: "/reports" });
+                        } else if (item.name === "Calendar") {
+                          navigate({ to: "/calendar" });
+                        } else if (item.name === "Task management") {
+                          navigate({ to: "/tasks" });
                         }
+                        if (onClose) onClose();
                       }}
                       className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
                         isActive
