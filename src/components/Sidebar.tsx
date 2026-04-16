@@ -3,6 +3,14 @@ import { useNavigate, useLocation } from "@tanstack/react-router";
 import { LifeBuoy, ChevronDown, ChevronUp, X, Monitor } from "lucide-react";
 import { sharedMenu, departmentsData } from "../data/navigation";
 
+// Explicit routes for procurement sections
+const EXPLICIT_ROUTES: Record<string, string> = {
+  "procurement/purchase-orders": "/procurement/purchase-orders",
+  "procurement/suppliers": "/procurement/suppliers",
+  "procurement/shipments": "/procurement/shipments",
+  "procurement/spare-parts": "/procurement/spare-parts",
+};
+
 interface SidebarProps {
   currentDepartmentId: string;
   isOpen?: boolean;
@@ -44,7 +52,13 @@ export default function Sidebar({
       toggleExpand(itemName);
     }
     const sectionId = itemName.toLowerCase().replace(/\s+/g, "-");
-    navigate({ to: `/${currentDepartmentId}/${sectionId}` });
+    const explicitKey = `${currentDepartmentId}/${sectionId}`;
+    const explicitRoute = EXPLICIT_ROUTES[explicitKey];
+    if (explicitRoute) {
+      navigate({ to: explicitRoute });
+    } else {
+      navigate({ to: `/${currentDepartmentId}/${sectionId}` });
+    }
     if (!hasSubItems && onClose) onClose();
   };
 
@@ -152,9 +166,13 @@ export default function Sidebar({
                   const sectionId = item.name
                     .toLowerCase()
                     .replace(/\s+/g, "-");
-                  const isActive = location.pathname.includes(
-                    `/${currentDepartmentId}/${sectionId}`,
-                  );
+                  const explicitKey = `${currentDepartmentId}/${sectionId}`;
+                  const explicitRoute = EXPLICIT_ROUTES[explicitKey];
+                  const isActive = explicitRoute
+                    ? location.pathname === explicitRoute
+                    : location.pathname.includes(
+                        `/${currentDepartmentId}/${sectionId}`,
+                      );
 
                   return (
                     <li key={itemIdx}>

@@ -11,10 +11,17 @@ import Reports from "./pages/Reports";
 import Calendar from "./pages/Calendar";
 import TaskManagement from "./pages/TaskManagement";
 
+// ── Procurement Pages ──────────────────────────────────────────────────────
+import PurchaseOrdersPage from "./pages/PurchaseOrdersPage";
+import SuppliersPage from "./pages/SuppliersPage";
+import ShipmentsPage from "./pages/ShipmentsPage";
+import SparePartsPage from "./pages/SparePartsPage";
+
 export const rootRoute = createRootRoute({
   component: RootLayout,
 });
 
+// ── Shared Routes ──────────────────────────────────────────────────────────
 export const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -39,10 +46,37 @@ export const sectionRoute = createRoute({
   },
 });
 
+// ── Explicit Procurement Routes ─────────────────────────────────────────────
+const purchaseOrdersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/procurement/purchase-orders",
+  component: PurchaseOrdersPage,
+});
+
+const suppliersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/procurement/suppliers",
+  component: SuppliersPage,
+});
+
+const shipmentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/procurement/shipments",
+  component: ShipmentsPage,
+});
+
+const sparePartsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/procurement/spare-parts",
+  component: SparePartsPage,
+});
+
+// ── Route Tree ──────────────────────────────────────────────────────────────
 const routeTree = rootRoute.addChildren([
   indexRoute,
   departmentRoute,
   sectionRoute,
+  // Shared top-level pages
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/reports",
@@ -58,7 +92,13 @@ const routeTree = rootRoute.addChildren([
     path: "/tasks",
     component: TaskManagement,
   }),
+  // Procurement explicit pages
+  purchaseOrdersRoute,
+  suppliersRoute,
+  shipmentsRoute,
+  sparePartsRoute,
 ]);
+
 export const router = createRouter({ routeTree });
 
 declare module "@tanstack/react-router" {
