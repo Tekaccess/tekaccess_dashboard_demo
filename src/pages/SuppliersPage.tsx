@@ -5,7 +5,7 @@ import {
   Star, Eye, MapPin, Phone, Mail, Award
 } from 'lucide-react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from 'recharts';
 import { suppliers, supplierPerformance, Supplier, SupplierStatus } from '../data/procurement';

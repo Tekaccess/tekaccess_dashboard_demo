@@ -1,6 +1,7 @@
 import React from 'react';
 
 interface StatCardProps {
+  key?: React.Key;
   title: string;
   value: string;
   change: string;

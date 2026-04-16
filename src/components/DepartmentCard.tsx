@@ -3,6 +3,7 @@ import { Users, DollarSign, User } from 'lucide-react';
 import { DepartmentOverview } from '../data/employees';
 
 interface DepartmentCardProps {
+  key?: React.Key;
   department: DepartmentOverview;
   onClick: () => void;
 }
