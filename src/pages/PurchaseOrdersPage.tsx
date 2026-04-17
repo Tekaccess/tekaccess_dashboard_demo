@@ -413,62 +413,99 @@ export default function PurchaseOrdersPage() {
         }
         previewContent={
           modal && (
-            <div className="relative w-full h-full bg-gray-200/50 rounded-sm overflow-hidden flex flex-col">
-               {/* PDF Overlay Interaction Layer */}
-               <div className="bg-[#2a2a2e] text-white px-4 py-2.5 flex justify-between items-center shrink-0 shadow-lg">
-                  <div className="flex items-center gap-3 text-xs">
-                    <div className="bg-red-500 p-1 rounded">
-                       <FileText className="w-3.5 h-3.5" />
-                    </div>
-                    <span className="font-semibold tracking-wide uppercase">Original Purchase Order Document</span>
+            <div className="w-full h-full bg-white flex flex-col font-sans p-12 text-[#1a1a1a] shadow-sm">
+               {/* ── HEADER ────────────────────────────────────────────────── */}
+               <div className="flex justify-between items-start mb-2">
+                  <div className="w-48">
+                    <img src="/logo.jpg" alt="TEKACCESS" className="w-full h-auto mb-2" />
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded">PDF Mode</span>
-                    <button className="p-1 hover:bg-white/10 rounded transition-colors"><Download className="w-4 h-4 text-blue-400" /></button>
+                  <div className="text-right text-[11px] leading-tight text-gray-600 font-medium">
+                    <p className="font-bold text-gray-800 uppercase tracking-wider">TEKACCESS</p>
+                    <p>13 KG 599 St, Gishushu</p>
+                    <p>Kigali Rwanda</p>
+                  </div>
+               </div>
+               
+               <p className="text-[12px] font-bold text-[#A32424] mb-12 italic">Built on trust. Delivered with Excellence</p>
+
+               {/* ── ADDRESSES ─────────────────────────────────────────────── */}
+               <div className="flex justify-between items-start mb-10">
+                  <div className="text-[12px]">
+                    <p className="font-bold text-gray-800">Shipping address</p>
+                    <p className="text-gray-600">Garissa Warehouse</p>
+                  </div>
+                  <div className="text-right text-[12px] font-bold text-gray-800">
+                    <p>{modal.order.supplier}</p>
                   </div>
                </div>
 
-               {/* Document Canvas */}
-               <div className="relative flex-1 overflow-auto p-12 flex justify-center bg-gray-600/20 backdrop-blur-md">
-                  <div className="relative w-full max-w-[800px] h-[1050px] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.2)]">
-                     {/* The Actual PDF File */}
-                     <iframe 
-                        src={`/documents/Purchase Order.pdf#toolbar=0&navpanes=0&scrollbar=0`}
-                        className="w-full h-full border-none pointer-events-none"
-                        title="Embedded PO PDF"
-                     />
+               {/* ── TITLE ─────────────────────────────────────────────────── */}
+               <h1 className="text-[26px] font-medium text-[#A32424] mb-8">
+                  Purchase Order <span className="font-semibold text-gray-800">#{modal.order.orderNumber}</span>
+               </h1>
 
-                     {/* ── REACTIVE DATA TOP-LAYER ───────────────────────────── */}
-                     {/* We position these fields to align with your PDF boxes */}
-                     <div className="absolute inset-0 pointer-events-none select-none">
-                        <div className="absolute top-[18.2%] left-[64%] text-[14px] font-black text-gray-900">
-                           {modal.order.orderNumber}
-                        </div>
-                        <div className="absolute top-[21.8%] left-[64%] text-[12px] font-bold text-gray-700">
-                           {modal.order.createdDate}
-                        </div>
-                        <div className="absolute top-[17.5%] left-[10.5%]">
-                           <p className="text-[14px] font-black text-[#1e3a8a] uppercase">{modal.order.supplier}</p>
-                           <p className="text-[9px] font-bold text-gray-400 mt-0.5 tracking-widest">VERIFIED SUPPLIER GATEWAY</p>
-                        </div>
-                        
-                        {/* Table Mockup Overlay */}
-                        <div className="absolute top-[35.5%] left-[10.5%] w-[79%]">
-                           <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
-                              <span className="text-[11px] font-black text-gray-800 uppercase">{modal.order.category} Industrial Supply Batch</span>
-                              <span className="text-[11px] font-bold text-gray-900">{formatRWF(modal.order.totalAmount)}</span>
-                           </div>
-                        </div>
-
-                        {/* Grand Total Placement */}
-                        <div className="absolute bottom-[20%] right-[10.5%] text-right">
-                           <div className="px-6 py-4 bg-gray-900 text-white rounded-lg shadow-xl">
-                              <p className="text-[9px] font-black uppercase tracking-[0.2em] mb-1 text-gray-400">Net Payable Amount</p>
-                              <p className="text-2xl font-black">{formatRWF(modal.order.totalAmount)}</p>
-                           </div>
-                        </div>
-                     </div>
+               {/* ── META INFO BAR ─────────────────────────────────────────── */}
+               <div className="flex justify-between items-start mb-8 text-[12px]">
+                  <div>
+                    <p className="font-bold text-gray-800">Buyer</p>
+                    <p className="text-gray-600">{modal.order.approvedBy || "MUGABO Richard"}</p>
                   </div>
+                  <div className="w-40">
+                    <p className="font-bold text-gray-800">Order Date:</p>
+                    <p className="text-gray-600 font-medium">{modal.order.createdDate}</p>
+                  </div>
+                  <div className="w-40 text-right">
+                    <p className="font-bold text-gray-800">Expected Arrival:</p>
+                    <p className="text-gray-600 font-medium">{modal.order.expectedDate}</p>
+                  </div>
+               </div>
+
+               {/* ── ITEMS TABLE ───────────────────────────────────────────── */}
+               <div className="mb-8 border border-gray-800 rounded-sm">
+                  <table className="w-full border-collapse text-[11px]">
+                    <thead>
+                      <tr className="border-b border-gray-800">
+                        <th className="py-2.5 px-4 text-left font-black uppercase tracking-wider border-r border-gray-800">Description</th>
+                        <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider border-r border-gray-800">Qty</th>
+                        <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider border-r border-gray-800">Unit Price</th>
+                        <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider border-r border-gray-800">Disc.</th>
+                        <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider border-r border-gray-800">Taxes</th>
+                        <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-gray-300">
+                        <td className="py-4 px-4 border-r border-gray-800">{modal.order.category || "General Supplies"}</td>
+                        <td className="py-4 px-4 text-right font-medium border-r border-gray-800">{modal.order.items.toLocaleString()}.00</td>
+                        <td className="py-4 px-4 text-right font-medium border-r border-gray-800">{(modal.order.totalAmount / modal.order.items).toLocaleString()}</td>
+                        <td className="py-4 px-4 text-right font-medium border-r border-gray-800">0.00%</td>
+                        <td className="py-4 px-4 border-r border-gray-800"></td>
+                        <td className="py-4 px-4 text-right font-bold">{modal.order.totalAmount.toLocaleString()} KSh</td>
+                      </tr>
+                      {/* Empty filler rows to match visual weight if needed */}
+                      <tr className="h-4"><td></td></tr>
+                    </tbody>
+                  </table>
+                  
+                  {/* Total Bar */}
+                  <div className="flex justify-end items-stretch border-t border-gray-800 bg-[#851C1C] text-white">
+                      <div className="py-2 px-8 font-black uppercase border-r border-white/20">Total</div>
+                      <div className="py-2 px-12 font-black text-right min-w-[200px]">{modal.order.totalAmount.toLocaleString()} KSh</div>
+                  </div>
+               </div>
+
+               {/* ── FOOTER SECTIONS ───────────────────────────────────────── */}
+               <div className="mb-auto">
+                  <p className="text-[12px] font-bold text-gray-800 mb-2">Payment Terms:</p>
+               </div>
+
+               <div className="border-t border-gray-300 pt-3 flex justify-between items-center text-[11px] font-bold text-gray-800 italic">
+                  <div className="flex gap-4">
+                     <span>Call: +250 788326 686</span>
+                     <span className="text-gray-300">|</span>
+                     <span>Email: info@tekaccess.rw</span>
+                  </div>
+                  <p>Page 1 / 1</p>
                </div>
             </div>
           )
