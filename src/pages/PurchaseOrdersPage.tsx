@@ -12,6 +12,7 @@ import {
   purchaseOrders, poMonthlyVolume, poCategoryBreakdown,
   PurchaseOrder, PurchaseOrderStatus
 } from '../data/procurement';
+import DocumentSidePanel from '../components/DocumentSidePanel';
 
 type ViewMode = 'table' | 'bar' | 'trend' | 'pie';
 type ActiveTab = 'All' | 'Active' | 'Pending / Draft' | 'Overdue' | 'Order History';
@@ -343,72 +344,136 @@ export default function PurchaseOrdersPage() {
         )}
       </div>
 
-      {/* ── Detail / Edit Modal ─────────────────────────────────────────── */}
-      {modal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      {/* ── Standardized Side Panel ─────────────────────────────────────────── */}
+      <DocumentSidePanel
+        isOpen={!!modal}
+        onClose={() => setModal(null)}
+        title={modal?.mode === 'view' ? 'Purchase Order Detail' : 'Edit Order'}
+        currentIndex={modal ? filteredOrders.findIndex(o => o.id === modal.order.id) + 1 : undefined}
+        totalItems={filteredOrders.length}
+        onPrev={() => {
+          const idx = filteredOrders.findIndex(o => o.id === modal?.order.id);
+          if (idx > 0) setModal({ order: filteredOrders[idx - 1], mode: modal?.mode || 'view' });
+        }}
+        onNext={() => {
+          const idx = filteredOrders.findIndex(o => o.id === modal?.order.id);
+          if (idx < filteredOrders.length - 1) setModal({ order: filteredOrders[idx + 1], mode: modal?.mode || 'view' });
+        }}
+        footerInfo={`System record ID: PO-${modal?.order.id.slice(0, 8).toUpperCase()}`}
+        formContent={
+          modal && (
+            <div className="space-y-6">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">
-                  {modal.mode === 'view' ? 'Order Details' : 'Edit Order'}
-                </h2>
-                <p className="text-sm text-gray-500 mt-0.5">{modal.order.orderNumber}</p>
-              </div>
-              <button onClick={() => setModal(null)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <MoreHorizontal className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              {modal.mode === 'view' ? (
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    { label: 'Supplier', value: modal.order.supplier },
-                    { label: 'Category', value: modal.order.category },
-                    { label: 'Items', value: modal.order.items },
-                    { label: 'Total Amount', value: formatRWF(modal.order.totalAmount) },
-                    { label: 'Status', value: modal.order.status },
-                    { label: 'Created Date', value: modal.order.createdDate },
-                    { label: 'Expected Date', value: modal.order.expectedDate },
-                    { label: 'Approved By', value: modal.order.approvedBy },
-                  ].map(f => (
-                    <div key={f.label}>
-                      <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">{f.label}</p>
-                      <p className="text-sm font-semibold text-gray-800">{f.value}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Order Particulars</label>
                 <div className="space-y-4">
-                  {[
-                    { label: 'Supplier', defaultValue: modal.order.supplier },
-                    { label: 'Category', defaultValue: modal.order.category },
-                    { label: 'Expected Date', defaultValue: modal.order.expectedDate },
-                  ].map(f => (
-                    <div key={f.label}>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
-                      <input
-                        type="text"
-                        defaultValue={f.defaultValue}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]"
-                      />
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">PO Number</label>
+                    <input 
+                      type="text" 
+                      defaultValue={modal.order.orderNumber} 
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a] transition-all" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Associated Supplier</label>
+                    <div className="relative">
+                      <select 
+                        defaultValue={modal.order.supplier}
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm appearance-none focus:border-[#1e3a8a] outline-none"
+                      >
+                        <option>{modal.order.supplier}</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     </div>
-                  ))}
+                  </div>
                 </div>
-              )}
-            </div>
-            <div className="flex justify-end gap-3 p-6 border-t border-gray-100">
-              <button onClick={() => setModal(null)} className="px-4 py-2 border border-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-50">
-                {modal.mode === 'view' ? 'Close' : 'Cancel'}
-              </button>
-              {modal.mode === 'edit' && (
-                <button onClick={() => setModal(null)} className="px-4 py-2 bg-[#1e3a8a] text-white rounded-md text-sm hover:bg-[#1e40af]">
-                  Save Changes
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Logistics & Delivery</label>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Fulfillment Date</label>
+                    <input type="date" defaultValue={modal.order.expectedDate} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none" />
+                  </div>
+                   <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Destination Warehouse</label>
+                    <input type="text" defaultValue="Kigali Central Hub" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-gray-100">
+                <button className="w-full py-3 bg-[#1e3a8a] text-white rounded-xl text-sm font-bold shadow-xl shadow-[#1e3a8a]/20 hover:bg-[#1e40af] transition-all">
+                  Commit Documentation Changes
                 </button>
-              )}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )
+        }
+        previewContent={
+          modal && (
+            <div className="relative w-full h-full bg-gray-200/50 rounded-sm overflow-hidden flex flex-col">
+               {/* PDF Overlay Interaction Layer */}
+               <div className="bg-[#2a2a2e] text-white px-4 py-2.5 flex justify-between items-center shrink-0 shadow-lg">
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className="bg-red-500 p-1 rounded">
+                       <FileText className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="font-semibold tracking-wide uppercase">Original Purchase Order Document</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded">PDF Mode</span>
+                    <button className="p-1 hover:bg-white/10 rounded transition-colors"><Download className="w-4 h-4 text-blue-400" /></button>
+                  </div>
+               </div>
+
+               {/* Document Canvas */}
+               <div className="relative flex-1 overflow-auto p-12 flex justify-center bg-gray-600/20 backdrop-blur-md">
+                  <div className="relative w-full max-w-[800px] h-[1050px] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.2)]">
+                     {/* The Actual PDF File */}
+                     <iframe 
+                        src={`/documents/Purchase Order.pdf#toolbar=0&navpanes=0&scrollbar=0`}
+                        className="w-full h-full border-none pointer-events-none"
+                        title="Embedded PO PDF"
+                     />
+
+                     {/* ── REACTIVE DATA TOP-LAYER ───────────────────────────── */}
+                     {/* We position these fields to align with your PDF boxes */}
+                     <div className="absolute inset-0 pointer-events-none select-none">
+                        <div className="absolute top-[18.2%] left-[64%] text-[14px] font-black text-gray-900">
+                           {modal.order.orderNumber}
+                        </div>
+                        <div className="absolute top-[21.8%] left-[64%] text-[12px] font-bold text-gray-700">
+                           {modal.order.createdDate}
+                        </div>
+                        <div className="absolute top-[17.5%] left-[10.5%]">
+                           <p className="text-[14px] font-black text-[#1e3a8a] uppercase">{modal.order.supplier}</p>
+                           <p className="text-[9px] font-bold text-gray-400 mt-0.5 tracking-widest">VERIFIED SUPPLIER GATEWAY</p>
+                        </div>
+                        
+                        {/* Table Mockup Overlay */}
+                        <div className="absolute top-[35.5%] left-[10.5%] w-[79%]">
+                           <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
+                              <span className="text-[11px] font-black text-gray-800 uppercase">{modal.order.category} Industrial Supply Batch</span>
+                              <span className="text-[11px] font-bold text-gray-900">{formatRWF(modal.order.totalAmount)}</span>
+                           </div>
+                        </div>
+
+                        {/* Grand Total Placement */}
+                        <div className="absolute bottom-[20%] right-[10.5%] text-right">
+                           <div className="px-6 py-4 bg-gray-900 text-white rounded-lg shadow-xl">
+                              <p className="text-[9px] font-black uppercase tracking-[0.2em] mb-1 text-gray-400">Net Payable Amount</p>
+                              <p className="text-2xl font-black">{formatRWF(modal.order.totalAmount)}</p>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+          )
+        }
+      />
     </div>
   );
 }

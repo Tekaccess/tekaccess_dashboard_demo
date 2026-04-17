@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   X
 } from 'lucide-react';
+import DocumentSidePanel from '../components/DocumentSidePanel';
 
 interface CalendarEvent {
   id: string;
@@ -324,94 +325,102 @@ export default function Calendar() {
         </div>
       </div>
 
-      {/* Event Modal */}
-      {showEventModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Create New Event</h3>
-              <button
-                onClick={() => setShowEventModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-md"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            <form className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Event Title</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]"
-                  placeholder="Enter event title"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                  <input
-                    type="time"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                  <input
-                    type="time"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]"
-                  />
+      {/* ── Standardized Side Panel for Event Scheduling ─────────────────────────── */}
+      <DocumentSidePanel
+        isOpen={showEventModal}
+        onClose={() => setShowEventModal(false)}
+        title="Event Orchestration"
+        footerInfo={`Scheduling system active • GMT+2`}
+        formContent={
+          <div className="space-y-6">
+             <div>
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Event Identity</label>
+                <div className="space-y-4">
+                  <input type="text" placeholder="Title of the event" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a]" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <input type="time" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none" />
+                    <input type="time" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none" />
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
-                <select className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]">
-                  <option value="meeting">Meeting</option>
-                  <option value="deadline">Deadline</option>
-                  <option value="reminder">Reminder</option>
-                  <option value="holiday">Holiday</option>
+               <div>
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Categorization</label>
+                <select className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
+                  <option>Strategic Meeting</option>
+                  <option>Critical Deadline</option>
+                  <option>Operational Reminder</option>
+                  <option>Public Holiday</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]"
-                  placeholder="Enter location"
-                />
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Environment</label>
+                <input type="text" placeholder="Physical or Virtual Location" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]"
-                  rows={3}
-                  placeholder="Add description"
-                />
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Agenda & Brief</label>
+                <textarea rows={4} placeholder="Summary of objectives..." className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none" />
               </div>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowEventModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="flex-1 px-4 py-2 bg-[#1e3a8a] text-white rounded-md text-sm font-medium hover:bg-[#1e40af]"
-                >
-                  Create Event
-                </button>
+              <div className="pt-6">
+                <button className="w-full py-3 bg-[#1e3a8a] text-white rounded-xl text-sm font-bold shadow-xl shadow-[#1e3a8a]/20">Confirm Schedule</button>
               </div>
-            </form>
           </div>
-        </div>
-      )}
+        }
+        previewContent={
+          <div className="relative font-sans text-gray-900 h-full flex flex-col">
+               {/* Daily Header */}
+               <div className="mb-12 border-b-8 border-gray-900 pb-8 flex justify-between items-end">
+                  <div>
+                    <h2 className="text-5xl font-black tracking-tighter uppercase leading-[0.8] mb-2">Daily<br/>Protocol</h2>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Operational Schedule Tracking</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-4xl font-black text-[#1e3a8a]">
+                      {selectedDate?.getDate() || '15'}
+                    </p>
+                    <p className="text-[10px] font-black uppercase text-gray-400">
+                      {monthNames[selectedDate?.getMonth() || month]} {year}
+                    </p>
+                  </div>
+               </div>
+
+               {/* Timeline Mockup */}
+               <div className="flex-1 space-y-8">
+                  {[1, 2].map((i) => (
+                    <div key={i} className={`flex gap-6 ${i === 2 ? 'opacity-20' : ''}`}>
+                       <div className="w-20 text-right">
+                          <p className="text-xs font-black text-gray-900">09:00 AM</p>
+                          <div className="h-full w-px bg-gray-200 ml-auto mr-1 my-2" />
+                       </div>
+                       <div className="flex-1 bg-gray-50 rounded-2xl p-6 border-l-4 border-[#1e3a8a]">
+                          <div className="flex justify-between items-start mb-2">
+                             <h4 className="font-black text-gray-900 uppercase text-sm tracking-tight">System Syncing...</h4>
+                             <span className="text-[10px] font-bold text-[#1e3a8a] bg-blue-50 px-2 py-0.5 rounded">Sync active</span>
+                          </div>
+                          <p className="text-xs text-gray-500">Waiting for user input parameters to generate detail view.</p>
+                       </div>
+                    </div>
+                  ))}
+               </div>
+
+               {/* Footer Branding */}
+               <div className="mt-20 pt-8 border-t border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                     <div className="w-6 h-6 bg-gray-900 rounded-full flex items-center justify-center">
+                        <CalendarIcon className="w-3.5 h-3.5 text-white" />
+                     </div>
+                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-900">Tek Calendar Engine</span>
+                  </div>
+                  <div className="w-24 h-1 bg-gray-100 rounded-full overflow-hidden">
+                     <div className="w-1/2 h-full bg-[#1e3a8a]" />
+                  </div>
+               </div>
+          </div>
+        }
+      />
     </div>
   );
 }

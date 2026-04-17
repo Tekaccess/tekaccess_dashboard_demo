@@ -6,6 +6,7 @@ import { employeesData, departmentsOverview } from "../data/employees";
 import EmployeeCard from "../components/EmployeeCard";
 import EmployeeDetail from "../components/EmployeeDetail";
 import DepartmentCard from "../components/DepartmentCard";
+import DocumentSidePanel from "../components/DocumentSidePanel";
 
 export default function SectionPage({
   departmentId,
@@ -231,91 +232,56 @@ export default function SectionPage({
         </div>
       )}
 
-      {/* Add Employee Modal */}
-      {showAddEmployeeModal && (
-        <div
-          className="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowAddEmployeeModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Add New Employee
-              </h3>
-              <button
-                onClick={() => setShowAddEmployeeModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      {/* ── Standardized Side Panel (Unified HR UX) ───────────────────────────── */}
+      <DocumentSidePanel
+        isOpen={showAddEmployeeModal}
+        onClose={() => setShowAddEmployeeModal(false)}
+        title="Employee Onboarding"
+        footerInfo="Departmental synchronization active"
+        formContent={
+          <div className="p-2 space-y-6">
+            <div className="space-y-4">
+               <div>
+                  <label className="block text-[11px] font-black text-gray-400 uppercase mb-2">Full Identity</label>
+                  <input type="text" placeholder="First and last names" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a]" />
+               </div>
+               <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-black text-gray-400 uppercase mb-2">Division</label>
+                    <select className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:border-[#1e3a8a]">
+                      <option>Operations</option>
+                      <option>Finance</option>
+                      <option>Procurement</option>
+                      <option>Transport</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-gray-400 uppercase mb-2">Role Tier</label>
+                    <input type="text" placeholder="Job Title" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:border-[#1e3a8a]" />
+                  </div>
+               </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter full name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  placeholder="Enter email address"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Department
-                </label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                  <option>Select department</option>
-                  <option>Executive</option>
-                  <option>Finance</option>
-                  <option>Transport</option>
-                  <option>Operations</option>
-                  <option>Inventory</option>
-                  <option>Procurement</option>
-                  <option>Data Team</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Role
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter role"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+            <div className="space-y-4">
+               <div>
+                  <label className="block text-[11px] font-black text-gray-400 uppercase mb-2">Professional Email</label>
+                  <input type="email" placeholder="email@tekaccess.rw" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a]" />
+               </div>
             </div>
-            <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
-              <button
-                onClick={() => setShowAddEmployeeModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => setShowAddEmployeeModal(false)}
-                className="px-4 py-2 bg-[#4A4B4D] text-white rounded-md text-sm font-medium hover:bg-[#3a3b3d]"
-              >
-                Add Employee
-              </button>
+            <div className="pt-6">
+              <button className="w-full py-3 bg-[#1e3a8a] text-white rounded-xl text-sm font-bold shadow-xl shadow-[#1e3a8a]/20">Initialize Onboarding</button>
             </div>
           </div>
-        </div>
-      )}
+        }
+        previewContent={
+          <div className="flex flex-col items-center justify-center h-full text-center py-20">
+             <div className="w-40 h-40 bg-gray-50 rounded-full flex items-center justify-center mb-8 border-4 border-dashed border-gray-200">
+                <Users className="w-16 h-16 text-gray-200" />
+             </div>
+             <h3 className="text-xl font-black text-gray-900 mb-2 whitespace-nowrap">Drafting New Employee File</h3>
+             <p className="text-sm text-gray-400 max-w-[300px]">Complete the form on the left to generate the digital onboarding manifest for this department.</p>
+          </div>
+        }
+      />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import { spareParts, partsStockByCategory, SparePart, StockLevel } from '../data/procurement';
+import DocumentSidePanel from '../components/DocumentSidePanel';
 
 type ViewMode = 'table' | 'cards' | 'bar';
 type ActiveTab = 'Parts Inventory' | 'Low Stock / Reorder Alerts';
@@ -319,72 +320,195 @@ export default function SparePartsPage() {
         )}
       </div>
 
-      {/* Detail Modal */}
-      {selected && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-mono text-[#1e3a8a] font-semibold">{selected.partNumber}</p>
-                  <h2 className="text-lg font-bold text-gray-900 mt-0.5">{selected.name}</h2>
-                  <p className="text-sm text-gray-500 mt-0.5">{selected.description}</p>
-                </div>
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${STOCK_LEVEL_CONFIG[selected.stockLevel].style}`}>
-                  {selected.stockLevel}
-                </span>
-              </div>
-            </div>
-            <div className="p-6 space-y-6">
-              <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Stock Status</h3>
-                <div className="flex items-center gap-3 mb-2 text-sm">
-                  <span className="text-gray-500">Current:</span>
-                  <span className="font-bold text-gray-900">{selected.stockQuantity}</span>
-                  <span className="text-gray-300">|</span>
-                  <span className="text-gray-500">Min:</span>
-                  <span className="font-semibold text-gray-700">{selected.minStock}</span>
-                  <span className="text-gray-300">|</span>
-                  <span className="text-gray-500">Max:</span>
-                  <span className="font-semibold text-gray-700">{selected.maxStock}</span>
-                </div>
-                <StockBar part={selected} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { label: 'Category', value: selected.category },
-                  { label: 'Supplier', value: selected.supplier },
-                  { label: 'Unit Price', value: formatRWF(selected.unitPrice) },
-                  { label: 'Condition', value: selected.condition },
-                  { label: 'Location', value: selected.location },
-                  { label: 'Last Restocked', value: selected.lastRestocked },
-                ].map(f => (
-                  <div key={f.label}>
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">{f.label}</p>
-                    <p className="text-sm font-semibold text-gray-800">{f.value}</p>
+      {/* ── Standardized Side Panel ─────────────────────────────────────────── */}
+      <DocumentSidePanel
+        isOpen={!!selected}
+        onClose={() => setSelected(null)}
+        title="Part Specification"
+        currentIndex={selected ? filtered.findIndex(p => p.id === selected.id) + 1 : undefined}
+        totalItems={filtered.length}
+        onPrev={() => {
+          const idx = filtered.findIndex(p => p.id === selected?.id);
+          if (idx > 0) setSelected(filtered[idx - 1]);
+        }}
+        onNext={() => {
+          const idx = filtered.findIndex(p => p.id === selected?.id);
+          if (idx < filtered.length - 1) setSelected(filtered[idx + 1]);
+        }}
+        footerInfo={`Technical sheet last verified on ${selected?.lastRestocked}`}
+        formContent={
+          selected && (
+            <div className="space-y-6 text-gray-900">
+               <div>
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Inventory Adjustment</label>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Current Stock Quantity</label>
+                    <div className="flex items-center gap-3">
+                      <input type="number" defaultValue={selected.stockQuantity} className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a]" />
+                      <span className="text-xs text-gray-400 font-medium">Units</span>
+                    </div>
                   </div>
-                ))}
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Compatible With</p>
-                <div className="flex flex-wrap gap-2">
-                  {selected.compatible.map(v => (
-                    <span key={v} className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium border border-blue-100">{v}</span>
-                  ))}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Minimum Level</label>
+                      <input type="number" defaultValue={selected.minStock} className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs outline-none focus:border-[#1e3a8a]" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Maximum Level</label>
+                      <input type="number" defaultValue={selected.maxStock} className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs outline-none focus:border-[#1e3a8a]" />
+                    </div>
+                  </div>
                 </div>
               </div>
+
+               <div>
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Sourcing & Value</label>
+                <div className="space-y-3">
+                   <div className="relative">
+                    <label className="block text-[10px] text-gray-500 mb-1">Preferred Supplier</label>
+                    <select defaultValue={selected.supplier} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
+                      <option>{selected.supplier}</option>
+                      <option>Alternative Supplier A</option>
+                      <option>Alternative Supplier B</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 bottom-2.5 w-3 h-3 text-gray-400 pointer-events-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Unit Price (RWF)</label>
+                    <input type="number" defaultValue={selected.unitPrice} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:border-[#1e3a8a]" />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Warehouse Placement</label>
+                <div className="flex items-center gap-3 p-3 bg-blue-50/50 rounded-xl border border-blue-100/50">
+                  <div className="p-2 bg-white rounded-lg shadow-sm"><Package className="w-4 h-4 text-[#1e3a8a]" /></div>
+                  <div className="flex-1">
+                    <p className="text-[10px] text-gray-400 uppercase font-black">Storage Location</p>
+                    <input type="text" defaultValue={selected.location} className="w-full bg-transparent border-none p-0 text-sm font-bold text-gray-800 outline-none" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6">
+                 <button className="w-full py-2.5 bg-[#1e3a8a] text-white rounded-lg text-sm font-semibold hover:bg-[#1e40af] shadow-lg shadow-[#1e3a8a]/20 transition-all active:scale-[0.98]">
+                  Update Inventory Record
+                </button>
+              </div>
             </div>
-            <div className="flex justify-end gap-3 p-6 border-t border-gray-100">
-              <button onClick={() => setSelected(null)} className="px-4 py-2 border border-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-50">
-                Close
-              </button>
-              <button className="px-4 py-2 bg-[#1e3a8a] text-white rounded-md text-sm hover:bg-[#1e40af]">
-                Reorder Part
-              </button>
+          )
+        }
+        previewContent={
+          selected && (
+            <div className="relative font-sans text-gray-900">
+               {/* Header Header */}
+               <div className="flex justify-between items-start mb-12 border-b-2 border-gray-900 pb-8">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                       <span className="text-2xl font-black text-[#1e3a8a]">TEK</span>
+                       <span className="text-2xl font-light text-gray-900">PARTS</span>
+                    </div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Maintenance & Technical Services</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Stock Category</p>
+                    <p className="text-sm font-black text-gray-900">{selected.category.toUpperCase()}</p>
+                  </div>
+               </div>
+
+               {/* Main Title Section */}
+               <div className="mb-12">
+                   <div className="flex items-baseline gap-4 mb-4">
+                      <h1 className="text-4xl font-black tracking-tighter text-gray-900 uppercase">{selected.name}</h1>
+                      <span className="text-lg font-mono text-gray-400">/ {selected.partNumber}</span>
+                   </div>
+                   <div className="flex flex-wrap gap-2">
+                      <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 ${STOCK_LEVEL_CONFIG[selected.stockLevel].style}`}>
+                         Stock level: {selected.stockLevel}
+                      </span>
+                      <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 border-gray-100 text-gray-500 bg-gray-50">
+                         Condition: {selected.condition}
+                      </span>
+                   </div>
+               </div>
+
+               {/* Description Box */}
+               <div className="mb-12 p-8 bg-gray-50 rounded-2xl border border-gray-100">
+                  <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-4">Technical Description:</label>
+                  <p className="text-lg font-medium leading-relaxed text-gray-800">
+                    {selected.description}. Optimized for high-durability environments and industrial usage.
+                  </p>
+               </div>
+
+               {/* Technical Specs Grid */}
+               <div className="grid grid-cols-2 gap-16 mb-12 px-2">
+                  <div>
+                    <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-6 border-l-4 border-[#1e3a8a] pl-3">Inventory Dynamics</label>
+                    <div className="space-y-6">
+                       <div className="flex justify-between items-end border-b border-gray-100 pb-2">
+                          <span className="text-xs font-bold text-gray-500">Current Balance</span>
+                          <span className="text-xl font-black text-gray-900">{selected.stockQuantity} Units</span>
+                       </div>
+                       <div className="flex justify-between items-end border-b border-gray-100 pb-2">
+                          <span className="text-xs font-bold text-gray-500">Unit Acquisition Cost</span>
+                          <span className="text-sm font-bold text-gray-900">{formatRWF(selected.unitPrice)}</span>
+                       </div>
+                       <div className="flex justify-between items-end border-b border-gray-100 pb-2">
+                          <span className="text-xs font-bold text-gray-500">Total Asset Value</span>
+                          <span className="text-sm font-bold text-[#1e3a8a]">{formatRWF(selected.unitPrice * selected.stockQuantity)}</span>
+                       </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-6 border-l-4 border-gray-900 pl-3">Sourcing Profile</label>
+                    <div className="space-y-6">
+                       <div className="flex justify-between items-end border-b border-gray-100 pb-2">
+                          <span className="text-xs font-bold text-gray-500">Primary Supplier</span>
+                          <span className="text-sm font-bold text-gray-900 truncate max-w-[120px]">{selected.supplier}</span>
+                       </div>
+                       <div className="flex justify-between items-end border-b border-gray-100 pb-2">
+                          <span className="text-xs font-bold text-gray-500">Shelving Zone</span>
+                          <span className="text-sm font-bold text-gray-900">{selected.location}</span>
+                       </div>
+                       <div className="flex justify-between items-end border-b border-gray-100 pb-2">
+                          <span className="text-xs font-bold text-gray-500">Safety Stock Min.</span>
+                          <span className="text-sm font-bold text-red-500">{selected.minStock} Units</span>
+                       </div>
+                    </div>
+                  </div>
+               </div>
+
+               {/* Compatibility Checklist */}
+               <div className="mb-12">
+                  <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-6 border-l-4 border-amber-500 pl-3">Equipment Compatibility Matrix</label>
+                  <div className="grid grid-cols-2 gap-4">
+                     {selected.compatible.map((item, i) => (
+                       <div key={i} className="flex items-center gap-3 p-3 bg-amber-50/30 rounded-lg border border-amber-100/50">
+                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                          <span className="text-xs font-bold text-amber-900 uppercase tracking-tight">{item}</span>
+                       </div>
+                     ))}
+                  </div>
+               </div>
+
+               {/* Footer / Auth */}
+               <div className="mt-20 flex justify-between items-end py-8 border-t border-gray-100">
+                  <div className="flex items-center gap-2">
+                     <AlertTriangle className="w-4 h-4 text-gray-300" />
+                     <span className="text-[10px] text-gray-400 font-medium">Auto-generated technical manifest ID TP-{Math.floor(Math.random()*9000)+1000}</span>
+                  </div>
+                  <div className="text-right">
+                     <p className="text-[10px] font-black uppercase text-gray-400 mb-2">Technical Approval</p>
+                     <div className="h-0.5 w-32 bg-gray-900 ml-auto" />
+                  </div>
+               </div>
             </div>
-          </div>
-        </div>
-      )}
+          )
+        }
+      />
     </div>
   );
 }

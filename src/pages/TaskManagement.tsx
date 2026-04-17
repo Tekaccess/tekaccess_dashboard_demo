@@ -12,6 +12,7 @@ import {
   AlertCircle,
   X
 } from 'lucide-react';
+import DocumentSidePanel from '../components/DocumentSidePanel';
 
 interface Task {
   id: string;
@@ -378,105 +379,119 @@ export default function TaskManagement() {
         </div>
       )}
 
-      {/* New Task Modal */}
-      {showTaskModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Create New Task</h3>
-              <button
-                onClick={() => setShowTaskModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-md"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            <form className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]"
-                  placeholder="Enter task title"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]"
-                  rows={3}
-                  placeholder="Add description"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]">
-                    <option value="todo">To Do</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="review">In Review</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                  <select className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]">
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
+      {/* ── Standardized Side Panel for Task Creation/Detail ─────────────────────────── */}
+      <DocumentSidePanel
+        isOpen={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        title="Task Lifecycle Management"
+        footerInfo={`Task system synchronized on ${new Date().toLocaleTimeString()}`}
+        formContent={
+          <div className="space-y-6 text-gray-900">
+             <div>
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Core Objectives</label>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Task Nomenclature</label>
+                    <input type="text" placeholder="Specify project task name" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a]" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Operational Description</label>
+                    <textarea rows={3} placeholder="Define scope and deliverables" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a]" />
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]"
-                  placeholder="Enter assignee name"
-                />
-              </div>
+               <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Workflow State</label>
+                    <select className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
+                      <option>To Do</option>
+                      <option>In Progress</option>
+                      <option>In Review</option>
+                      <option>Completed</option>
+                    </select>
+                  </div>
+                   <div>
+                    <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Strategic Priority</label>
+                    <select className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
+                      <option>Low Impact</option>
+                      <option>Medium Priority</option>
+                      <option>High Urgency</option>
+                      <option>Critical / Blocker</option>
+                    </select>
+                  </div>
+               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-                <input
-                  type="date"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]"
-                />
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Accountability</label>
+                <div className="flex items-center gap-3 p-3 bg-blue-50/50 rounded-xl border border-blue-100/50">
+                  <div className="p-2 bg-white rounded-lg shadow-sm"><Users className="w-4 h-4 text-[#1e3a8a]" /></div>
+                  <div className="flex-1">
+                    <p className="text-[10px] text-gray-400 uppercase font-black">Assignee</p>
+                    <input type="text" placeholder="Select team member" className="w-full bg-transparent border-none p-0 text-sm font-bold text-gray-800 outline-none" />
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]"
-                  placeholder="Add tags (comma separated)"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowTaskModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="flex-1 px-4 py-2 bg-[#1e3a8a] text-white rounded-md text-sm font-medium hover:bg-[#1e40af]"
-                >
-                  Create Task
+              <div className="pt-6">
+                 <button className="w-full py-2.5 bg-[#1e3a8a] text-white rounded-lg text-sm font-semibold hover:bg-[#1e40af] shadow-lg shadow-[#1e3a8a]/20 transition-all active:scale-[0.98]">
+                  Initialize Task Assignment
                 </button>
               </div>
-            </form>
           </div>
-        </div>
-      )}
+        }
+        previewContent={
+          <div className="relative font-sans text-gray-900 p-2">
+               {/* Document Label */}
+               <div className="flex items-center gap-2 mb-12">
+                  <div className="w-8 h-1 bg-[#1e3a8a]" />
+                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-[0.3em]">Project Manifest Ref. TM-A29</span>
+               </div>
+
+               {/* Title Section */}
+               <div className="mb-16">
+                  <h1 className="text-5xl font-black text-gray-900 leading-[0.9] tracking-tighter mb-6 uppercase">Work<br/>Assignment<br/>Protocol</h1>
+                  <p className="text-gray-400 text-sm font-medium pr-12">Authorized tasking request for the Tekaccess Engineering and Operations department.</p>
+               </div>
+
+               {/* Task ID Block */}
+               <div className="mb-16 flex items-start justify-between border-y border-gray-100 py-12">
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-gray-400 mb-2">Subject Matter</p>
+                    <p className="text-xl font-bold italic text-[#1e3a8a]">Waiting for definition...</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black uppercase text-gray-400 mb-2">Deadline Date</p>
+                    <p className="text-xl font-bold text-gray-900 underline underline-offset-8 decoration-2 decoration-gray-100">Set Date</p>
+                  </div>
+               </div>
+
+               {/* Checklist / Requirements */}
+               <div className="mb-16">
+                  <p className="text-[10px] font-black uppercase text-gray-400 mb-6">Procedural Requirements:</p>
+                  <div className="space-y-4">
+                     {[1,2,3].map(i => (
+                       <div key={i} className="flex items-center gap-4 opacity-10">
+                          <div className="w-5 h-5 border-2 border-gray-300 rounded" />
+                          <div className="h-2 w-full bg-gray-100 rounded-full" />
+                       </div>
+                     ))}
+                  </div>
+               </div>
+
+               {/* Authorization Seal */}
+               <div className="mt-20 flex justify-between items-end border-t-2 border-gray-900 pt-12">
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-gray-400 mb-2">Manifest Authority</p>
+                    <p className="text-sm font-black">TEK SYSTEMS OPS.</p>
+                  </div>
+                  <div className="w-32 h-32 opacity-[0.05] grayscale brightness-0">
+                    <CheckCircle2 className="w-full h-full" />
+                  </div>
+               </div>
+          </div>
+        }
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
   PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { shipments, shipmentStatusSummary, Shipment, ShipmentStatus } from '../data/procurement';
+import DocumentSidePanel from '../components/DocumentSidePanel';
 
 type ViewMode = 'table' | 'timeline' | 'bar' | 'pie';
 type ActiveTab = 'Incoming Shipments' | 'In Transit' | 'Delayed';
@@ -328,51 +329,202 @@ export default function ShipmentsPage() {
         )}
       </div>
 
-      {/* Detail Modal */}
-      {selected && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">{selected.shipmentNumber}</h2>
-                  <p className="text-sm text-gray-500 mt-0.5">Tracking: {selected.trackingId}</p>
+      {/* ── Standardized Side Panel ─────────────────────────────────────────── */}
+      <DocumentSidePanel
+        isOpen={!!selected}
+        onClose={() => setSelected(null)}
+        title="Shipment Lifecycle"
+        currentIndex={selected ? filtered.findIndex(s => s.id === selected.id) + 1 : undefined}
+        totalItems={filtered.length}
+        onPrev={() => {
+          const idx = filtered.findIndex(s => s.id === selected?.id);
+          if (idx > 0) setSelected(filtered[idx - 1]);
+        }}
+        onNext={() => {
+          const idx = filtered.findIndex(s => s.id === selected?.id);
+          if (idx < filtered.length - 1) setSelected(filtered[idx + 1]);
+        }}
+        footerInfo={`System generated on ${new Date().toLocaleDateString()}`}
+        formContent={
+          selected && (
+            <div className="space-y-6 text-gray-900">
+              <div>
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Carrier Logistics</label>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <Truck className="w-5 h-5 text-[#1e3a8a]" />
+                    <div>
+                      <p className="text-xs font-bold">{selected.carrier}</p>
+                      <p className="text-[10px] text-gray-400">Primary Carrier assigned</p>
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <label className="block text-[10px] text-gray-500 mb-1">Current Status</label>
+                    <select defaultValue={selected.status} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
+                      <option>In Transit</option>
+                      <option>Delivered</option>
+                      <option>Delayed</option>
+                      <option>Customs Hold</option>
+                      <option>Cancelled</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 bottom-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
                 </div>
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${STATUS_CONFIG[selected.status].style}`}>
-                  {selected.status}
-                </span>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Shipment Parameters</label>
+                <div className="grid grid-cols-2 gap-4">
+                   <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Weight (kg)</label>
+                    <input type="number" defaultValue={selected.weightKg} className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs outline-none focus:border-[#1e3a8a]" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Packages</label>
+                    <input type="number" defaultValue={selected.packages} className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs outline-none focus:border-[#1e3a8a]" />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Routing</label>
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <MapPin className="w-4 h-4 text-gray-400 mt-1" />
+                    <div className="flex-1">
+                      <p className="text-[10px] text-gray-400 uppercase font-black">Origin</p>
+                      <input type="text" defaultValue={selected.origin} className="w-full mt-1 border-b border-gray-100 py-1 text-sm outline-none focus:border-[#1e3a8a]" />
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <Shield className="w-4 h-4 text-gray-400 mt-1" />
+                    <div className="flex-1">
+                      <p className="text-[10px] text-gray-400 uppercase font-black">Destination</p>
+                      <input type="text" defaultValue={selected.destination} className="w-full mt-1 border-b border-gray-100 py-1 text-sm outline-none focus:border-[#1e3a8a]" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6">
+                 <button className="w-full py-2.5 bg-[#1e3a8a] text-white rounded-lg text-sm font-semibold hover:bg-[#1e40af] shadow-lg shadow-[#1e3a8a]/20 transition-all active:scale-[0.98]">
+                  Save Manifest Update
+                </button>
               </div>
             </div>
-            <div className="p-6 grid grid-cols-2 gap-4">
-              {[
-                { label: 'PO Reference', value: selected.poReference },
-                { label: 'Supplier', value: selected.supplier },
-                { label: 'Origin', value: selected.origin },
-                { label: 'Destination', value: selected.destination },
-                { label: 'Carrier', value: selected.carrier },
-                { label: 'Dispatch Date', value: selected.dispatchDate },
-                { label: 'Est. Arrival', value: selected.estimatedArrival },
-                { label: 'Actual Arrival', value: selected.actualArrival ?? '—' },
-                { label: 'Packages', value: selected.packages },
-                { label: 'Weight', value: `${selected.weightKg} kg` },
-              ].map(f => (
-                <div key={f.label}>
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">{f.label}</p>
-                  <p className="text-sm font-semibold text-gray-800">{f.value}</p>
-                </div>
-              ))}
+          )
+        }
+        previewContent={
+          selected && (
+            <div className="relative font-sans text-gray-900 overflow-hidden">
+               {/* Watermark */}
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-45deg] opacity-[0.03] pointer-events-none select-none">
+                  <span className="text-9xl font-black">{selected.status.toUpperCase()}</span>
+               </div>
+
+               {/* Header Section */}
+               <div className="flex justify-between items-start mb-16">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                       <div className="w-10 h-10 bg-[#1e3a8a] flex items-center justify-center rounded-lg shadow-lg shadow-[#1e3a8a]/20">
+                          <Truck className="w-6 h-6 text-white" />
+                       </div>
+                       <span className="text-2xl font-black tracking-tighter text-[#1e3a8a]">TEKLOGISTICS</span>
+                    </div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Global Logistics & Supply Chain Unit</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-gray-400 font-black uppercase mb-1">Shipment ID</p>
+                    <p className="text-xl font-black text-gray-900 tracking-tight">{selected.shipmentNumber}</p>
+                    <p className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block mt-2">{selected.trackingId}</p>
+                  </div>
+               </div>
+
+               {/* Shipment Route Diagram */}
+               <div className="mb-16 bg-gray-50/50 rounded-2xl p-8 border border-gray-100 relative overflow-hidden">
+                  <div className="flex justify-between relative z-10">
+                    <div className="text-center w-1/3">
+                       <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Origin Point</p>
+                       <p className="font-bold text-sm text-gray-800">{selected.origin}</p>
+                       <p className="text-[10px] text-gray-500 mt-1">{selected.dispatchDate}</p>
+                    </div>
+                    <div className="flex-1 px-4 relative flex items-center justify-center">
+                       <div className="w-full h-0.5 bg-dashed border-t-2 border-dashed border-gray-300" />
+                       <Truck className={`mx-2 w-5 h-5 ${selected.status === 'Delayed' ? 'text-amber-500' : 'text-[#1e3a8a]'}`} />
+                       <div className="w-full h-0.5 bg-dashed border-t-2 border-dashed border-gray-300" />
+                    </div>
+                    <div className="text-center w-1/3">
+                       <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Destination</p>
+                       <p className="font-bold text-sm text-gray-800">{selected.destination}</p>
+                       <p className="text-[10px] text-gray-500 mt-1">{selected.actualArrival ?? selected.estimatedArrival}</p>
+                    </div>
+                  </div>
+               </div>
+
+               {/* Meta Data Grid */}
+               <div className="grid grid-cols-3 gap-12 mb-16">
+                  <div>
+                    <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-3">Carrier Partner</label>
+                    <p className="text-sm font-bold text-gray-800">{selected.carrier}</p>
+                    <p className="text-xs text-gray-500 mt-1">Tier 1 Logistics Affiliate</p>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-3">Commercial Ref.</label>
+                    <p className="text-sm font-bold text-blue-600 underline underline-offset-4 decoration-blue-100">{selected.poReference}</p>
+                    <p className="text-xs text-gray-500 mt-1">Authorized Purchase Order</p>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-3">Manifest Status</label>
+                    <div className="flex items-center gap-2">
+                       <div className={`w-2 h-2 rounded-full ${selected.status === 'Delivered' ? 'bg-green-500' : selected.status === 'Delayed' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                       <p className="text-sm font-black text-gray-800">{selected.status}</p>
+                    </div>
+                  </div>
+               </div>
+
+               {/* Itemized Manifest Table */}
+               <div className="mb-12">
+                  <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-4 italic px-2">Logistics Summary:</label>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-900 text-white rounded-lg">
+                        <th className="py-3 px-4 text-left text-[10px] font-black uppercase tracking-widest rounded-l-lg">Description</th>
+                        <th className="py-3 px-4 text-center text-[10px] font-black uppercase tracking-widest">Type</th>
+                        <th className="py-3 px-4 text-center text-[10px] font-black uppercase tracking-widest">Packages</th>
+                        <th className="py-3 px-4 text-right text-[10px] font-black uppercase tracking-widest rounded-r-lg">Gross Weight</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 font-medium">
+                      <tr className="text-sm">
+                        <td className="py-6 px-4">Commercial Cargo Component X-Serie</td>
+                        <td className="py-6 px-4 text-center text-gray-400">Regular</td>
+                        <td className="py-6 px-4 text-center">{selected.packages} units</td>
+                        <td className="py-6 px-4 text-right font-black">{selected.weightKg.toLocaleString()} KG</td>
+                      </tr>
+                      <tr className="text-sm opacity-20"><td className="py-4 px-4 h-12"></td><td colSpan={3}></td></tr>
+                    </tbody>
+                  </table>
+               </div>
+
+               {/* Footer Disclaimer */}
+               <div className="mt-20 border-t-4 border-double border-gray-100 pt-8 flex justify-between items-end">
+                  <div className="w-1/2">
+                    <p className="text-[10px] font-black text-gray-400 uppercase mb-2 underline">Global Terms of carriage:</p>
+                    <p className="text-[9px] text-gray-400 leading-normal italic pr-8">
+                       This electronic bill of lading is for tracking purposes only and does not constitute a legal document of title. Goods are shipped under TEKACCESS standard logistics and liability terms.
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-gray-400 uppercase mb-4">Auth. Manifest Release</p>
+                    <div className="h-10 w-32 border-b-2 border-gray-300 ml-auto flex items-end justify-center">
+                       <span className="font-serif italic text-gray-300 text-sm">Tek_Official_Release</span>
+                    </div>
+                  </div>
+               </div>
             </div>
-            <div className="flex justify-end gap-3 p-6 border-t border-gray-100">
-              <button onClick={() => setSelected(null)} className="px-4 py-2 border border-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-50">
-                Close
-              </button>
-              <button className="px-4 py-2 bg-[#1e3a8a] text-white rounded-md text-sm hover:bg-[#1e40af]">
-                Update Status
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          )
+        }
+      />
     </div>
   );
 }

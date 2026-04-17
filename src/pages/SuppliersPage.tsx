@@ -9,6 +9,7 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from 'recharts';
 import { suppliers, supplierPerformance, Supplier, SupplierStatus } from '../data/procurement';
+import DocumentSidePanel from '../components/DocumentSidePanel';
 
 type ViewMode = 'table' | 'cards' | 'bar' | 'radar';
 type ActiveTab = 'All Suppliers' | 'Performance & Ranking' | 'Payment Status';
@@ -337,56 +338,203 @@ export default function SuppliersPage() {
         )}
       </div>
 
-      {/* Detail Modal */}
-      {selectedSupplier && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setSelectedSupplier(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-[#1e3a8a]/10 flex items-center justify-center font-bold text-[#1e3a8a] text-2xl">
+      {/* ── Standardized Side Panel ─────────────────────────────────────────── */}
+      <DocumentSidePanel
+        isOpen={!!selectedSupplier}
+        onClose={() => setSelectedSupplier(null)}
+        title="Supplier Profile"
+        currentIndex={selectedSupplier ? filteredSuppliers.findIndex(s => s.id === selectedSupplier.id) + 1 : undefined}
+        totalItems={filteredSuppliers.length}
+        onPrev={() => {
+          const idx = filteredSuppliers.findIndex(s => s.id === selectedSupplier?.id);
+          if (idx > 0) setSelectedSupplier(filteredSuppliers[idx - 1]);
+        }}
+        onNext={() => {
+          const idx = filteredSuppliers.findIndex(s => s.id === selectedSupplier?.id);
+          if (idx < filteredSuppliers.length - 1) setSelectedSupplier(filteredSuppliers[idx + 1]);
+        }}
+        footerInfo={`Supplier since 2024 • Last order on ${selectedSupplier?.lastOrderDate}`}
+        formContent={
+          selectedSupplier && (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Company Name</label>
+                <input 
+                  type="text" 
+                  defaultValue={selectedSupplier.name}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#1e3a8a]/10 focus:border-[#1e3a8a] outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Primary Contact</label>
+                <div className="space-y-3">
+                  <input type="text" placeholder="Contact Person" defaultValue={selectedSupplier.contactPerson} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a]" />
+                  <input type="email" placeholder="Email Address" defaultValue={selectedSupplier.email} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a]" />
+                  <input type="tel" placeholder="Phone Number" defaultValue={selectedSupplier.phone} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a]" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Contract Details</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Payment Terms</label>
+                    <div className="relative">
+                      <select defaultValue={selectedSupplier.paymentTerms} className="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-xs appearance-none outline-none focus:border-[#1e3a8a]">
+                        <option>Net 7</option>
+                        <option>Net 15</option>
+                        <option>Net 30</option>
+                        <option>Net 45</option>
+                        <option>Prepayment</option>
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Status</label>
+                    <div className="relative">
+                      <select defaultValue={selectedSupplier.status} className="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-xs appearance-none outline-none focus:border-[#1e3a8a]">
+                        <option>Active</option>
+                        <option>Inactive</option>
+                        <option>On Hold</option>
+                        <option>Blacklisted</option>
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-gray-50">
+                <button className="w-full py-2.5 bg-[#1e3a8a] text-white rounded-lg text-sm font-semibold hover:bg-[#1e40af] shadow-lg shadow-[#1e3a8a]/20 transition-all active:scale-[0.98]">
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          )
+        }
+        previewContent={
+          selectedSupplier && (
+            <div className="relative font-sans text-gray-900">
+              {/* Header */}
+              <div className="flex justify-between items-start mb-16 pb-8 border-b border-gray-100">
+                <div className="flex gap-6">
+                  <div className="w-20 h-20 bg-[#1e3a8a] rounded-2xl flex items-center justify-center text-white text-4xl font-black shadow-xl shadow-[#1e3a8a]/20 shrink-0">
                     {selectedSupplier.name.charAt(0)}
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">{selectedSupplier.name}</h2>
-                    <StarRating rating={selectedSupplier.rating} />
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight mb-2">{selectedSupplier.name}</h1>
+                    <div className="flex items-center gap-3">
+                      <StarRating rating={selectedSupplier.rating} />
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest px-2 py-1 bg-gray-100 rounded-md">ID: {selectedSupplier.id.padStart(4, '0')}</span>
+                    </div>
                   </div>
                 </div>
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${STATUS_STYLES[selectedSupplier.status]}`}>
-                  {selectedSupplier.status}
-                </span>
+                <div className="text-right">
+                  <div className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest border-2 ${
+                    selectedSupplier.status === 'Active' ? 'bg-green-50 text-green-700 border-green-200' : 
+                    selectedSupplier.status === 'On Hold' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-red-50 text-red-700 border-red-200'
+                  }`}>
+                    {selectedSupplier.status}
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid Data */}
+              <div className="grid grid-cols-2 gap-x-16 gap-y-12 mb-16">
+                <div>
+                  <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-4">Location Portfolio</label>
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-blue-50 rounded-lg"><MapPin className="w-4 h-4 text-[#1e3a8a]" /></div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-800">{selectedSupplier.city}, {selectedSupplier.country}</p>
+                      <p className="text-xs text-gray-500">Corporate HQ & Regional Hub</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-4">Financial Overview</label>
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase font-black">Total Spend</p>
+                      <p className="text-lg font-black text-[#1e3a8a]">{formatRWF(selectedSupplier.totalSpend)}</p>
+                    </div>
+                    <div className="w-px h-8 bg-gray-200" />
+                    <div className="text-right">
+                      <p className="text-[10px] text-gray-400 uppercase font-black">Orders</p>
+                      <p className="text-lg font-black text-gray-900">{selectedSupplier.totalOrders}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-4">Performance Metrics</label>
+                  <div className="space-y-6">
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-bold text-gray-700">On-Time Delivery</span>
+                        <span className="text-xs font-black text-[#1e3a8a]">{selectedSupplier.onTimeDelivery}%</span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#1e3a8a] rounded-full transition-all duration-1000" style={{ width: `${selectedSupplier.onTimeDelivery}%` }} />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-bold text-gray-700">Service level (SL)</span>
+                        <span className="text-xs font-black text-blue-500">92%</span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: '92%' }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-4">Supply Chain Category</label>
+                  <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl flex items-center gap-4">
+                    <div className="p-2 bg-amber-50 rounded-lg"><Award className="w-5 h-5 text-amber-600" /></div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-800">{selectedSupplier.category}</p>
+                      <p className="text-xs text-gray-500 underline underline-offset-4 decoration-amber-200">Critical Supplier Tier 1</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Activity Timeline Placeholder */}
+              <div>
+                <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-6">Recent Logistics Pipeline</label>
+                <div className="space-y-4">
+                  {[
+                    { label: 'Bulk Raw Materials Shipment', date: 'Apr 12, 2026', status: 'In Transit', id: 'SHP-9902' },
+                    { label: 'Inventory Restock Phase 1', date: 'Mar 28, 2026', status: 'Delivered', id: 'SHP-8211' },
+                    { label: 'Q1 Performance Review Meeting', date: 'Mar 15, 2026', status: 'Completed', id: 'EVT-0192' },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-xl border border-transparent hover:border-gray-100 transition-all cursor-default group">
+                      <div className="flex items-center gap-4">
+                        <div className="w-2 h-2 rounded-full bg-[#1e3a8a]" />
+                        <div>
+                          <p className="text-sm font-bold text-gray-800 group-hover:text-[#1e3a8a] transition-colors">{item.label}</p>
+                          <p className="text-[10px] text-gray-400 uppercase font-black">{item.id} • {item.date}</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black uppercase py-1 px-3 bg-white border border-gray-100 rounded-md text-gray-500">{item.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-16 pt-8 border-t border-gray-100 text-[10px] text-gray-400 text-center italic">
+                This profile is verified and managed by TEKACCESS Procurement Division.
               </div>
             </div>
-            <div className="p-6 grid grid-cols-2 gap-4">
-              {[
-                { label: 'Contact Person', value: selectedSupplier.contactPerson },
-                { label: 'Email', value: selectedSupplier.email },
-                { label: 'Phone', value: selectedSupplier.phone },
-                { label: 'Location', value: `${selectedSupplier.city}, ${selectedSupplier.country}` },
-                { label: 'Category', value: selectedSupplier.category },
-                { label: 'Payment Terms', value: selectedSupplier.paymentTerms },
-                { label: 'Total Orders', value: selectedSupplier.totalOrders },
-                { label: 'Total Spend', value: formatRWF(selectedSupplier.totalSpend) },
-                { label: 'On-Time Delivery', value: `${selectedSupplier.onTimeDelivery}%` },
-                { label: 'Last Order', value: selectedSupplier.lastOrderDate },
-              ].map(f => (
-                <div key={f.label}>
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">{f.label}</p>
-                  <p className="text-sm font-semibold text-gray-800">{f.value}</p>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-end gap-3 p-6 border-t border-gray-100">
-              <button onClick={() => setSelectedSupplier(null)} className="px-4 py-2 border border-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-50">
-                Close
-              </button>
-              <button className="px-4 py-2 bg-[#1e3a8a] text-white rounded-md text-sm hover:bg-[#1e40af]">
-                Edit Supplier
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          )
+        }
+      />
     </div>
   );
 }
