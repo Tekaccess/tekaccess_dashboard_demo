@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   Plus, Search, Download, Filter, MoreHorizontal,
   LayoutList, BarChart2, TrendingUp, ChevronDown,
-  CheckCircle2, Clock, AlertCircle, FileText, Eye, Edit
+  CheckCircle2, Clock, AlertCircle, FileText, Eye, Edit, X
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -49,9 +49,10 @@ function formatRWF(value: number): string {
   return `${value} RWF`;
 }
 
-type ModalData = { order: PurchaseOrder; mode: 'view' | 'edit' } | null;
+type ModalData = { order: PurchaseOrder; mode: 'view' | 'edit' | 'new' } | null;
 
 export default function PurchaseOrdersPage() {
+  const [orders, setOrders] = useState<PurchaseOrder[]>(purchaseOrders);
   const [activeTab, setActiveTab] = useState<ActiveTab>('All');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [search, setSearch] = useState('');
@@ -61,7 +62,7 @@ export default function PurchaseOrdersPage() {
 
   const filteredOrders = useMemo(() => {
     const statusFilter = TAB_STATUS_MAP[activeTab];
-    return purchaseOrders.filter(o => {
+    return orders.filter(o => {
       const matchesTab = statusFilter ? statusFilter.includes(o.status) : true;
       const matchesSearch = !search ||
         o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
@@ -69,15 +70,56 @@ export default function PurchaseOrdersPage() {
         o.category.toLowerCase().includes(search.toLowerCase());
       return matchesTab && matchesSearch;
     });
-  }, [activeTab, search]);
+  }, [orders, activeTab, search]);
+
+  const handleNewOrder = () => {
+    const newPO: any = {
+      id: crypto.randomUUID(),
+      orderNumber: `PO-${Math.floor(10000 + Math.random() * 90000)}`,
+      supplier: '',
+      date: new Date().toLocaleDateString(),
+      expectedDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+      totalAmount: 0,
+      status: 'Draft',
+      items: 1,
+      category: 'General',
+      createdDate: new Date().toLocaleDateString(),
+      approvedBy: 'Thierry',
+      lineItems: [{ description: '', quantity: 1, unitPrice: 0 }],
+      shippingAddress: 'Kigali Central Hub, Sector Gishushu'
+    };
+    setModal({ order: newPO, mode: 'new' });
+  };
+
+  const updateDraft = (updates: any) => {
+    if (!modal) return;
+    const updatedOrder = { ...modal.order, ...updates };
+    
+    if (updates.lineItems) {
+      updatedOrder.totalAmount = updates.lineItems.reduce((acc: number, curr: any) => acc + (curr.quantity * curr.unitPrice), 0);
+      updatedOrder.items = updates.lineItems.length;
+    }
+    
+    setModal({ ...modal, order: updatedOrder });
+  };
+
+  const handleSaveOrder = () => {
+    if (!modal) return;
+    if (modal.mode === 'new') {
+      setOrders([modal.order, ...orders]);
+    } else {
+      setOrders(orders.map(o => o.id === modal.order.id ? modal.order : o));
+    }
+    setModal(null);
+  };
 
   // Summary cards
   const summaryStats = useMemo(() => ({
-    total: purchaseOrders.length,
-    active: purchaseOrders.filter(o => o.status === 'Active').length,
-    overdue: purchaseOrders.filter(o => o.status === 'Overdue').length,
-    totalSpend: purchaseOrders.reduce((sum, o) => sum + o.totalAmount, 0),
-  }), []);
+    total: orders.length,
+    active: orders.filter(o => o.status === 'Active').length,
+    overdue: orders.filter(o => o.status === 'Overdue').length,
+    totalSpend: orders.reduce((sum, o) => sum + o.totalAmount, 0),
+  }), [orders]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -88,9 +130,12 @@ export default function PurchaseOrdersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage and track all procurement orders</p>
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2 bg-[#1e3a8a] text-white rounded-md text-sm font-medium hover:bg-[#1e40af] transition-colors">
-          <Plus className="w-4 h-4" /> New Order
-        </button>
+          <button 
+            onClick={handleNewOrder}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#1e3a8a] text-white rounded-md text-sm font-medium hover:bg-[#1e40af] transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Initialize PO
+          </button>
       </div>
 
       {/* Summary Cards */}
@@ -348,64 +393,116 @@ export default function PurchaseOrdersPage() {
       <DocumentSidePanel
         isOpen={!!modal}
         onClose={() => setModal(null)}
-        title={modal?.mode === 'view' ? 'Purchase Order Detail' : 'Edit Order'}
-        currentIndex={modal ? filteredOrders.findIndex(o => o.id === modal.order.id) + 1 : undefined}
+        title={modal?.mode === 'new' ? 'Initialize New Purchase Order' : 'Purchase Order Management'}
+        currentIndex={modal && modal.mode !== 'new' ? filteredOrders.findIndex(o => o.id === modal.order.id) + 1 : undefined}
         totalItems={filteredOrders.length}
-        onPrev={() => {
-          const idx = filteredOrders.findIndex(o => o.id === modal?.order.id);
-          if (idx > 0) setModal({ order: filteredOrders[idx - 1], mode: modal?.mode || 'view' });
-        }}
-        onNext={() => {
-          const idx = filteredOrders.findIndex(o => o.id === modal?.order.id);
-          if (idx < filteredOrders.length - 1) setModal({ order: filteredOrders[idx + 1], mode: modal?.mode || 'view' });
-        }}
-        footerInfo={`System record ID: PO-${modal?.order.id.slice(0, 8).toUpperCase()}`}
+        footerInfo={`System Draft Mode • ${new Date().toLocaleDateString()}`}
         formContent={
           modal && (
-            <div className="space-y-6">
-              <div>
-                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Order Particulars</label>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-[10px] text-gray-500 mb-1">PO Number</label>
-                    <input 
-                      type="text" 
-                      defaultValue={modal.order.orderNumber} 
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a] transition-all" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-gray-500 mb-1">Associated Supplier</label>
-                    <div className="relative">
-                      <select 
-                        defaultValue={modal.order.supplier}
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm appearance-none focus:border-[#1e3a8a] outline-none"
-                      >
-                        <option>{modal.order.supplier}</option>
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    </div>
-                  </div>
+            <div className="space-y-8 pb-10">
+              {/* Basic Info */}
+              <div className="space-y-4">
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest">General Information</label>
+                <div className="grid grid-cols-2 gap-4">
+                   <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">PO Reference</label>
+                      <input type="text" value={modal.order.orderNumber} disabled className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-500" />
+                   </div>
+                   <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Target Supplier</label>
+                      <input 
+                        type="text" 
+                        value={modal.order.supplier} 
+                        onChange={(e) => updateDraft({ supplier: e.target.value })}
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a]" 
+                        placeholder="Company Name"
+                      />
+                   </div>
+                </div>
+                <div>
+                   <label className="block text-[10px] text-gray-500 mb-1">Shipping Destination</label>
+                   <textarea 
+                    value={(modal.order as any).shippingAddress} 
+                    onChange={(e) => updateDraft({ shippingAddress: e.target.value } as any)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none resize-none" 
+                    rows={2} 
+                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Logistics & Delivery</label>
+              {/* Dynamic Items */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest">Line Items</label>
+                  <button 
+                    onClick={() => {
+                      const items = (modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }];
+                      updateDraft({ lineItems: [...items, { description: '', quantity: 1, unitPrice: 0 }] } as any);
+                    }}
+                    className="text-[10px] font-bold text-[#1e3a8a] hover:underline"
+                  >
+                    + Add Product
+                  </button>
+                </div>
+                
                 <div className="space-y-3">
-                  <div>
-                    <label className="block text-[10px] text-gray-500 mb-1">Fulfillment Date</label>
-                    <input type="date" defaultValue={modal.order.expectedDate} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none" />
-                  </div>
-                   <div>
-                    <label className="block text-[10px] text-gray-500 mb-1">Destination Warehouse</label>
-                    <input type="text" defaultValue="Kigali Central Hub" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none" />
-                  </div>
+                  {((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).map((item: any, idx: number) => (
+                    <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
+                       <div className="flex justify-between">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase">Item #{idx + 1}</span>
+                          <button 
+                            onClick={() => {
+                              const items = ((modal.order as any).lineItems || []).filter((_: any, i: number) => i !== idx);
+                              updateDraft({ lineItems: items } as any);
+                            }}
+                            className="text-red-400 hover:text-red-600"><X className="w-3 h-3" /></button>
+                       </div>
+                       <input 
+                        type="text" 
+                        placeholder="Description" 
+                        value={item.description}
+                        onChange={(e) => {
+                          const items = [...((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }])];
+                          items[idx].description = e.target.value;
+                          updateDraft({ lineItems: items } as any);
+                        }}
+                        className="w-full bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm outline-none" 
+                       />
+                       <div className="grid grid-cols-2 gap-3">
+                          <input 
+                            type="number" 
+                            placeholder="Qty" 
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const items = [...((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }])];
+                              items[idx].quantity = Number(e.target.value);
+                              updateDraft({ lineItems: items } as any);
+                            }}
+                            className="w-full bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm outline-none" 
+                          />
+                          <input 
+                            type="number" 
+                            placeholder="Unit Price" 
+                            value={item.unitPrice}
+                            onChange={(e) => {
+                              const items = [...((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }])];
+                              items[idx].unitPrice = Number(e.target.value);
+                              updateDraft({ lineItems: items } as any);
+                            }}
+                            className="w-full bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm outline-none" 
+                          />
+                       </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               <div className="pt-6 border-t border-gray-100">
-                <button className="w-full py-3 bg-[#1e3a8a] text-white rounded-xl text-sm font-bold shadow-xl shadow-[#1e3a8a]/20 hover:bg-[#1e40af] transition-all">
-                  Commit Documentation Changes
+                <button 
+                  onClick={handleSaveOrder}
+                  className="w-full py-3 bg-[#1e3a8a] text-white rounded-xl text-sm font-bold shadow-xl shadow-[#1e3a8a]/20 hover:bg-[#1e40af] transition-all"
+                >
+                  {modal.mode === 'new' ? 'Submit Final Purchase Order' : 'Update Record'}
                 </button>
               </div>
             </div>
@@ -413,7 +510,17 @@ export default function PurchaseOrdersPage() {
         }
         previewContent={
           modal && (
-            <div className="w-full h-full bg-white flex flex-col font-sans p-12 text-[#1a1a1a] shadow-sm">
+            <div className="w-full h-full bg-white flex flex-col font-sans p-12 text-[#1a1a1a] shadow-sm relative group">
+               {/* ── ACTION OVERLAY ────────────────────────────────────────── */}
+               <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 no-print">
+                  <button onClick={() => window.print()} className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl">
+                    <Download className="w-3.5 h-3.5" /> Download PDF
+                  </button>
+                  <button onClick={() => window.print()} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-900 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl">
+                    Print Order
+                  </button>
+               </div>
+
                {/* ── HEADER ────────────────────────────────────────────────── */}
                <div className="flex justify-between items-start mb-2">
                   <div className="w-48">
@@ -430,12 +537,13 @@ export default function PurchaseOrdersPage() {
 
                {/* ── ADDRESSES ─────────────────────────────────────────────── */}
                <div className="flex justify-between items-start mb-10">
-                  <div className="text-[12px]">
-                    <p className="font-bold text-gray-800">Shipping address</p>
-                    <p className="text-gray-600">Garissa Warehouse</p>
+                  <div className="text-[12px] max-w-[40%]">
+                    <p className="font-bold text-gray-800 uppercase tracking-tighter mb-1">Shipping address</p>
+                    <p className="text-gray-600 leading-relaxed">{(modal.order as any).shippingAddress || "N/A"}</p>
                   </div>
                   <div className="text-right text-[12px] font-bold text-gray-800">
-                    <p>{modal.order.supplier}</p>
+                    <p className="text-[10px] text-gray-400 uppercase font-black mb-1">Supplier Entity</p>
+                    <p className="text-lg uppercase tracking-tight">{modal.order.supplier || "DRAFT MODE..."}</p>
                   </div>
                </div>
 
@@ -445,18 +553,18 @@ export default function PurchaseOrdersPage() {
                </h1>
 
                {/* ── META INFO BAR ─────────────────────────────────────────── */}
-               <div className="flex justify-between items-start mb-8 text-[12px]">
+               <div className="flex justify-between items-start mb-8 text-[12px] border-y border-gray-100 py-6">
                   <div>
-                    <p className="font-bold text-gray-800">Buyer</p>
-                    <p className="text-gray-600">{modal.order.approvedBy || "MUGABO Richard"}</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Authorized Buyer</p>
+                    <p className="text-sm font-bold text-gray-800">{modal.order.approvedBy || "Procurement Admin"}</p>
                   </div>
                   <div className="w-40">
-                    <p className="font-bold text-gray-800">Order Date:</p>
-                    <p className="text-gray-600 font-medium">{modal.order.createdDate}</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Issue Date</p>
+                    <p className="text-sm font-bold text-gray-800">{modal.order.createdDate}</p>
                   </div>
                   <div className="w-40 text-right">
-                    <p className="font-bold text-gray-800">Expected Arrival:</p>
-                    <p className="text-gray-600 font-medium">{modal.order.expectedDate}</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Exp. Delivery</p>
+                    <p className="text-sm font-bold text-gray-800">{modal.order.expectedDate}</p>
                   </div>
                </div>
 
@@ -464,48 +572,56 @@ export default function PurchaseOrdersPage() {
                <div className="mb-8 border border-gray-800 rounded-sm">
                   <table className="w-full border-collapse text-[11px]">
                     <thead>
-                      <tr className="border-b border-gray-800">
-                        <th className="py-2.5 px-4 text-left font-black uppercase tracking-wider border-r border-gray-800">Description</th>
-                        <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider border-r border-gray-800">Qty</th>
+                      <tr className="border-b border-gray-800 bg-gray-50/30">
+                        <th className="py-2.5 px-4 text-left font-black uppercase tracking-wider border-r border-gray-800 w-1/2">Description</th>
+                        <th className="py-2.5 px-4 text-center font-black uppercase tracking-wider border-r border-gray-800">Qty</th>
                         <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider border-r border-gray-800">Unit Price</th>
-                        <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider border-r border-gray-800">Disc.</th>
-                        <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider border-r border-gray-800">Taxes</th>
                         <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider">Amount</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b border-gray-300">
-                        <td className="py-4 px-4 border-r border-gray-800">{modal.order.category || "General Supplies"}</td>
-                        <td className="py-4 px-4 text-right font-medium border-r border-gray-800">{modal.order.items.toLocaleString()}.00</td>
-                        <td className="py-4 px-4 text-right font-medium border-r border-gray-800">{(modal.order.totalAmount / modal.order.items).toLocaleString()}</td>
-                        <td className="py-4 px-4 text-right font-medium border-r border-gray-800">0.00%</td>
-                        <td className="py-4 px-4 border-r border-gray-800"></td>
-                        <td className="py-4 px-4 text-right font-bold">{modal.order.totalAmount.toLocaleString()} KSh</td>
-                      </tr>
-                      {/* Empty filler rows to match visual weight if needed */}
-                      <tr className="h-4"><td></td></tr>
+                      {((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).length > 0 ? (
+                        ((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).map((item: any, i: number) => (
+                           <tr key={i} className="border-b border-gray-200">
+                              <td className="py-4 px-4 border-r border-gray-800 font-bold">{item.description || "N/A"}</td>
+                              <td className="py-4 px-4 text-center font-medium border-r border-gray-800">{item.quantity}</td>
+                              <td className="py-4 px-4 text-right font-medium border-r border-gray-800">{item.unitPrice.toLocaleString()}</td>
+                              <td className="py-4 px-4 text-right font-bold">{(item.quantity * item.unitPrice).toLocaleString()} RWF</td>
+                           </tr>
+                        ))
+                      ) : (
+                        <tr className="border-b border-gray-300">
+                          <td className="py-12 px-4 text-center text-gray-300 italic uppercase font-black" colSpan={4}>No line items specified</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                   
                   {/* Total Bar */}
                   <div className="flex justify-end items-stretch border-t border-gray-800 bg-[#851C1C] text-white">
-                      <div className="py-2 px-8 font-black uppercase border-r border-white/20">Total</div>
-                      <div className="py-2 px-12 font-black text-right min-w-[200px]">{modal.order.totalAmount.toLocaleString()} KSh</div>
+                      <div className="py-3 px-8 font-black uppercase border-r border-white/20 tracking-widest">Grand Total Amount</div>
+                      <div className="py-3 px-12 font-black text-right min-w-[200px] text-lg tracking-tighter">{modal.order.totalAmount.toLocaleString()} RWF</div>
                   </div>
                </div>
 
                {/* ── FOOTER SECTIONS ───────────────────────────────────────── */}
                <div className="mb-auto">
-                  <p className="text-[12px] font-bold text-gray-800 mb-2">Payment Terms:</p>
+                  <p className="text-[11px] font-black text-gray-400 uppercase mb-2">Conditions of Purchase:</p>
+                  <ul className="text-[10px] text-gray-500 space-y-1 list-disc pl-4">
+                    <li>This order is subject to standard procurement terms of Tekaccess Ltd.</li>
+                    <li>Delivery must be made to the shipping address specified above.</li>
+                    <li>Invoice must include this PO number for successful processing.</li>
+                  </ul>
                </div>
 
-               <div className="border-t border-gray-300 pt-3 flex justify-between items-center text-[11px] font-bold text-gray-800 italic">
-                  <div className="flex gap-4">
-                     <span>Call: +250 788326 686</span>
-                     <span className="text-gray-300">|</span>
-                     <span>Email: info@tekaccess.rw</span>
+               {/* Official Seal / Signature Placeholder */}
+               <div className="mt-12 flex justify-between items-end border-t border-gray-100 pt-8">
+                  <div className="text-center w-40 border-t border-gray-200 pt-2">
+                    <p className="text-[9px] font-black uppercase text-gray-400">Authorized Signature</p>
                   </div>
-                  <p>Page 1 / 1</p>
+                  <div className="bg-gray-50 p-4 rounded-full border-4 border-double border-gray-100">
+                    <CheckCircle2 className="w-10 h-10 text-green-100" />
+                  </div>
                </div>
             </div>
           )
