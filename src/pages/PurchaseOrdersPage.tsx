@@ -94,12 +94,12 @@ export default function PurchaseOrdersPage() {
   const updateDraft = (updates: any) => {
     if (!modal) return;
     const updatedOrder = { ...modal.order, ...updates };
-    
+
     if (updates.lineItems) {
       updatedOrder.totalAmount = updates.lineItems.reduce((acc: number, curr: any) => acc + (curr.quantity * curr.unitPrice), 0);
       updatedOrder.items = updates.lineItems.length;
     }
-    
+
     setModal({ ...modal, order: updatedOrder });
   };
 
@@ -130,12 +130,12 @@ export default function PurchaseOrdersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage and track all procurement orders</p>
         </div>
-          <button 
-            onClick={handleNewOrder}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#1e3a8a] text-white rounded-md text-sm font-medium hover:bg-[#1e40af] transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Initialize PO
-          </button>
+        <button
+          onClick={handleNewOrder}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[#1e3a8a] text-white rounded-md text-sm font-medium hover:bg-[#1e40af] transition-colors"
+        >
+          <Plus className="w-4 h-4" /> Initialize PO
+        </button>
       </div>
 
       {/* Summary Cards */}
@@ -167,19 +167,15 @@ export default function PurchaseOrdersPage() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`whitespace-nowrap py-3.5 px-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab
+                className={`whitespace-nowrap py-3.5 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === tab
                     ? 'border-[#1e3a8a] text-[#1e3a8a]'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                  }`}
               >
                 {tab}
               </button>
             ))}
           </nav>
-          <button className="ml-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1e3a8a] text-white text-xs font-medium rounded-md hover:bg-[#1e40af] transition-colors shrink-0">
-            <Plus className="w-3.5 h-3.5" /> Add Supplier
-          </button>
         </div>
 
         {/* Filter / Search / View Toggle row */}
@@ -213,11 +209,10 @@ export default function PurchaseOrdersPage() {
                 key={v.mode}
                 onClick={() => setViewMode(v.mode)}
                 title={v.label}
-                className={`px-3 py-2 flex items-center gap-1.5 text-xs font-medium transition-colors ${
-                  viewMode === v.mode
+                className={`px-3 py-2 flex items-center gap-1.5 text-xs font-medium transition-colors ${viewMode === v.mode
                     ? 'bg-[#1e3a8a] text-white'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <v.icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{v.label}</span>
@@ -404,29 +399,29 @@ export default function PurchaseOrdersPage() {
               <div className="space-y-4">
                 <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest">General Information</label>
                 <div className="grid grid-cols-2 gap-4">
-                   <div>
-                      <label className="block text-[10px] text-gray-500 mb-1">PO Reference</label>
-                      <input type="text" value={modal.order.orderNumber} disabled className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-500" />
-                   </div>
-                   <div>
-                      <label className="block text-[10px] text-gray-500 mb-1">Target Supplier</label>
-                      <input 
-                        type="text" 
-                        value={modal.order.supplier} 
-                        onChange={(e) => updateDraft({ supplier: e.target.value })}
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a]" 
-                        placeholder="Company Name"
-                      />
-                   </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">PO Reference</label>
+                    <input type="text" value={modal.order.orderNumber} disabled className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-500" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Target Supplier</label>
+                    <input
+                      type="text"
+                      value={modal.order.supplier}
+                      onChange={(e) => updateDraft({ supplier: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a]"
+                      placeholder="Company Name"
+                    />
+                  </div>
                 </div>
                 <div>
-                   <label className="block text-[10px] text-gray-500 mb-1">Shipping Destination</label>
-                   <textarea 
-                    value={(modal.order as any).shippingAddress} 
+                  <label className="block text-[10px] text-gray-500 mb-1">Shipping Destination</label>
+                  <textarea
+                    value={(modal.order as any).shippingAddress}
                     onChange={(e) => updateDraft({ shippingAddress: e.target.value } as any)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none resize-none" 
-                    rows={2} 
-                   />
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none resize-none"
+                    rows={2}
+                  />
                 </div>
               </div>
 
@@ -434,7 +429,7 @@ export default function PurchaseOrdersPage() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest">Line Items</label>
-                  <button 
+                  <button
                     onClick={() => {
                       const items = (modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }];
                       updateDraft({ lineItems: [...items, { description: '', quantity: 1, unitPrice: 0 }] } as any);
@@ -444,61 +439,61 @@ export default function PurchaseOrdersPage() {
                     + Add Product
                   </button>
                 </div>
-                
+
                 <div className="space-y-3">
                   {((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).map((item: any, idx: number) => (
                     <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
-                       <div className="flex justify-between">
-                          <span className="text-[10px] font-bold text-gray-400 uppercase">Item #{idx + 1}</span>
-                          <button 
-                            onClick={() => {
-                              const items = ((modal.order as any).lineItems || []).filter((_: any, i: number) => i !== idx);
-                              updateDraft({ lineItems: items } as any);
-                            }}
-                            className="text-red-400 hover:text-red-600"><X className="w-3 h-3" /></button>
-                       </div>
-                       <input 
-                        type="text" 
-                        placeholder="Description" 
+                      <div className="flex justify-between">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">Item #{idx + 1}</span>
+                        <button
+                          onClick={() => {
+                            const items = ((modal.order as any).lineItems || []).filter((_: any, i: number) => i !== idx);
+                            updateDraft({ lineItems: items } as any);
+                          }}
+                          className="text-red-400 hover:text-red-600"><X className="w-3 h-3" /></button>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Description"
                         value={item.description}
                         onChange={(e) => {
                           const items = [...((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }])];
                           items[idx].description = e.target.value;
                           updateDraft({ lineItems: items } as any);
                         }}
-                        className="w-full bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm outline-none" 
-                       />
-                       <div className="grid grid-cols-2 gap-3">
-                          <input 
-                            type="number" 
-                            placeholder="Qty" 
-                            value={item.quantity}
-                            onChange={(e) => {
-                              const items = [...((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }])];
-                              items[idx].quantity = Number(e.target.value);
-                              updateDraft({ lineItems: items } as any);
-                            }}
-                            className="w-full bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm outline-none" 
-                          />
-                          <input 
-                            type="number" 
-                            placeholder="Unit Price" 
-                            value={item.unitPrice}
-                            onChange={(e) => {
-                              const items = [...((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }])];
-                              items[idx].unitPrice = Number(e.target.value);
-                              updateDraft({ lineItems: items } as any);
-                            }}
-                            className="w-full bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm outline-none" 
-                          />
-                       </div>
+                        className="w-full bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm outline-none"
+                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <input
+                          type="number"
+                          placeholder="Qty"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const items = [...((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }])];
+                            items[idx].quantity = Number(e.target.value);
+                            updateDraft({ lineItems: items } as any);
+                          }}
+                          className="w-full bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm outline-none"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Unit Price"
+                          value={item.unitPrice}
+                          onChange={(e) => {
+                            const items = [...((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }])];
+                            items[idx].unitPrice = Number(e.target.value);
+                            updateDraft({ lineItems: items } as any);
+                          }}
+                          className="w-full bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm outline-none"
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div className="pt-6 border-t border-gray-100">
-                <button 
+                <button
                   onClick={handleSaveOrder}
                   className="w-full py-3 bg-[#1e3a8a] text-white rounded-xl text-sm font-bold shadow-xl shadow-[#1e3a8a]/20 hover:bg-[#1e40af] transition-all"
                 >
@@ -511,118 +506,118 @@ export default function PurchaseOrdersPage() {
         previewContent={
           modal && (
             <div className="w-full h-full bg-white flex flex-col font-sans p-12 text-[#1a1a1a] shadow-sm relative group">
-               {/* ── ACTION OVERLAY ────────────────────────────────────────── */}
-               <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 no-print">
-                  <button onClick={() => window.print()} className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl">
-                    <Download className="w-3.5 h-3.5" /> Download PDF
-                  </button>
-                  <button onClick={() => window.print()} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-900 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl">
-                    Print Order
-                  </button>
-               </div>
+              {/* ── ACTION OVERLAY ────────────────────────────────────────── */}
+              <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 no-print">
+                <button onClick={() => window.print()} className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl">
+                  <Download className="w-3.5 h-3.5" /> Download PDF
+                </button>
+                <button onClick={() => window.print()} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-900 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl">
+                  Print Order
+                </button>
+              </div>
 
-               {/* ── HEADER ────────────────────────────────────────────────── */}
-               <div className="flex justify-between items-start mb-2">
-                  <div className="w-48">
-                    <img src="/logo.jpg" alt="TEKACCESS" className="w-full h-auto mb-2" />
-                  </div>
-                  <div className="text-right text-[11px] leading-tight text-gray-600 font-medium">
-                    <p className="font-bold text-gray-800 uppercase tracking-wider">TEKACCESS</p>
-                    <p>13 KG 599 St, Gishushu</p>
-                    <p>Kigali Rwanda</p>
-                  </div>
-               </div>
-               
-               <p className="text-[12px] font-bold text-[#A32424] mb-12 italic">Built on trust. Delivered with Excellence</p>
+              {/* ── HEADER ────────────────────────────────────────────────── */}
+              <div className="flex justify-between items-start mb-2">
+                <div className="w-48">
+                  <img src="/logo.jpg" alt="TEKACCESS" className="w-full h-auto mb-2" />
+                </div>
+                <div className="text-right text-[11px] leading-tight text-gray-600 font-medium">
+                  <p className="font-bold text-gray-800 uppercase tracking-wider">TEKACCESS</p>
+                  <p>13 KG 599 St, Gishushu</p>
+                  <p>Kigali Rwanda</p>
+                </div>
+              </div>
 
-               {/* ── ADDRESSES ─────────────────────────────────────────────── */}
-               <div className="flex justify-between items-start mb-10">
-                  <div className="text-[12px] max-w-[40%]">
-                    <p className="font-bold text-gray-800 uppercase tracking-tighter mb-1">Shipping address</p>
-                    <p className="text-gray-600 leading-relaxed">{(modal.order as any).shippingAddress || "N/A"}</p>
-                  </div>
-                  <div className="text-right text-[12px] font-bold text-gray-800">
-                    <p className="text-[10px] text-gray-400 uppercase font-black mb-1">Supplier Entity</p>
-                    <p className="text-lg uppercase tracking-tight">{modal.order.supplier || "DRAFT MODE..."}</p>
-                  </div>
-               </div>
+              <p className="text-[12px] font-bold text-[#A32424] mb-12 italic">Built on trust. Delivered with Excellence</p>
 
-               {/* ── TITLE ─────────────────────────────────────────────────── */}
-               <h1 className="text-[26px] font-medium text-[#A32424] mb-8">
-                  Purchase Order <span className="font-semibold text-gray-800">#{modal.order.orderNumber}</span>
-               </h1>
+              {/* ── ADDRESSES ─────────────────────────────────────────────── */}
+              <div className="flex justify-between items-start mb-10">
+                <div className="text-[12px] max-w-[40%]">
+                  <p className="font-bold text-gray-800 uppercase tracking-tighter mb-1">Shipping address</p>
+                  <p className="text-gray-600 leading-relaxed">{(modal.order as any).shippingAddress || "N/A"}</p>
+                </div>
+                <div className="text-right text-[12px] font-bold text-gray-800">
+                  <p className="text-[10px] text-gray-400 uppercase font-black mb-1">Supplier Entity</p>
+                  <p className="text-lg uppercase tracking-tight">{modal.order.supplier || "DRAFT MODE..."}</p>
+                </div>
+              </div>
 
-               {/* ── META INFO BAR ─────────────────────────────────────────── */}
-               <div className="flex justify-between items-start mb-8 text-[12px] border-y border-gray-100 py-6">
-                  <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Authorized Buyer</p>
-                    <p className="text-sm font-bold text-gray-800">{modal.order.approvedBy || "Procurement Admin"}</p>
-                  </div>
-                  <div className="w-40">
-                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Issue Date</p>
-                    <p className="text-sm font-bold text-gray-800">{modal.order.createdDate}</p>
-                  </div>
-                  <div className="w-40 text-right">
-                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Exp. Delivery</p>
-                    <p className="text-sm font-bold text-gray-800">{modal.order.expectedDate}</p>
-                  </div>
-               </div>
+              {/* ── TITLE ─────────────────────────────────────────────────── */}
+              <h1 className="text-[26px] font-medium text-[#A32424] mb-8">
+                Purchase Order <span className="font-semibold text-gray-800">#{modal.order.orderNumber}</span>
+              </h1>
 
-               {/* ── ITEMS TABLE ───────────────────────────────────────────── */}
-               <div className="mb-8 border border-gray-800 rounded-sm">
-                  <table className="w-full border-collapse text-[11px]">
-                    <thead>
-                      <tr className="border-b border-gray-800 bg-gray-50/30">
-                        <th className="py-2.5 px-4 text-left font-black uppercase tracking-wider border-r border-gray-800 w-1/2">Description</th>
-                        <th className="py-2.5 px-4 text-center font-black uppercase tracking-wider border-r border-gray-800">Qty</th>
-                        <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider border-r border-gray-800">Unit Price</th>
-                        <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).length > 0 ? (
-                        ((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).map((item: any, i: number) => (
-                           <tr key={i} className="border-b border-gray-200">
-                              <td className="py-4 px-4 border-r border-gray-800 font-bold">{item.description || "N/A"}</td>
-                              <td className="py-4 px-4 text-center font-medium border-r border-gray-800">{item.quantity}</td>
-                              <td className="py-4 px-4 text-right font-medium border-r border-gray-800">{item.unitPrice.toLocaleString()}</td>
-                              <td className="py-4 px-4 text-right font-bold">{(item.quantity * item.unitPrice).toLocaleString()} RWF</td>
-                           </tr>
-                        ))
-                      ) : (
-                        <tr className="border-b border-gray-300">
-                          <td className="py-12 px-4 text-center text-gray-300 italic uppercase font-black" colSpan={4}>No line items specified</td>
+              {/* ── META INFO BAR ─────────────────────────────────────────── */}
+              <div className="flex justify-between items-start mb-8 text-[12px] border-y border-gray-100 py-6">
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Authorized Buyer</p>
+                  <p className="text-sm font-bold text-gray-800">{modal.order.approvedBy || "Procurement Admin"}</p>
+                </div>
+                <div className="w-40">
+                  <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Issue Date</p>
+                  <p className="text-sm font-bold text-gray-800">{modal.order.createdDate}</p>
+                </div>
+                <div className="w-40 text-right">
+                  <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Exp. Delivery</p>
+                  <p className="text-sm font-bold text-gray-800">{modal.order.expectedDate}</p>
+                </div>
+              </div>
+
+              {/* ── ITEMS TABLE ───────────────────────────────────────────── */}
+              <div className="mb-8 border border-gray-800 rounded-sm">
+                <table className="w-full border-collapse text-[11px]">
+                  <thead>
+                    <tr className="border-b border-gray-800 bg-gray-50/30">
+                      <th className="py-2.5 px-4 text-left font-black uppercase tracking-wider border-r border-gray-800 w-1/2">Description</th>
+                      <th className="py-2.5 px-4 text-center font-black uppercase tracking-wider border-r border-gray-800">Qty</th>
+                      <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider border-r border-gray-800">Unit Price</th>
+                      <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).length > 0 ? (
+                      ((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).map((item: any, i: number) => (
+                        <tr key={i} className="border-b border-gray-200">
+                          <td className="py-4 px-4 border-r border-gray-800 font-bold">{item.description || "N/A"}</td>
+                          <td className="py-4 px-4 text-center font-medium border-r border-gray-800">{item.quantity}</td>
+                          <td className="py-4 px-4 text-right font-medium border-r border-gray-800">{item.unitPrice.toLocaleString()}</td>
+                          <td className="py-4 px-4 text-right font-bold">{(item.quantity * item.unitPrice).toLocaleString()} RWF</td>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
-                  
-                  {/* Total Bar */}
-                  <div className="flex justify-end items-stretch border-t border-gray-800 bg-[#851C1C] text-white">
-                      <div className="py-3 px-8 font-black uppercase border-r border-white/20 tracking-widest">Grand Total Amount</div>
-                      <div className="py-3 px-12 font-black text-right min-w-[200px] text-lg tracking-tighter">{modal.order.totalAmount.toLocaleString()} RWF</div>
-                  </div>
-               </div>
+                      ))
+                    ) : (
+                      <tr className="border-b border-gray-300">
+                        <td className="py-12 px-4 text-center text-gray-300 italic uppercase font-black" colSpan={4}>No line items specified</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
 
-               {/* ── FOOTER SECTIONS ───────────────────────────────────────── */}
-               <div className="mb-auto">
-                  <p className="text-[11px] font-black text-gray-400 uppercase mb-2">Conditions of Purchase:</p>
-                  <ul className="text-[10px] text-gray-500 space-y-1 list-disc pl-4">
-                    <li>This order is subject to standard procurement terms of Tekaccess Ltd.</li>
-                    <li>Delivery must be made to the shipping address specified above.</li>
-                    <li>Invoice must include this PO number for successful processing.</li>
-                  </ul>
-               </div>
+                {/* Total Bar */}
+                <div className="flex justify-end items-stretch border-t border-gray-800 bg-[#851C1C] text-white">
+                  <div className="py-3 px-8 font-black uppercase border-r border-white/20 tracking-widest">Grand Total Amount</div>
+                  <div className="py-3 px-12 font-black text-right min-w-[200px] text-lg tracking-tighter">{modal.order.totalAmount.toLocaleString()} RWF</div>
+                </div>
+              </div>
 
-               {/* Official Seal / Signature Placeholder */}
-               <div className="mt-12 flex justify-between items-end border-t border-gray-100 pt-8">
-                  <div className="text-center w-40 border-t border-gray-200 pt-2">
-                    <p className="text-[9px] font-black uppercase text-gray-400">Authorized Signature</p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-full border-4 border-double border-gray-100">
-                    <CheckCircle2 className="w-10 h-10 text-green-100" />
-                  </div>
-               </div>
+              {/* ── FOOTER SECTIONS ───────────────────────────────────────── */}
+              <div className="mb-auto">
+                <p className="text-[11px] font-black text-gray-400 uppercase mb-2">Conditions of Purchase:</p>
+                <ul className="text-[10px] text-gray-500 space-y-1 list-disc pl-4">
+                  <li>This order is subject to standard procurement terms of Tekaccess Ltd.</li>
+                  <li>Delivery must be made to the shipping address specified above.</li>
+                  <li>Invoice must include this PO number for successful processing.</li>
+                </ul>
+              </div>
+
+              {/* Official Seal / Signature Placeholder */}
+              <div className="mt-12 flex justify-between items-end border-t border-gray-100 pt-8">
+                <div className="text-center w-40 border-t border-gray-200 pt-2">
+                  <p className="text-[9px] font-black uppercase text-gray-400">Authorized Signature</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-full border-4 border-double border-gray-100">
+                  <CheckCircle2 className="w-10 h-10 text-green-100" />
+                </div>
+              </div>
             </div>
           )
         }
