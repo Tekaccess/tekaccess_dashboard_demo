@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
-import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle, CircleNotch } from "@phosphor-icons/react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "@tanstack/react-router";
 import Logo from "../../components/Logo";
@@ -48,7 +48,7 @@ const ForgotPasswordPage: React.FC = () => {
             onClick={() => navigate({ to: "/login" })}
             className="flex items-center text-[var(--text-3)] hover:text-[var(--text-2)] transition-colors mb-6 text-sm font-medium group"
           >
-            <ArrowLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" />
+            <ArrowLeft size={18} weight="bold" className="mr-1 group-hover:-translate-x-1 transition-transform" />
             Back to Login
           </button>
 
@@ -69,23 +69,16 @@ const ForgotPasswordPage: React.FC = () => {
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-indigo-300/50 dark:focus:ring-indigo-500/30 transition-all text-sm"
                   placeholder="Enter Email address"
                 />
-                {submitError && (
-                  <p className="text-xs text-red-500">{submitError}</p>
-                )}
+                {submitError && <p className="text-xs text-red-500">{submitError}</p>}
                 <button
                   type="submit"
                   disabled={isLoading}
                   className="w-full py-3 bg-indigo-400 hover:bg-indigo-500 disabled:opacity-75 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Sending...
-                    </>
+                    <><CircleNotch size={18} weight="bold" className="animate-spin" /> Sending…</>
                   ) : (
-                    <>
-                      Send Reset Link <ArrowRight className="w-4 h-4" />
-                    </>
+                    <>Send Reset Link <ArrowRight size={18} weight="bold" /></>
                   )}
                 </button>
               </form>
@@ -98,7 +91,7 @@ const ForgotPasswordPage: React.FC = () => {
               className="flex flex-col items-center text-center py-4"
             >
               <div className="w-14 h-14 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle2 className="w-7 h-7 text-green-500" />
+                <CheckCircle size={28} weight="duotone" className="text-green-500" />
               </div>
               <h2 className="text-xl font-bold text-[var(--text-1)] mb-2">Check your email</h2>
               <p className="text-sm text-[var(--text-3)] mb-6 max-w-[260px]">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Eye, EyeOff, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { Eye, EyeSlash, ArrowRight, CheckCircle, CircleNotch } from "@phosphor-icons/react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import Logo from "../../components/Logo";
@@ -21,14 +21,10 @@ const ResetPasswordPage: React.FC = () => {
   const token = search?.token || "";
 
   useEffect(() => {
-    // No token in URL → redirect immediately, nothing to show.
     if (!token) {
       navigate({ to: "/forgot-password", replace: true });
       return;
     }
-
-    // Validate the token against the backend before showing the form.
-    // If expired or already used, redirect rather than showing a dead form.
     apiValidateResetToken(token).then((res) => {
       if (res.success) {
         setPageState("ready");
@@ -43,12 +39,10 @@ const ResetPasswordPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
     }
-
     setIsSubmitting(true);
     try {
       const err = await resetPassword(token, password);
@@ -73,7 +67,7 @@ const ResetPasswordPage: React.FC = () => {
       <div className="w-full max-w-[340px] px-4">
         {pageState === "validating" && (
           <div className="flex flex-col items-center gap-3 py-4">
-            <Loader2 className="w-7 h-7 animate-spin text-indigo-400" />
+            <CircleNotch size={28} weight="bold" className="animate-spin text-indigo-400" />
             <p className="text-sm text-[var(--text-3)]">Verifying your link…</p>
           </div>
         )}
@@ -98,7 +92,7 @@ const ResetPasswordPage: React.FC = () => {
                   autoFocus
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-10 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-indigo-300/50 dark:focus:ring-indigo-500/30 transition-all text-sm"
+                  className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-indigo-300/50 dark:focus:ring-indigo-500/30 transition-all text-sm"
                   placeholder="New password"
                 />
                 <button
@@ -106,7 +100,7 @@ const ResetPasswordPage: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)] hover:text-[var(--text-2)] transition-colors"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeSlash size={20} weight="duotone" /> : <Eye size={20} weight="duotone" />}
                 </button>
               </div>
 
@@ -127,14 +121,9 @@ const ResetPasswordPage: React.FC = () => {
                 className="w-full py-3 bg-indigo-400 hover:bg-indigo-500 disabled:opacity-75 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-sm"
               >
                 {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Saving…
-                  </>
+                  <><CircleNotch size={18} weight="bold" className="animate-spin" /> Saving…</>
                 ) : (
-                  <>
-                    Set Password <ArrowRight className="w-4 h-4" />
-                  </>
+                  <>Set Password <ArrowRight size={18} weight="bold" /></>
                 )}
               </button>
             </form>
@@ -149,7 +138,7 @@ const ResetPasswordPage: React.FC = () => {
             className="flex flex-col items-center text-center py-4"
           >
             <div className="w-14 h-14 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle2 className="w-7 h-7 text-green-500" />
+              <CheckCircle size={28} weight="duotone" className="text-green-500" />
             </div>
             <h2 className="text-xl font-bold text-[var(--text-1)] mb-2">Password Updated</h2>
             <p className="text-sm text-[var(--text-3)] mb-6 max-w-[260px]">

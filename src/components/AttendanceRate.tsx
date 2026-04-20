@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TrendingUp } from 'lucide-react';
+import { TrendUp } from '@phosphor-icons/react';
 
 interface AttendanceData {
   month: string;
@@ -45,7 +45,7 @@ const AttendanceRate: React.FC<AttendanceRateProps> = ({ rate = 98, data = defau
         <span className="text-4xl font-bold text-t1">{rate}%</span>
         <div className="flex items-center mt-2">
           <span className="flex items-center text-xs text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">
-            <TrendingUp className="w-3 h-3 mr-1" />
+            <TrendUp size={16} weight="bold" className="mr-1" />
             12% better than last month
           </span>
         </div>

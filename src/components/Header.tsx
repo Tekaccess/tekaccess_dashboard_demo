@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { MagnifyingGlass, Bell, List, Sun, Moon, SignOut, Key } from '@phosphor-icons/react';
-import { Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react';
+import { MagnifyingGlass, Bell, List, Sun, Moon, SignOut, Key, Gear } from '@phosphor-icons/react';
+import { Eye, EyeSlash, CircleNotch, CheckCircle } from '@phosphor-icons/react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '@tanstack/react-router';
@@ -133,30 +133,50 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
                   <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-2 w-48 bg-card border border-[var(--border)] rounded-xl shadow-xl overflow-hidden z-50 py-1"
+                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-56 bg-card border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden z-50"
                   >
-                    <div className="px-4 py-2 border-b border-[var(--border)]">
-                      <p className="text-[10px] text-t3 uppercase tracking-widest font-bold">Signed in as</p>
-                      <p className="text-xs font-semibold text-t1 truncate">{user?.email}</p>
+                    {/* User identity */}
+                    <div className="px-4 pt-4 pb-3 flex items-center gap-3 border-b border-[var(--border)]">
+                      <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center text-white text-sm font-bold shrink-0">
+                        {user?.fullName?.[0].toUpperCase() || 'U'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-t1 truncate">{user?.fullName}</p>
+                        <p className="text-[10px] text-t3 truncate">{user?.email}</p>
+                        <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-md bg-[var(--accent-glow)] text-accent text-[9px] font-bold uppercase tracking-wide">
+                          {user?.role?.replace('_', ' ')}
+                        </span>
+                      </div>
                     </div>
 
-                    <button
-                      onClick={openChangePassword}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 transition-colors"
-                    >
-                      <Key size={16} weight="regular" />
-                      Change Password
-                    </button>
+                    {/* Actions */}
+                    <div className="p-1.5 space-y-0.5">
+                      <button
+                        onClick={openChangePassword}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
+                      >
+                        <Key size={15} weight="duotone" className="text-t3" />
+                        Change Password
+                      </button>
+                      <button
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
+                      >
+                        <Gear size={15} weight="duotone" className="text-t3" />
+                        Settings
+                      </button>
+                    </div>
 
-                    <div className="border-t border-[var(--border)] mt-1 pt-1">
+                    {/* Sign out */}
+                    <div className="p-1.5 border-t border-[var(--border)]">
                       <button
                         onClick={() => { setIsProfileOpen(false); setShowLogoutConfirm(true); }}
-                        className="w-full flex items-center gap-3 px-4 py-2 text-xs text-red-500 hover:bg-red-500/10 transition-colors"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                       >
-                        <SignOut size={16} weight="regular" />
+                        <SignOut size={15} weight="duotone" />
                         Sign Out
                       </button>
                     </div>
@@ -197,7 +217,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                 {modalState === 'success' ? (
                   <div className="flex flex-col items-center text-center">
                     <div className="w-12 h-12 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-4">
-                      <CheckCircle2 className="w-6 h-6 text-green-500" />
+                      <CheckCircle size={24} weight="duotone" className="text-green-500" />
                     </div>
                     <h2 className="text-base font-bold text-[var(--text-1)] mb-1">Password Updated</h2>
                     <p className="text-sm text-[var(--text-3)] mb-10">
@@ -239,7 +259,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                           onClick={() => setShowCurrent(!showCurrent)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)] hover:text-[var(--text-2)] transition-colors"
                         >
-                          {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {showCurrent ? <EyeSlash size={20} weight="duotone" /> : <Eye size={20} weight="duotone" />}
                         </button>
                       </div>
 
@@ -258,7 +278,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                           onClick={() => setShowNew(!showNew)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)] hover:text-[var(--text-2)] transition-colors"
                         >
-                          {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {showNew ? <EyeSlash size={20} weight="duotone" /> : <Eye size={20} weight="duotone" />}
                         </button>
                       </div>
 
@@ -284,7 +304,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                         className="w-full py-2.5 bg-indigo-400 hover:bg-indigo-500 disabled:opacity-75 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
                       >
                         {isSubmitting ? (
-                          <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
+                          <><CircleNotch size={18} weight="bold" className="animate-spin" /> Saving…</>
                         ) : (
                           'Update Password'
                         )}
@@ -335,7 +355,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                     className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-75 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
                   >
                     {isLoggingOut ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> Signing out…</>
+                      <><CircleNotch size={18} weight="bold" className="animate-spin" /> Signing out…</>
                     ) : (
                       'Sign Out'
                     )}

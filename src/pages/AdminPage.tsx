@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
-import { UserPlus, Mail, Shield, User, ChevronRight, CheckCircle2, AlertCircle, KeyRound } from "lucide-react";
+import { UserPlus, Envelope, Shield, User, CaretRight, CheckCircle, WarningCircle, Key } from "@phosphor-icons/react";
 import { useAuth, UserRole } from "../contexts/AuthContext";
 
 const AdminPage: React.FC = () => {
@@ -16,7 +16,7 @@ const AdminPage: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center h-full">
         <div className="bg-red-500/10 p-6 rounded-full mb-6">
-          <AlertCircle className="w-12 h-12 text-red-500" />
+          <WarningCircle size={48} weight="duotone" className="text-red-500" />
         </div>
         <h2 className="text-2xl font-bold text-white mb-2">Access Denied</h2>
         <p className="text-gray-400 max-w-sm">
@@ -51,7 +51,7 @@ const AdminPage: React.FC = () => {
           >
             <div className="flex items-center gap-3 mb-8">
               <div className="p-3 bg-blue-600/20 rounded-xl">
-                <UserPlus className="w-6 h-6 text-blue-500" />
+                <UserPlus size={24} weight="duotone" className="text-blue-500" />
               </div>
               <h2 className="text-xl font-bold text-white">Add New Account</h2>
             </div>
@@ -76,7 +76,7 @@ const AdminPage: React.FC = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-400 ml-1">Email Address</label>
                   <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-blue-500 transition-colors" />
+                    <Envelope size={20} weight="duotone" className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-blue-500 transition-colors" />
                     <input
                       type="email"
                       required
@@ -115,7 +115,7 @@ const AdminPage: React.FC = () => {
                   className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98]"
                 >
                   Create Account
-                  <ChevronRight className="w-5 h-5" />
+                  <CaretRight size={20} weight="bold" />
                 </button>
               </div>
             </form>
@@ -126,7 +126,7 @@ const AdminPage: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-3 text-green-400"
               >
-                <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+                <CheckCircle size={20} weight="duotone" className="flex-shrink-0" />
                 <span>Account created successfully! Credentials sent to email.</span>
               </motion.div>
             )}
@@ -169,7 +169,7 @@ const AdminPage: React.FC = () => {
                     className="p-2 text-gray-500 hover:text-blue-400 transition-colors"
                     title="Reset Password"
                   >
-                    <KeyRound size={16} />
+                    <Key size={18} weight="duotone" />
                   </button>
                 </div>
               ))}

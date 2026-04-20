@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
+import { Eye, EyeSlash, ArrowRight, CircleNotch } from "@phosphor-icons/react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "@tanstack/react-router";
 import Logo from "../../components/Logo";
@@ -78,22 +78,17 @@ const LoginPage: React.FC = () => {
                     required
                     autoFocus
                     value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setEmailError("");
-                    }}
+                    onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-indigo-300/50 dark:focus:ring-indigo-500/30 transition-all text-sm"
                     placeholder="Enter Email address"
                   />
-                  {emailError && (
-                    <p className="text-xs text-red-500 mt-1.5">{emailError}</p>
-                  )}
+                  {emailError && <p className="text-xs text-red-500 mt-1.5">{emailError}</p>}
                 </div>
                 <button
                   type="submit"
                   className="w-full py-3 bg-indigo-400 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-sm"
                 >
-                  Continue <ArrowRight className="w-4 h-4" />
+                  Continue <ArrowRight size={18} weight="bold" />
                 </button>
               </motion.form>
             ) : (
@@ -110,10 +105,7 @@ const LoginPage: React.FC = () => {
                   <span className="text-[var(--text-2)] truncate text-sm">{email}</span>
                   <button
                     type="button"
-                    onClick={() => {
-                      setStep("email");
-                      setPassword("");
-                    }}
+                    onClick={() => { setStep("email"); setPassword(""); }}
                     className="text-indigo-500 hover:text-indigo-600 font-medium ml-3 shrink-0 text-sm"
                   >
                     Edit
@@ -127,7 +119,7 @@ const LoginPage: React.FC = () => {
                     autoFocus
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 pr-10 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-indigo-300/50 dark:focus:ring-indigo-500/30 transition-all text-sm"
+                    className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-indigo-300/50 dark:focus:ring-indigo-500/30 transition-all text-sm"
                     placeholder="Enter your password"
                   />
                   <button
@@ -135,13 +127,13 @@ const LoginPage: React.FC = () => {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)] hover:text-[var(--text-2)] transition-colors"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword
+                      ? <EyeSlash size={20} weight="duotone" />
+                      : <Eye size={20} weight="duotone" />}
                   </button>
                 </div>
 
-                {loginError && (
-                  <p className="text-xs text-red-500 -mt-1">{loginError}</p>
-                )}
+                {loginError && <p className="text-xs text-red-500 -mt-1">{loginError}</p>}
 
                 <div className="flex justify-end">
                   <button
@@ -159,14 +151,9 @@ const LoginPage: React.FC = () => {
                   className="w-full py-3 bg-indigo-400 hover:bg-indigo-500 disabled:opacity-75 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Signing In...
-                    </>
+                    <><CircleNotch size={18} weight="bold" className="animate-spin" /> Signing In…</>
                   ) : (
-                    <>
-                      Log In <ArrowRight className="w-4 h-4" />
-                    </>
+                    <>Log In <ArrowRight size={18} weight="bold" /></>
                   )}
                 </button>
               </motion.form>

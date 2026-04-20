@@ -36,7 +36,7 @@ import {
   ClipboardTextIcon,
   CalendarDotsIcon,
 } from "@phosphor-icons/react";
-import { CalendarIcon, ChartBarIcon } from "lucide-react";
+
 
 export const sharedMenu = {
   title: "Main menu",
