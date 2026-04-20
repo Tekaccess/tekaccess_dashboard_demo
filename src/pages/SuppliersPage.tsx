@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, DownloadSimple, Funnel, DotsThree,
   ListDashes, ChartBar, TrendUp, CaretDown,
@@ -174,7 +175,10 @@ export default function SuppliersPage() {
 
         {/* ── TABLE VIEW ─────────────────────────────────────── */}
         {viewMode === 'table' && (
-          <div className="overflow-x-auto">
+          <OverlayScrollbarsComponent
+            options={{ scrollbars: { autoHide: 'scroll' } }}
+            defer
+          >
             <table className="min-w-full divide-y divide-[var(--border-s)]">
               <thead className="bg-surface">
                 <tr>
@@ -250,7 +254,7 @@ export default function SuppliersPage() {
                 <span>Showing {filteredSuppliers.length} suppliers</span>
               </div>
             )}
-          </div>
+          </OverlayScrollbarsComponent>
         )}
 
         {/* ── CARDS VIEW ─────────────────────────────────────── */}

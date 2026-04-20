@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, DownloadSimple, Funnel, DotsThree,
   ListDashes, ChartBar, Eye, CaretDown,
@@ -185,7 +186,10 @@ export default function SparePartsPage() {
 
         {/* ── TABLE VIEW ─────────────────────────── */}
         {viewMode === 'table' && (
-          <div className="overflow-x-auto">
+          <OverlayScrollbarsComponent
+            options={{ scrollbars: { autoHide: 'scroll' } }}
+            defer
+          >
             <table className="min-w-full divide-y divide-[var(--border-s)]">
               <thead className="bg-surface">
                 <tr>
@@ -240,7 +244,7 @@ export default function SparePartsPage() {
                 )}
               </tbody>
             </table>
-          </div>
+          </OverlayScrollbarsComponent>
         )}
 
         {/* ── CARDS VIEW ─────────────────────────── */}

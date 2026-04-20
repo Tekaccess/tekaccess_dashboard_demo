@@ -5,6 +5,7 @@ import {
   apiForgotPassword,
   apiResetPassword,
   apiRefresh,
+  apiUpdateProfile,
   setAccessToken,
   type BackendUser,
 } from "../lib/api";
@@ -27,6 +28,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<string | null>;
   resetPassword: (token: string, password: string) => Promise<string | null>;
+  updateName: (fullName: string) => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -97,6 +99,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   };
 
+  const updateName = async (fullName: string): Promise<string | null> => {
+    if (!userRef.current) return 'Not authenticated.';
+    const res = await apiUpdateProfile(userRef.current.id, { fullName });
+    if (!res.success || !res.data) {
+      return res.message || 'Failed to update name.';
+    }
+    const updated = { ...userRef.current, fullName: res.data.user.fullName };
+    userRef.current = updated;
+    setUser(updated);
+    sessionStorage.setItem('tekaccess_user', JSON.stringify(updated));
+    return null;
+  };
+
   const resetPassword = async (token: string, password: string): Promise<string | null> => {
     const res = await apiResetPassword(token, password);
     if (!res.success) {
@@ -116,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         forgotPassword,
         resetPassword,
+        updateName,
       }}
     >
       {children}

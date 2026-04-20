@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { CaretUp, CaretDown } from '@phosphor-icons/react';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 
 interface DocumentSidePanelProps {
   isOpen: boolean;
@@ -82,9 +83,13 @@ export default function DocumentSidePanel({
         <div className="flex-1 flex overflow-hidden">
           {/* Form pane */}
           <div className="w-[400px] border-r border-[var(--border)] flex flex-col bg-card">
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {formContent}
-            </div>
+            <OverlayScrollbarsComponent
+              className="flex-1 p-6"
+              options={{ scrollbars: { autoHide: 'scroll' } }}
+              defer
+            >
+              <div className="space-y-6">{formContent}</div>
+            </OverlayScrollbarsComponent>
             {footerInfo && (
               <div className="p-4 border-t border-[var(--border-s)] text-[11px] text-t3 italic">
                 {footerInfo}
@@ -93,11 +98,17 @@ export default function DocumentSidePanel({
           </div>
 
           {/* Preview pane */}
-          <div className="flex-1 bg-app overflow-y-auto p-12 flex justify-center">
+          <OverlayScrollbarsComponent
+            className="flex-1 bg-app p-12 flex justify-center"
+            options={{ scrollbars: { autoHide: 'scroll' } }}
+            defer
+          >
+          <div className="flex justify-center w-full">
             <div className="w-full max-w-[800px] bg-white shadow-sm border border-gray-100 min-h-[1000px] p-12">
               {previewContent}
             </div>
           </div>
+          </OverlayScrollbarsComponent>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "@tanstack/react-router";
 import { CaretDown, CaretUp, XIcon, UserPlus, Buildings, UserPlusIcon, CaretUpIcon, CaretDownIcon, BuildingsIcon } from "@phosphor-icons/react";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { sharedMenu, departmentsData } from "../data/navigation";
 import Logo from "./Logo";
 import { useAuth } from "../contexts/AuthContext";
@@ -10,6 +11,17 @@ const EXPLICIT_ROUTES: Record<string, string> = {
   "procurement/suppliers": "/procurement/suppliers",
   "procurement/shipments": "/procurement/shipments",
   "procurement/spare-parts": "/procurement/spare-parts",
+};
+
+// Maps each frontend department id to the backend dashboardAccess slugs that grant access.
+const DEPT_ACCESS_SLUGS: Record<string, string[]> = {
+  executive:   ["executive"],
+  finance:     ["finance"],
+  transport:   ["transport"],
+  operations:  ["operations"],
+  inventory:   ["inventory"],
+  procurement: ["procurement_trading", "procurement_fleet"],
+  data_team:   ["data_entry"],
 };
 
 interface SidebarProps {
@@ -25,7 +37,13 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
   const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
-  const currentDepartment = departmentsData.find((d) => d.id === currentDepartmentId) || departmentsData[0];
+  const accessibleDepts = user?.role === 'super_admin'
+    ? departmentsData
+    : departmentsData.filter((d) =>
+        DEPT_ACCESS_SLUGS[d.id]?.some((slug) => user?.dashboardAccess?.includes(slug))
+      );
+
+  const currentDepartment = departmentsData.find((d) => d.id === currentDepartmentId) || accessibleDepts[0];
 
   const toggleExpand = (itemName: string) => {
     setExpandedItems((prev) => ({ ...prev, [itemName]: !prev[itemName] }));
@@ -80,7 +98,12 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
         </div>
 
         {/* Navigation — scrollable */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5 scrollbar-hide">
+        <OverlayScrollbarsComponent
+          className="flex-1 px-3 py-4"
+          options={{ scrollbars: { autoHide: 'scroll' } }}
+          defer
+        >
+        <div className="space-y-5">
           {/* Admin Menu */}
           {user?.role === "super_admin" && (
             <div>
@@ -207,6 +230,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
             </div>
           ))}
         </div>
+        </OverlayScrollbarsComponent>
 
         {/* Bottom — department switcher only */}
         <div className="shrink-0 border-t border-[var(--border)] p-3 relative">
@@ -236,12 +260,17 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
           </button>
 
           {isDeptDropdownOpen && (
-            <div className="absolute bottom-[60%] left-3 right-3 mb-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
-              <div className="px-3 py-2 border-b border-white/10">
-                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Switch Department</p>
+            <div className="absolute bottom-[60%] left-3 right-3 mb-2 bg-card border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden z-50">
+              <div className="px-3 py-2 border-b border-[var(--border)]">
+                <p className="text-[10px] font-bold text-t3 uppercase tracking-widest">Switch Department</p>
               </div>
-              <div className="max-h-52 overflow-y-auto py-1.5 space-y-0.5 px-1.5">
-                {departmentsData.map((dept) => {
+              <OverlayScrollbarsComponent
+                className="max-h-52"
+                options={{ scrollbars: { autoHide: 'scroll' } }}
+                defer
+              >
+              <div className="py-1.5 space-y-0.5 px-1.5">
+                {accessibleDepts.map((dept) => {
                   const isSelected = currentDepartmentId === dept.id;
                   return (
                     <button
@@ -249,8 +278,8 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
                       onClick={() => handleDepartmentChange(dept.id)}
                       className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition-all ${
                         isSelected
-                          ? "bg-white/10 text-white font-semibold"
-                          : "text-zinc-400 hover:bg-white/5 hover:text-white font-medium"
+                          ? "bg-[var(--accent-glow)] text-accent font-semibold"
+                          : "text-t2 hover:bg-surface hover:text-t1 font-medium"
                       }`}
                     >
                       {dept.name.replace(' Department', '')}
@@ -258,6 +287,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
                   );
                 })}
               </div>
+              </OverlayScrollbarsComponent>
             </div>
           )}
         </div>

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { DotsThree, Plus, MagnifyingGlass } from '@phosphor-icons/react';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   createColumnHelper,
   flexRender,
@@ -154,7 +155,11 @@ export default function RecentTransactions() {
           </div>
         </div>
 
-        <div className="overflow-x-auto min-h-[250px]">
+        <OverlayScrollbarsComponent
+          className="min-h-[250px]"
+          options={{ scrollbars: { autoHide: 'scroll' } }}
+          defer
+        >
           <table className="min-w-full divide-y divide-[var(--border)]">
             <thead className="bg-card">
               {table.getHeaderGroups().map(headerGroup => (
@@ -187,7 +192,7 @@ export default function RecentTransactions() {
               ))}
             </tbody>
           </table>
-        </div>
+        </OverlayScrollbarsComponent>
       </div>
 
       <SidePanel

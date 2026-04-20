@@ -1,11 +1,22 @@
 import React, { useState } from 'react';
-import { MagnifyingGlass, Bell, List, Sun, Moon, SignOut, Key, Gear } from '@phosphor-icons/react';
+import { MagnifyingGlass, Bell, List, Sun, Moon, SignOut, Key, Gear, KeyIcon, GearFineIcon, GearIcon, PencilSimpleIcon, X, CheckIcon, Buildings, ShieldCheck } from '@phosphor-icons/react';
 import { Eye, EyeSlash, CircleNotch, CheckCircle } from '@phosphor-icons/react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '@tanstack/react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { apiChangePassword } from '../lib/api';
+
+const SLUG_LABELS: Record<string, string> = {
+  executive:           'Executive',
+  finance:             'Finance',
+  transport:           'Transport',
+  operations:          'Operations',
+  inventory:           'Inventory',
+  procurement_trading: 'Procurement — Trading',
+  procurement_fleet:   'Procurement — Fleet',
+  data_entry:          'Data Entry',
+};
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -16,7 +27,7 @@ type ModalState = 'idle' | 'open' | 'success';
 
 export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, updateName } = useAuth();
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -31,6 +42,41 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
   const [showNew, setShowNew] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Settings modal state
+  const [showSettings, setShowSettings] = useState(false);
+  const [nameValue, setNameValue] = useState('');
+  const [nameEditing, setNameEditing] = useState(false);
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const [nameSaved, setNameSaved] = useState(false);
+
+  const openSettings = () => {
+    setIsProfileOpen(false);
+    setNameValue(user?.fullName ?? '');
+    setNameEditing(false);
+    setNameError('');
+    setNameSaved(false);
+    setShowSettings(true);
+  };
+
+  const handleSaveName = async () => {
+    if (!nameValue.trim() || nameValue.trim() === user?.fullName) {
+      setNameEditing(false);
+      return;
+    }
+    setNameSaving(true);
+    setNameError('');
+    const err = await updateName(nameValue.trim());
+    setNameSaving(false);
+    if (err) {
+      setNameError(err);
+    } else {
+      setNameEditing(false);
+      setNameSaved(true);
+      setTimeout(() => setNameSaved(false), 3000);
+    }
+  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -137,16 +183,16 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.96 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-56 bg-card border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden z-50"
+                    className="absolute right-0 mt-2 w-60 bg-card border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden z-50"
                   >
                     {/* User identity */}
-                    <div className="px-4 pt-4 pb-3 flex items-center gap-3 border-b border-[var(--border)]">
-                      <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center text-white text-sm font-bold shrink-0">
+                    <div className="p-3 flex items-start gap-3 border-b border-[var(--border)]">
+                      <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-white text-sm font-bold shrink-0">
                         {user?.fullName?.[0].toUpperCase() || 'U'}
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-t1 truncate">{user?.fullName}</p>
-                        <p className="text-[10px] text-t3 truncate">{user?.email}</p>
+                        <p className="text-xs text-t3 truncate">{user?.email}</p>
                         <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-md bg-[var(--accent-glow)] text-accent text-[9px] font-bold uppercase tracking-wide">
                           {user?.role?.replace('_', ' ')}
                         </span>
@@ -159,13 +205,14 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                         onClick={openChangePassword}
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
                       >
-                        <Key size={15} weight="duotone" className="text-t3" />
+                        <KeyIcon size={18} weight="regular" className="text-t3" />
                         Change Password
                       </button>
                       <button
+                        onClick={openSettings}
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
                       >
-                        <Gear size={15} weight="duotone" className="text-t3" />
+                        <GearIcon size={18} weight="regular" className="text-t3" />
                         Settings
                       </button>
                     </div>
@@ -176,7 +223,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                         onClick={() => { setIsProfileOpen(false); setShowLogoutConfirm(true); }}
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                       >
-                        <SignOut size={15} weight="duotone" />
+                        <SignOut size={18} weight="regular" />
                         Sign Out
                       </button>
                     </div>
@@ -312,6 +359,156 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                     </form>
                   </>
                 )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {showSettings && (
+          <>
+            <motion.div
+              key="settings-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+              onClick={() => setShowSettings(false)}
+            />
+            <motion.div
+              key="settings-dialog"
+              initial={{ opacity: 0, scale: 0.97, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.97, y: 12 }}
+              transition={{ duration: 0.2 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xl px-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bg-card border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden">
+
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+                  <div>
+                    <h2 className="text-sm font-bold text-t1">Account Settings</h2>
+                    <p className="text-xs text-t3 mt-0.5">Manage your profile and view your access</p>
+                  </div>
+                  <button
+                    onClick={() => setShowSettings(false)}
+                    className="p-1.5 rounded-lg text-t3 hover:text-t1 hover:bg-surface transition-colors"
+                  >
+                    <X size={18} weight="bold" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-6">
+
+                  {/* Avatar + identity */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-white text-2xl font-bold shrink-0">
+                      {(nameEditing ? nameValue : user?.fullName)?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                    <div>
+                      <p className="text-base font-bold text-t1">{user?.fullName}</p>
+                      <p className="text-xs text-t3">{user?.email}</p>
+                      <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-[var(--accent-glow)] text-accent text-[10px] font-bold uppercase tracking-wide">
+                        {user?.role?.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-[var(--border)]" />
+
+                  {/* Name field */}
+                  <div>
+                    <label className="text-xs font-semibold text-t3 uppercase tracking-widest block mb-2">
+                      Display Name
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {nameEditing ? (
+                        <>
+                          <input
+                            autoFocus
+                            value={nameValue}
+                            onChange={(e) => setNameValue(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setNameEditing(false); }}
+                            className="flex-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-surface text-sm text-t1 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
+                          />
+                          <button
+                            onClick={handleSaveName}
+                            disabled={nameSaving}
+                            className="px-3 py-2 bg-accent hover:bg-[var(--accent-h)] text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-60"
+                          >
+                            {nameSaving
+                              ? <CircleNotch size={14} weight="bold" className="animate-spin" />
+                              : <CheckIcon size={14} weight="bold" />}
+                            Save
+                          </button>
+                          <button
+                            onClick={() => { setNameEditing(false); setNameError(''); }}
+                            className="px-3 py-2 border border-[var(--border)] text-t2 hover:bg-surface text-xs font-medium rounded-lg transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="flex-1 px-3 py-2 rounded-lg bg-surface text-sm text-t1 border border-transparent">
+                            {user?.fullName}
+                          </span>
+                          <button
+                            onClick={() => { setNameValue(user?.fullName ?? ''); setNameEditing(true); setNameSaved(false); }}
+                            className="px-3 py-2 border border-[var(--border)] text-t2 hover:bg-surface hover:text-t1 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5"
+                          >
+                            <PencilSimpleIcon size={13} weight="bold" />
+                            Edit
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {nameError && <p className="text-xs text-red-500 mt-1.5">{nameError}</p>}
+                    {nameSaved && (
+                      <p className="text-xs text-green-500 mt-1.5 flex items-center gap-1">
+                        <CheckCircle size={12} weight="fill" /> Name updated successfully
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-[var(--border)]" />
+
+                  {/* Dashboard access */}
+                  <div>
+                    <label className="text-xs font-semibold text-t3 uppercase tracking-widest block mb-3">
+                      Dashboard Access
+                    </label>
+                    {user?.role === 'super_admin' ? (
+                      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[var(--accent-glow)] border border-[var(--accent-border)]">
+                        <ShieldCheck size={18} weight="duotone" className="text-accent shrink-0" />
+                        <p className="text-xs font-medium text-accent">Full access to all dashboards</p>
+                      </div>
+                    ) : user?.dashboardAccess && user.dashboardAccess.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        {user.dashboardAccess.map((slug) => (
+                          <div
+                            key={slug}
+                            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-surface border border-[var(--border)]"
+                          >
+                            <Buildings size={15} weight="duotone" className="text-accent shrink-0" />
+                            <span className="text-xs font-medium text-t1 truncate">
+                              {SLUG_LABELS[slug] ?? slug}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-t3 italic">No dashboard access assigned.</p>
+                    )}
+                  </div>
+
+                </div>
               </div>
             </motion.div>
           </>

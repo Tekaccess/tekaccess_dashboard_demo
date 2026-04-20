@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CalendarDots, DotsThree, Envelope, Phone, Globe, CheckCircle, Clock, FileText, CaretRight, PencilSimple } from '@phosphor-icons/react';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 
 interface Transaction {
   id: string;
@@ -22,7 +23,12 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
   return (
     <div className="flex flex-col md:flex-row h-full">
       {/* Left pane */}
-      <div className="w-full md:w-[35%] border-r border-[var(--border)] p-6 flex flex-col overflow-y-auto bg-card">
+      <OverlayScrollbarsComponent
+        element="div"
+        className="w-full md:w-[35%] border-r border-[var(--border)] p-6 flex flex-col bg-card"
+        options={{ scrollbars: { autoHide: 'scroll' } }}
+        defer
+      >
         <div className="flex items-center space-x-2 mb-4">
           <span className="px-2 py-1 bg-red-500/10 text-red-500 text-[10px] font-bold rounded uppercase tracking-wider">
             {transaction.status === 'Success' ? 'PAID' : 'HOT LEADS'}
@@ -93,7 +99,7 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
           </div>
           <div className="text-xs text-t3 mt-6">Record created Jan 16, 2024 9:34 AM</div>
         </div>
-      </div>
+      </OverlayScrollbarsComponent>
 
       {/* Right pane */}
       <div className="w-full md:w-[65%] flex flex-col bg-card">
@@ -173,7 +179,11 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
           </nav>
         </div>
 
-        <div className="flex-1 p-6 overflow-y-auto bg-app">
+        <OverlayScrollbarsComponent
+          className="flex-1 p-6 bg-app"
+          options={{ scrollbars: { autoHide: 'scroll' } }}
+          defer
+        >
           {activeTab === 'Activity' && (
             <div className="space-y-8">
               <div>
@@ -251,7 +261,7 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
               Content for {activeTab} will be displayed here.
             </div>
           )}
-        </div>
+        </OverlayScrollbarsComponent>
       </div>
     </div>
   );

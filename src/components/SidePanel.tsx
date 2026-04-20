@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 
 interface SidePanelProps {
   isOpen: boolean;
@@ -31,9 +32,13 @@ export default function SidePanel({ isOpen, onClose, children, title }: SidePane
             Close
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto bg-card">
+        <OverlayScrollbarsComponent
+          className="flex-1 bg-card"
+          options={{ scrollbars: { autoHide: 'scroll' } }}
+          defer
+        >
           {children}
-        </div>
+        </OverlayScrollbarsComponent>
       </div>
     </div>
   );

@@ -141,3 +141,10 @@ export async function apiChangePassword(currentPassword: string, newPassword: st
     body: JSON.stringify({ currentPassword, newPassword }),
   });
 }
+
+export async function apiUpdateProfile(userId: string, fields: { fullName?: string }) {
+  return request<{ user: BackendUser }>(`/users/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(fields),
+  });
+}

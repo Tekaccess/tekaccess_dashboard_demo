@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MagnifyingGlass, Funnel, ArrowsDownUp, ArrowSquareOut } from '@phosphor-icons/react';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 
 interface AttendanceRecord {
   id: string;
@@ -68,7 +69,10 @@ const AttendanceDetail: React.FC<AttendanceDetailProps> = ({ records = defaultRe
         </button>
       </div>
 
-      <div className="overflow-x-auto">
+      <OverlayScrollbarsComponent
+        options={{ scrollbars: { autoHide: 'scroll' } }}
+        defer
+      >
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--border)]">
@@ -102,7 +106,7 @@ const AttendanceDetail: React.FC<AttendanceDetailProps> = ({ records = defaultRe
             ))}
           </tbody>
         </table>
-      </div>
+      </OverlayScrollbarsComponent>
     </div>
   );
 };

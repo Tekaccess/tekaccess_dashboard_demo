@@ -1,7 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
+@import "overlayscrollbars/overlayscrollbars.css";
 @import "tailwindcss";
 /* Class-based dark mode — apply .dark to <html> */
 @variant dark (&:where(.dark, .dark *));
+
+button, a {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
 
 /* ── Light mode ──────────────────────────────────────────────── */
 :root {

@@ -275,7 +275,7 @@ export const departmentsData = [
   },
   {
     id: "data_team",
-    name: "Data Team Dashboard",
+    name: "Data Entry",
     role: "Data Engineer",
     sections: [
       {

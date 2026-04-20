@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus,
   MagnifyingGlass,
@@ -235,7 +236,10 @@ export default function TaskManagement() {
       {/* Task List View */}
       {viewMode === 'list' && (
         <div className="bg-card rounded-xl border border-[var(--border)] overflow-hidden">
-          <div className="overflow-x-auto">
+          <OverlayScrollbarsComponent
+            options={{ scrollbars: { autoHide: 'scroll' } }}
+            defer
+          >
             <table className="w-full">
               <thead className="bg-surface border-b border-[var(--border)]">
                 <tr>
@@ -304,7 +308,7 @@ export default function TaskManagement() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </OverlayScrollbarsComponent>
         </div>
       )}
 
