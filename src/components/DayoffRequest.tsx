@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Check } from 'lucide-react';
+import { X, Check } from '@phosphor-icons/react';
 
 interface DayoffRequest {
   id: string;
@@ -21,29 +21,26 @@ const defaultRequests: DayoffRequest[] = [
 
 const DayoffRequest: React.FC<DayoffRequestProps> = ({ requests = defaultRequests }) => {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-      {/* Header */}
-      <h3 className="text-sm font-medium text-gray-700 mb-6">Dayoff Request</h3>
-
-      {/* Request List */}
+    <div className="bg-card rounded-xl border border-[var(--border)] p-6">
+      <h3 className="text-sm font-medium text-t2 mb-6">Dayoff Request</h3>
       <div className="space-y-4">
         {requests.map((request) => (
           <div key={request.id} className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#1e3a8a]/20 flex items-center justify-center text-sm font-medium text-[#1e3a8a]">
+              <div className="w-10 h-10 rounded-full bg-[var(--accent-glow)] border border-[var(--accent-border)] flex items-center justify-center text-sm font-semibold text-accent">
                 {request.name.charAt(0)}
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900">{request.name}</p>
-                <p className="text-xs text-gray-500">{request.role}</p>
+                <p className="text-sm font-medium text-t1">{request.name}</p>
+                <p className="text-xs text-t3">{request.role}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button className="p-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors">
-                <X className="w-4 h-4" />
+              <button className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors">
+                <X size={14} weight="bold" />
               </button>
-              <button className="p-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-colors">
-                <Check className="w-4 h-4" />
+              <button className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500/20 transition-colors">
+                <Check size={14} weight="bold" />
               </button>
             </div>
           </div>

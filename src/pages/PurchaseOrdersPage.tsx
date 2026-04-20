@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Plus, Search, Download, Filter, MoreHorizontal,
-  LayoutList, BarChart2, TrendingUp, ChevronDown,
-  CheckCircle2, Clock, AlertCircle, FileText, Eye, Edit, X
-} from 'lucide-react';
+  Plus, MagnifyingGlass, DownloadSimple, Funnel, DotsThree,
+  ListDashes, ChartBar, TrendUp, CaretDown,
+  CheckCircle, Clock, Warning, FileText, Eye, PencilSimple, X
+} from '@phosphor-icons/react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line
@@ -18,19 +18,19 @@ type ViewMode = 'table' | 'bar' | 'trend' | 'pie';
 type ActiveTab = 'All' | 'Active' | 'Pending / Draft' | 'Overdue' | 'Order History';
 
 const STATUS_STYLES: Record<PurchaseOrderStatus, string> = {
-  Active: 'bg-green-50 text-green-700 border-green-200',
-  Pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  Draft: 'bg-gray-100 text-gray-600 border-gray-200',
-  Overdue: 'bg-red-50 text-red-700 border-red-200',
-  Completed: 'bg-blue-50 text-blue-700 border-blue-200',
+  Active: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  Pending: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  Draft: 'bg-surface text-t3 border-[var(--border)]',
+  Overdue: 'bg-red-500/10 text-red-500 border-red-500/20',
+  Completed: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
 };
 
 const STATUS_DOT: Record<PurchaseOrderStatus, string> = {
-  Active: 'bg-green-500',
-  Pending: 'bg-yellow-500',
-  Draft: 'bg-gray-400',
+  Active: 'bg-emerald-500',
+  Pending: 'bg-amber-500',
+  Draft: 'bg-t3',
   Overdue: 'bg-red-500',
-  Completed: 'bg-blue-500',
+  Completed: 'bg-blue-400',
 };
 
 const TAB_STATUS_MAP: Record<ActiveTab, PurchaseOrderStatus[] | null> = {
@@ -41,7 +41,7 @@ const TAB_STATUS_MAP: Record<ActiveTab, PurchaseOrderStatus[] | null> = {
   'Order History': ['Completed'],
 };
 
-const CHART_COLORS = ['#1e3a8a', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
+const CHART_COLORS = ['#4285f4', '#93bbfa', '#bfd0fc', '#d5e4ff', '#e8f0ff'];
 
 function formatRWF(value: number): string {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M RWF`;
@@ -94,12 +94,10 @@ export default function PurchaseOrdersPage() {
   const updateDraft = (updates: any) => {
     if (!modal) return;
     const updatedOrder = { ...modal.order, ...updates };
-
     if (updates.lineItems) {
       updatedOrder.totalAmount = updates.lineItems.reduce((acc: number, curr: any) => acc + (curr.quantity * curr.unitPrice), 0);
       updatedOrder.items = updates.lineItems.length;
     }
-
     setModal({ ...modal, order: updatedOrder });
   };
 
@@ -113,7 +111,6 @@ export default function PurchaseOrdersPage() {
     setModal(null);
   };
 
-  // Summary cards
   const summaryStats = useMemo(() => ({
     total: orders.length,
     active: orders.filter(o => o.status === 'Active').length,
@@ -121,56 +118,64 @@ export default function PurchaseOrdersPage() {
     totalSpend: orders.reduce((sum, o) => sum + o.totalAmount, 0),
   }), [orders]);
 
+  const chartTooltipStyle = {
+    backgroundColor: 'var(--card-bg)',
+    border: '1px solid var(--border)',
+    color: 'var(--text-1)',
+    borderRadius: '8px',
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage and track all procurement orders</p>
+          <h1 className="text-2xl font-bold text-t1">Purchase Orders</h1>
+          <p className="text-sm text-t3 mt-0.5">Manage and track all procurement orders</p>
         </div>
         <button
           onClick={handleNewOrder}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#1e3a8a] text-white rounded-md text-sm font-medium hover:bg-[#1e40af] transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-h transition-colors"
         >
-          <Plus className="w-4 h-4" /> Initialize PO
+          <Plus size={15} weight="bold" /> Initialize PO
         </button>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Orders', value: summaryStats.total, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Active Orders', value: summaryStats.active, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
-          { label: 'Overdue', value: summaryStats.overdue, icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
-          { label: 'Total Spend', value: formatRWF(summaryStats.totalSpend), icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { label: 'Total Orders', value: summaryStats.total, Icon: FileText, color: 'text-accent', bg: 'bg-[var(--accent-glow)]' },
+          { label: 'Active Orders', value: summaryStats.active, Icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+          { label: 'Overdue', value: summaryStats.overdue, Icon: Warning, color: 'text-red-500', bg: 'bg-red-500/10' },
+          { label: 'Total Spend', value: formatRWF(summaryStats.totalSpend), Icon: TrendUp, color: 'text-blue-400', bg: 'bg-blue-500/10' },
         ].map(card => (
-          <div key={card.label} className="bg-white rounded-lg border border-gray-200 p-4 flex items-center gap-4">
-            <div className={`p-2.5 rounded-lg ${card.bg}`}>
-              <card.icon className={`w-5 h-5 ${card.color}`} />
+          <div key={card.label} className="bg-card rounded-xl border border-[var(--border)] p-4 flex items-center gap-4">
+            <div className={`p-2.5 rounded-xl ${card.bg}`}>
+              <card.Icon size={18} weight="duotone" className={card.color} />
             </div>
             <div>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{card.label}</p>
-              <p className="text-xl font-bold text-gray-900 mt-0.5">{card.value}</p>
+              <p className="text-xs text-t3 font-medium uppercase tracking-wide">{card.label}</p>
+              <p className="text-xl font-bold text-t1 mt-0.5">{card.value}</p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Toolbar: Tabs + View Toggle + Search + Actions */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        {/* Tabs row */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-4">
+      {/* Toolbar */}
+      <div className="bg-card rounded-xl border border-[var(--border)]">
+        {/* Tabs */}
+        <div className="flex items-center justify-between border-b border-[var(--border)] px-4">
           <nav className="-mb-px flex gap-0 overflow-x-auto scrollbar-hide">
             {tabs.map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`whitespace-nowrap py-3.5 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === tab
-                    ? 'border-[#1e3a8a] text-[#1e3a8a]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                className={`whitespace-nowrap py-3.5 px-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab
+                    ? 'border-accent text-accent'
+                    : 'border-transparent text-t3 hover:text-t2 hover:border-[var(--border)]'
+                }`}
               >
                 {tab}
               </button>
@@ -178,66 +183,65 @@ export default function PurchaseOrdersPage() {
           </nav>
         </div>
 
-        {/* Filter / Search / View Toggle row */}
+        {/* Filter row */}
         <div className="flex flex-wrap items-center gap-3 p-4">
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <MagnifyingGlass size={15} weight="regular" className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
             <input
               type="text"
               placeholder="Search orders..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]"
+              className="w-full pl-9 pr-4 py-2 border border-[var(--border)] rounded-lg text-sm bg-surface text-t1 placeholder-[var(--text-3)] outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
             />
           </div>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-            <Filter className="w-4 h-4" /> Filter <ChevronDown className="w-3.5 h-3.5" />
+          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
+            <Funnel size={14} weight="duotone" /> Filter <CaretDown size={11} weight="bold" />
           </button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-            <Download className="w-4 h-4" /> Export
+          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
+            <DownloadSimple size={14} weight="duotone" /> Export
           </button>
 
           {/* View mode toggle */}
-          <div className="flex border border-gray-200 rounded-md overflow-hidden ml-auto">
+          <div className="flex border border-[var(--border)] rounded-lg overflow-hidden ml-auto">
             {([
-              { mode: 'table', icon: LayoutList, label: 'Table' },
-              { mode: 'bar', icon: BarChart2, label: 'Bar Chart' },
-              { mode: 'trend', icon: TrendingUp, label: 'Trend' },
-              { mode: 'pie', icon: BarChart2, label: 'Pie' },
-            ] as { mode: ViewMode; icon: React.ElementType; label: string }[]).map(v => (
+              { mode: 'table', Icon: ListDashes, label: 'Table' },
+              { mode: 'bar', Icon: ChartBar, label: 'Bar Chart' },
+              { mode: 'trend', Icon: TrendUp, label: 'Trend' },
+              { mode: 'pie', Icon: ChartBar, label: 'Pie' },
+            ] as { mode: ViewMode; Icon: any; label: string }[]).map(v => (
               <button
                 key={v.mode}
                 onClick={() => setViewMode(v.mode)}
                 title={v.label}
-                className={`px-3 py-2 flex items-center gap-1.5 text-xs font-medium transition-colors ${viewMode === v.mode
-                    ? 'bg-[#1e3a8a] text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                  }`}
+                className={`px-3 py-2 flex items-center gap-1.5 text-xs font-medium transition-colors ${
+                  viewMode === v.mode
+                    ? 'bg-accent text-white'
+                    : 'bg-card text-t3 hover:bg-surface hover:text-t2'
+                }`}
               >
-                <v.icon className="w-4 h-4" />
+                <v.Icon size={15} weight={viewMode === v.mode ? "fill" : "regular"} />
                 <span className="hidden sm:inline">{v.label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* ── TABLE VIEW ─────────────────────────────────────────────── */}
+        {/* TABLE VIEW */}
         {viewMode === 'table' && (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-100">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-[var(--border)]">
+              <thead className="bg-surface">
                 <tr>
                   {['Order #', 'Supplier', 'Category', 'Items', 'Total Amount', 'Status', 'Expected Date', 'Approved By', ''].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">
-                      {h}
-                    </th>
+                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
+              <tbody className="bg-card divide-y divide-[var(--border-s)]">
                 {filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-16 text-center text-gray-400 text-sm">
+                    <td colSpan={9} className="px-4 py-16 text-center text-t3 text-sm">
                       No orders match your criteria
                     </td>
                   </tr>
@@ -245,44 +249,44 @@ export default function PurchaseOrdersPage() {
                   filteredOrders.map(order => (
                     <tr
                       key={order.id}
-                      className="hover:bg-gray-50 transition-colors cursor-pointer"
+                      className="hover:bg-surface transition-colors cursor-pointer"
                       onClick={() => setModal({ order, mode: 'view' })}
                     >
-                      <td className="px-4 py-3.5 text-sm font-semibold text-[#1e3a8a]">{order.orderNumber}</td>
-                      <td className="px-4 py-3.5 text-sm font-medium text-gray-900">{order.supplier}</td>
-                      <td className="px-4 py-3.5 text-sm text-gray-500">{order.category}</td>
-                      <td className="px-4 py-3.5 text-sm text-gray-900 font-medium">{order.items}</td>
-                      <td className="px-4 py-3.5 text-sm font-bold text-gray-900">{formatRWF(order.totalAmount)}</td>
+                      <td className="px-4 py-3.5 text-sm font-semibold text-accent">{order.orderNumber}</td>
+                      <td className="px-4 py-3.5 text-sm font-medium text-t1">{order.supplier}</td>
+                      <td className="px-4 py-3.5 text-sm text-t2">{order.category}</td>
+                      <td className="px-4 py-3.5 text-sm text-t1 font-medium">{order.items}</td>
+                      <td className="px-4 py-3.5 text-sm font-bold text-t1">{formatRWF(order.totalAmount)}</td>
                       <td className="px-4 py-3.5">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[order.status]}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[order.status]}`} />
                           {order.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-sm text-gray-500">{order.expectedDate}</td>
-                      <td className="px-4 py-3.5 text-sm text-gray-600">{order.approvedBy}</td>
+                      <td className="px-4 py-3.5 text-sm text-t2">{order.expectedDate}</td>
+                      <td className="px-4 py-3.5 text-sm text-t2">{order.approvedBy}</td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={e => { e.stopPropagation(); setModal({ order, mode: 'view' }); }}
-                            className="p-1.5 text-gray-400 hover:text-[#1e3a8a] hover:bg-blue-50 rounded transition-colors"
+                            className="p-1.5 text-t3 hover:text-accent hover:bg-[var(--accent-glow)] rounded-lg transition-colors"
                             title="View"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye size={14} weight="duotone" />
                           </button>
                           <button
                             onClick={e => { e.stopPropagation(); setModal({ order, mode: 'edit' }); }}
-                            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                            className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"
                             title="Edit"
                           >
-                            <Edit className="w-4 h-4" />
+                            <PencilSimple size={14} weight="duotone" />
                           </button>
                           <button
                             onClick={e => e.stopPropagation()}
-                            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                            className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"
                             title="More"
                           >
-                            <MoreHorizontal className="w-4 h-4" />
+                            <DotsThree size={14} weight="bold" />
                           </button>
                         </div>
                       </td>
@@ -292,79 +296,66 @@ export default function PurchaseOrdersPage() {
               </tbody>
             </table>
             {filteredOrders.length > 0 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-500">
+              <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-t3">
                 <span>Showing {filteredOrders.length} of {purchaseOrders.length} orders</span>
                 <div className="flex gap-1">
-                  <button className="px-2.5 py-1 border border-gray-200 rounded hover:bg-gray-50">Previous</button>
-                  <button className="px-2.5 py-1 bg-[#1e3a8a] text-white rounded">1</button>
-                  <button className="px-2.5 py-1 border border-gray-200 rounded hover:bg-gray-50">Next</button>
+                  <button className="px-2.5 py-1 border border-[var(--border)] rounded-lg hover:bg-surface transition-colors">Previous</button>
+                  <button className="px-2.5 py-1 bg-accent text-white rounded-lg">1</button>
+                  <button className="px-2.5 py-1 border border-[var(--border)] rounded-lg hover:bg-surface transition-colors">Next</button>
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* ── BAR CHART VIEW ─────────────────────────────────────────── */}
+        {/* BAR CHART VIEW */}
         {viewMode === 'bar' && (
           <div className="p-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Monthly Order Volume & Spend</h3>
+            <h3 className="text-sm font-semibold text-t2 mb-4">Monthly Order Volume & Spend</h3>
             <ResponsiveContainer width="100%" height={360}>
               <BarChart data={poMonthlyVolume} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#6b7280' }} />
-                <YAxis yAxisId="left" tick={{ fontSize: 12, fill: '#6b7280' }} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12, fill: '#6b7280' }}
-                  tickFormatter={v => `${(v / 1_000_000).toFixed(0)}M`} />
-                <Tooltip
-                  formatter={(value: number, name: string) =>
-                    name === 'amount' ? [`${(value / 1_000_000).toFixed(1)}M RWF`, 'Spend'] : [value, 'Orders']
-                  }
-                />
-                <Legend />
-                <Bar yAxisId="left" dataKey="orders" name="Orders" fill="#1e3a8a" radius={[4, 4, 0, 0]} />
-                <Bar yAxisId="right" dataKey="amount" name="amount" fill="#93c5fd" radius={[4, 4, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'var(--text-3)' }} />
+                <YAxis yAxisId="left" tick={{ fontSize: 12, fill: 'var(--text-3)' }} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12, fill: 'var(--text-3)' }} tickFormatter={v => `${(v / 1_000_000).toFixed(0)}M`} />
+                <Tooltip contentStyle={chartTooltipStyle} formatter={(value: number, name: string) => name === 'amount' ? [`${(value / 1_000_000).toFixed(1)}M RWF`, 'Spend'] : [value, 'Orders']} />
+                <Legend wrapperStyle={{ color: 'var(--text-2)' }} />
+                <Bar yAxisId="left" dataKey="orders" name="Orders" fill="#4285f4" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="right" dataKey="amount" name="amount" fill="#93bbfa" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         )}
 
-        {/* ── TREND LINE VIEW ────────────────────────────────────────── */}
+        {/* TREND VIEW */}
         {viewMode === 'trend' && (
           <div className="p-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Procurement Spend Trend (RWF)</h3>
+            <h3 className="text-sm font-semibold text-t2 mb-4">Procurement Spend Trend (RWF)</h3>
             <ResponsiveContainer width="100%" height={360}>
               <LineChart data={poMonthlyVolume} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#6b7280' }} />
-                <YAxis tick={{ fontSize: 12, fill: '#6b7280' }}
-                  tickFormatter={v => `${(v / 1_000_000).toFixed(0)}M`} />
-                <Tooltip formatter={(v: number) => [`${(v / 1_000_000).toFixed(1)}M RWF`, 'Spend']} />
-                <Line
-                  type="monotone" dataKey="amount" stroke="#1e3a8a" strokeWidth={2.5}
-                  dot={{ fill: '#1e3a8a', r: 5 }} activeDot={{ r: 7 }}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'var(--text-3)' }} />
+                <YAxis tick={{ fontSize: 12, fill: 'var(--text-3)' }} tickFormatter={v => `${(v / 1_000_000).toFixed(0)}M`} />
+                <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number) => [`${(v / 1_000_000).toFixed(1)}M RWF`, 'Spend']} />
+                <Line type="monotone" dataKey="amount" stroke="#4285f4" strokeWidth={2.5} dot={{ fill: '#4285f4', r: 5 }} activeDot={{ r: 7 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         )}
 
-        {/* ── PIE / CATEGORY VIEW ────────────────────────────────────── */}
+        {/* PIE VIEW */}
         {viewMode === 'pie' && (
           <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
             <div>
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Order Breakdown by Category</h3>
+              <h3 className="text-sm font-semibold text-t2 mb-4">Order Breakdown by Category</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie
-                    data={poCategoryBreakdown} cx="50%" cy="50%" outerRadius={110}
-                    dataKey="value" label={({ category, value }) => `${category} ${value}%`}
-                    labelLine={false}
-                  >
+                  <Pie data={poCategoryBreakdown} cx="50%" cy="50%" outerRadius={110} dataKey="value" label={false} labelLine={false}>
                     {poCategoryBreakdown.map((_, idx) => (
                       <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => [`${v}%`, 'Share']} />
+                  <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number) => [`${v}%`, 'Share']} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -372,11 +363,11 @@ export default function PurchaseOrdersPage() {
               {poCategoryBreakdown.map((item, idx) => (
                 <div key={item.category} className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: CHART_COLORS[idx] }} />
-                  <span className="text-sm text-gray-700 flex-1">{item.category}</span>
-                  <div className="flex-1 bg-gray-100 rounded-full h-2 mx-2">
+                  <span className="text-sm text-t2 flex-1">{item.category}</span>
+                  <div className="flex-1 bg-surface rounded-full h-2 mx-2">
                     <div className="h-2 rounded-full" style={{ width: `${item.value}%`, backgroundColor: CHART_COLORS[idx] }} />
                   </div>
-                  <span className="text-sm font-semibold text-gray-800 w-8 text-right">{item.value}%</span>
+                  <span className="text-sm font-semibold text-t1 w-8 text-right">{item.value}%</span>
                 </div>
               ))}
             </div>
@@ -384,7 +375,7 @@ export default function PurchaseOrdersPage() {
         )}
       </div>
 
-      {/* ── Standardized Side Panel ─────────────────────────────────────────── */}
+      {/* Side Panel */}
       <DocumentSidePanel
         isOpen={!!modal}
         onClose={() => setModal(null)}
@@ -395,46 +386,44 @@ export default function PurchaseOrdersPage() {
         formContent={
           modal && (
             <div className="space-y-8 pb-10">
-              {/* Basic Info */}
               <div className="space-y-4">
-                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest">General Information</label>
+                <label className="block text-[11px] font-black text-t3 uppercase tracking-widest">General Information</label>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] text-gray-500 mb-1">PO Reference</label>
-                    <input type="text" value={modal.order.orderNumber} disabled className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-500" />
+                    <label className="block text-[10px] text-t3 mb-1">PO Reference</label>
+                    <input type="text" value={modal.order.orderNumber} disabled className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-lg text-sm text-t3" />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-gray-500 mb-1">Target Supplier</label>
+                    <label className="block text-[10px] text-t3 mb-1">Target Supplier</label>
                     <input
                       type="text"
                       value={modal.order.supplier}
                       onChange={(e) => updateDraft({ supplier: e.target.value })}
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a]"
+                      className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-lg text-sm text-t1 placeholder-[var(--text-3)] outline-none focus:border-accent transition-colors"
                       placeholder="Company Name"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] text-gray-500 mb-1">Shipping Destination</label>
+                  <label className="block text-[10px] text-t3 mb-1">Shipping Destination</label>
                   <textarea
                     value={(modal.order as any).shippingAddress}
                     onChange={(e) => updateDraft({ shippingAddress: e.target.value } as any)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none resize-none"
+                    className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-lg text-sm text-t1 outline-none resize-none transition-colors"
                     rows={2}
                   />
                 </div>
               </div>
 
-              {/* Dynamic Items */}
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest">Line Items</label>
+                  <label className="block text-[11px] font-black text-t3 uppercase tracking-widest">Line Items</label>
                   <button
                     onClick={() => {
                       const items = (modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }];
                       updateDraft({ lineItems: [...items, { description: '', quantity: 1, unitPrice: 0 }] } as any);
                     }}
-                    className="text-[10px] font-bold text-[#1e3a8a] hover:underline"
+                    className="text-[10px] font-bold text-accent hover:underline"
                   >
                     + Add Product
                   </button>
@@ -442,15 +431,18 @@ export default function PurchaseOrdersPage() {
 
                 <div className="space-y-3">
                   {((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).map((item: any, idx: number) => (
-                    <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
+                    <div key={idx} className="p-3 bg-surface rounded-xl border border-[var(--border)] space-y-3">
                       <div className="flex justify-between">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">Item #{idx + 1}</span>
+                        <span className="text-[10px] font-bold text-t3 uppercase">Item #{idx + 1}</span>
                         <button
                           onClick={() => {
                             const items = ((modal.order as any).lineItems || []).filter((_: any, i: number) => i !== idx);
                             updateDraft({ lineItems: items } as any);
                           }}
-                          className="text-red-400 hover:text-red-600"><X className="w-3 h-3" /></button>
+                          className="text-red-500 hover:text-red-400 transition-colors"
+                        >
+                          <X size={12} weight="bold" />
+                        </button>
                       </div>
                       <input
                         type="text"
@@ -461,7 +453,7 @@ export default function PurchaseOrdersPage() {
                           items[idx].description = e.target.value;
                           updateDraft({ lineItems: items } as any);
                         }}
-                        className="w-full bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm outline-none"
+                        className="w-full bg-card border border-[var(--border)] px-3 py-1.5 rounded-lg text-sm text-t1 placeholder-[var(--text-3)] outline-none focus:border-accent transition-colors"
                       />
                       <div className="grid grid-cols-2 gap-3">
                         <input
@@ -473,7 +465,7 @@ export default function PurchaseOrdersPage() {
                             items[idx].quantity = Number(e.target.value);
                             updateDraft({ lineItems: items } as any);
                           }}
-                          className="w-full bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm outline-none"
+                          className="w-full bg-card border border-[var(--border)] px-3 py-1.5 rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
                         />
                         <input
                           type="number"
@@ -484,7 +476,7 @@ export default function PurchaseOrdersPage() {
                             items[idx].unitPrice = Number(e.target.value);
                             updateDraft({ lineItems: items } as any);
                           }}
-                          className="w-full bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm outline-none"
+                          className="w-full bg-card border border-[var(--border)] px-3 py-1.5 rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
                         />
                       </div>
                     </div>
@@ -492,10 +484,10 @@ export default function PurchaseOrdersPage() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-gray-100">
+              <div className="pt-6 border-t border-[var(--border)]">
                 <button
                   onClick={handleSaveOrder}
-                  className="w-full py-3 bg-[#1e3a8a] text-white rounded-xl text-sm font-bold shadow-xl shadow-[#1e3a8a]/20 hover:bg-[#1e40af] transition-all"
+                  className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all"
                 >
                   {modal.mode === 'new' ? 'Submit Final Purchase Order' : 'Update Record'}
                 </button>
@@ -506,17 +498,15 @@ export default function PurchaseOrdersPage() {
         previewContent={
           modal && (
             <div className="w-full h-full bg-white flex flex-col font-sans p-12 text-[#1a1a1a] shadow-sm relative group">
-              {/* ── ACTION OVERLAY ────────────────────────────────────────── */}
               <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 no-print">
                 <button onClick={() => window.print()} className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl">
-                  <Download className="w-3.5 h-3.5" /> Download PDF
+                  <DownloadSimple size={13} weight="bold" /> Download PDF
                 </button>
                 <button onClick={() => window.print()} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-900 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl">
                   Print Order
                 </button>
               </div>
 
-              {/* ── HEADER ────────────────────────────────────────────────── */}
               <div className="flex justify-between items-start mb-2">
                 <div className="w-48">
                   <img src="/logo.jpg" alt="TEKACCESS" className="w-full h-auto mb-2" />
@@ -528,9 +518,8 @@ export default function PurchaseOrdersPage() {
                 </div>
               </div>
 
-              <p className="text-[12px] font-bold text-[#A32424] mb-12 italic">Built on trust. Delivered with Excellence</p>
+              <p className="text-[12px] font-bold text-[#4285f4] mb-12 italic">Built on trust. Delivered with Excellence</p>
 
-              {/* ── ADDRESSES ─────────────────────────────────────────────── */}
               <div className="flex justify-between items-start mb-10">
                 <div className="text-[12px] max-w-[40%]">
                   <p className="font-bold text-gray-800 uppercase tracking-tighter mb-1">Shipping address</p>
@@ -542,12 +531,10 @@ export default function PurchaseOrdersPage() {
                 </div>
               </div>
 
-              {/* ── TITLE ─────────────────────────────────────────────────── */}
-              <h1 className="text-[26px] font-medium text-[#A32424] mb-8">
+              <h1 className="text-[26px] font-medium text-[#4285f4] mb-8">
                 Purchase Order <span className="font-semibold text-gray-800">#{modal.order.orderNumber}</span>
               </h1>
 
-              {/* ── META INFO BAR ─────────────────────────────────────────── */}
               <div className="flex justify-between items-start mb-8 text-[12px] border-y border-gray-100 py-6">
                 <div>
                   <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Authorized Buyer</p>
@@ -563,7 +550,6 @@ export default function PurchaseOrdersPage() {
                 </div>
               </div>
 
-              {/* ── ITEMS TABLE ───────────────────────────────────────────── */}
               <div className="mb-8 border border-gray-800 rounded-sm">
                 <table className="w-full border-collapse text-[11px]">
                   <thead>
@@ -575,31 +561,22 @@ export default function PurchaseOrdersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).length > 0 ? (
-                      ((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).map((item: any, i: number) => (
-                        <tr key={i} className="border-b border-gray-200">
-                          <td className="py-4 px-4 border-r border-gray-800 font-bold">{item.description || "N/A"}</td>
-                          <td className="py-4 px-4 text-center font-medium border-r border-gray-800">{item.quantity}</td>
-                          <td className="py-4 px-4 text-right font-medium border-r border-gray-800">{item.unitPrice.toLocaleString()}</td>
-                          <td className="py-4 px-4 text-right font-bold">{(item.quantity * item.unitPrice).toLocaleString()} RWF</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr className="border-b border-gray-300">
-                        <td className="py-12 px-4 text-center text-gray-300 italic uppercase font-black" colSpan={4}>No line items specified</td>
+                    {((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).map((item: any, i: number) => (
+                      <tr key={i} className="border-b border-gray-200">
+                        <td className="py-4 px-4 border-r border-gray-800 font-bold">{item.description || "N/A"}</td>
+                        <td className="py-4 px-4 text-center font-medium border-r border-gray-800">{item.quantity}</td>
+                        <td className="py-4 px-4 text-right font-medium border-r border-gray-800">{item.unitPrice.toLocaleString()}</td>
+                        <td className="py-4 px-4 text-right font-bold">{(item.quantity * item.unitPrice).toLocaleString()} RWF</td>
                       </tr>
-                    )}
+                    ))}
                   </tbody>
                 </table>
-
-                {/* Total Bar */}
                 <div className="flex justify-end items-stretch border-t border-gray-800 bg-[#851C1C] text-white">
                   <div className="py-3 px-8 font-black uppercase border-r border-white/20 tracking-widest">Grand Total Amount</div>
                   <div className="py-3 px-12 font-black text-right min-w-[200px] text-lg tracking-tighter">{modal.order.totalAmount.toLocaleString()} RWF</div>
                 </div>
               </div>
 
-              {/* ── FOOTER SECTIONS ───────────────────────────────────────── */}
               <div className="mb-auto">
                 <p className="text-[11px] font-black text-gray-400 uppercase mb-2">Conditions of Purchase:</p>
                 <ul className="text-[10px] text-gray-500 space-y-1 list-disc pl-4">
@@ -609,13 +586,12 @@ export default function PurchaseOrdersPage() {
                 </ul>
               </div>
 
-              {/* Official Seal / Signature Placeholder */}
               <div className="mt-12 flex justify-between items-end border-t border-gray-100 pt-8">
                 <div className="text-center w-40 border-t border-gray-200 pt-2">
                   <p className="text-[9px] font-black uppercase text-gray-400">Authorized Signature</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-full border-4 border-double border-gray-100">
-                  <CheckCircle2 className="w-10 h-10 text-green-100" />
+                  <CheckCircle size={40} weight="duotone" className="text-green-200" />
                 </div>
               </div>
             </div>

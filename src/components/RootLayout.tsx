@@ -5,14 +5,16 @@ import Header from './Header';
 
 export default function RootLayout() {
   const location = useLocation();
+  const DEPT_IDS = ['executive', 'finance', 'transport', 'operations', 'procurement'];
   const pathParts = location.pathname.split('/').filter(Boolean);
-  const currentDepartmentId = pathParts[0] || 'finance';
+  const firstSegment = pathParts[0] || 'finance';
+  const currentDepartmentId = DEPT_IDS.includes(firstSegment) ? firstSegment : 'finance';
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-gray-50 font-sans text-gray-900 overflow-hidden">
-      <Sidebar 
-        currentDepartmentId={currentDepartmentId} 
+    <div className="flex h-screen bg-app font-sans text-t1 overflow-hidden">
+      <Sidebar
+        currentDepartmentId={currentDepartmentId}
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
       />

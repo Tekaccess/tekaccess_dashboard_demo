@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import {
-  ChevronLeft,
-  ChevronRight,
+  CaretLeft,
+  CaretRight,
   Plus,
   Clock,
   MapPin,
   Users,
-  Calendar as CalendarIcon,
-  MoreHorizontal,
+  CalendarDots as CalendarIcon,
+  DotsThree,
   X
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import DocumentSidePanel from '../components/DocumentSidePanel';
 
 interface CalendarEvent {
@@ -25,14 +25,14 @@ interface CalendarEvent {
 }
 
 const eventTypeColors = {
-  meeting: 'bg-[#1e3a8a] text-white',
+  meeting: 'bg-accent text-white',
   deadline: 'bg-red-500 text-white',
   reminder: 'bg-amber-500 text-white',
   holiday: 'bg-green-500 text-white'
 };
 
 const eventTypeDots = {
-  meeting: 'bg-[#1e3a8a]',
+  meeting: 'bg-accent',
   deadline: 'bg-red-500',
   reminder: 'bg-amber-500',
   holiday: 'bg-green-500'
@@ -140,7 +140,7 @@ export default function Calendar() {
     return day === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear();
   };
 
-  const calendarDays = [];
+  const calendarDays: { day: number; currentMonth: boolean }[] = [];
 
   // Previous month days
   for (let i = firstDay - 1; i >= 0; i--) {
@@ -165,12 +165,12 @@ export default function Calendar() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Calendar</h2>
-          <p className="text-sm text-gray-500 mt-1">Manage your schedule and events</p>
+          <h2 className="text-2xl font-bold text-t1">Calendar</h2>
+          <p className="text-sm text-t2 mt-1">Manage your schedule and events</p>
         </div>
         <button
           onClick={() => setShowEventModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#1e3a8a] text-white rounded-md text-sm font-medium hover:bg-[#1e40af] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent-h transition-colors"
         >
           <Plus className="w-4 h-4" />
           New Event
@@ -179,24 +179,24 @@ export default function Calendar() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar Grid */}
-        <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 p-6">
+        <div className="lg:col-span-2 bg-card rounded-xl border border-[var(--border)] p-6">
           {/* Month Navigation */}
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-t1">
               {monthNames[month]} {year}
             </h3>
             <div className="flex gap-2">
               <button
                 onClick={() => navigateMonth('prev')}
-                className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+                className="p-2 hover:bg-surface rounded-xl transition-colors"
               >
-                <ChevronLeft className="w-5 h-5 text-gray-600" />
+                <CaretLeft className="w-5 h-5 text-t2" />
               </button>
               <button
                 onClick={() => navigateMonth('next')}
-                className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+                className="p-2 hover:bg-surface rounded-xl transition-colors"
               >
-                <ChevronRight className="w-5 h-5 text-gray-600" />
+                <CaretRight className="w-5 h-5 text-t2" />
               </button>
             </div>
           </div>
@@ -204,7 +204,7 @@ export default function Calendar() {
           {/* Day Headers */}
           <div className="grid grid-cols-7 gap-1 mb-2">
             {dayNames.map((day) => (
-              <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">
+              <div key={day} className="text-center text-xs font-medium text-t2 py-2">
                 {day}
               </div>
             ))}
@@ -221,14 +221,14 @@ export default function Calendar() {
                   key={idx}
                   onClick={() => item.currentMonth && setSelectedDate(date)}
                   className={`
-                    relative p-2 min-h-[80px] border rounded-md transition-all
-                    ${!item.currentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white hover:bg-gray-50'}
-                    ${isSelected(item.day) ? 'border-[#1e3a8a] bg-[#1e3a8a]/5' : 'border-gray-200'}
+                    relative p-2 min-h-[80px] border rounded-xl transition-all
+                    ${!item.currentMonth ? 'bg-surface text-t3' : 'bg-card hover:bg-surface'}
+                    ${isSelected(item.day) ? 'border-accent bg-accent/5' : 'border-[var(--border)]'}
                     ${isToday(item.day) && item.currentMonth ? 'ring-2 ring-[#1e3a8a]' : ''}
                   `}
                   disabled={!item.currentMonth}
                 >
-                  <span className={`text-sm font-medium ${isToday(item.day) ? 'text-[#1e3a8a]' : 'text-gray-900'}`}>
+                  <span className={`text-sm font-medium ${isToday(item.day) ? 'text-accent' : 'text-t1'}`}>
                     {item.day}
                   </span>
                   <div className="mt-1 space-y-1">
@@ -241,7 +241,7 @@ export default function Calendar() {
                       </div>
                     ))}
                     {events.length > 2 && (
-                      <div className="text-xs text-gray-500">+{events.length - 2} more</div>
+                      <div className="text-xs text-t2">+{events.length - 2} more</div>
                     )}
                   </div>
                 </button>
@@ -251,8 +251,8 @@ export default function Calendar() {
         </div>
 
         {/* Event Details Sidebar */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="bg-card rounded-xl border border-[var(--border)] p-6">
+          <h3 className="text-lg font-semibold text-t1 mb-4">
             {selectedDate
               ? `${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`
               : 'Select a date'
@@ -262,35 +262,35 @@ export default function Calendar() {
           {selectedDateEvents.length > 0 ? (
             <div className="space-y-4">
               {selectedDateEvents.map((event) => (
-                <div key={event.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div key={event.id} className="border border-[var(--border)] rounded-xl p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-2">
-                    <h4 className="text-sm font-semibold text-gray-900">{event.title}</h4>
-                    <button className="p-1 hover:bg-gray-100 rounded">
-                      <MoreHorizontal className="w-4 h-4 text-gray-500" />
+                    <h4 className="text-sm font-semibold text-t1">{event.title}</h4>
+                    <button className="p-1 hover:bg-surface rounded">
+                      <DotsThree className="w-4 h-4 text-t2" />
                     </button>
                   </div>
 
-                  <div className="space-y-2 text-sm text-gray-600">
+                  <div className="space-y-2 text-sm text-t2">
                     <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-gray-400" />
+                      <Clock className="w-4 h-4 text-t3" />
                       <span>{event.startTime} - {event.endTime}</span>
                     </div>
                     {event.location && (
                       <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-gray-400" />
+                        <MapPin className="w-4 h-4 text-t3" />
                         <span>{event.location}</span>
                       </div>
                     )}
                     {event.attendees && (
                       <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-gray-400" />
+                        <Users className="w-4 h-4 text-t3" />
                         <span>{event.attendees.join(', ')}</span>
                       </div>
                     )}
                   </div>
 
                   {event.description && (
-                    <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
+                    <p className="text-xs text-t2 mt-2 pt-2 border-t border-[var(--border-s)]">
                       {event.description}
                     </p>
                   )}
@@ -299,11 +299,11 @@ export default function Calendar() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-sm text-gray-500">No events on this date</p>
+              <CalendarIcon className="w-12 h-12 text-t3 mx-auto mb-4" />
+              <p className="text-sm text-t2">No events on this date</p>
               <button
                 onClick={() => setShowEventModal(true)}
-                className="mt-4 text-sm text-[#1e3a8a] hover:underline"
+                className="mt-4 text-sm text-accent hover:underline"
               >
                 Create an event
               </button>
@@ -311,13 +311,13 @@ export default function Calendar() {
           )}
 
           {/* Legend */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="text-xs font-semibold text-gray-700 mb-3">Event Types</h4>
+          <div className="mt-6 pt-6 border-t border-[var(--border)]">
+            <h4 className="text-xs font-semibold text-t2 mb-3">Event Types</h4>
             <div className="space-y-2">
               {Object.entries(eventTypeDots).map(([type, color]) => (
                 <div key={type} className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${color}`} />
-                  <span className="text-xs text-gray-600 capitalize">{type}</span>
+                  <span className="text-xs text-t2 capitalize">{type}</span>
                 </div>
               ))}
             </div>
@@ -334,19 +334,19 @@ export default function Calendar() {
         formContent={
           <div className="space-y-6">
              <div>
-                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Event Identity</label>
+                <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Event Identity</label>
                 <div className="space-y-4">
-                  <input type="text" placeholder="Title of the event" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#1e3a8a]" />
+                  <input type="text" placeholder="Title of the event" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none focus:border-accent" />
                   <div className="grid grid-cols-2 gap-4">
-                    <input type="time" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none" />
-                    <input type="time" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none" />
+                    <input type="time" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none" />
+                    <input type="time" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none" />
                   </div>
                 </div>
               </div>
 
                <div>
-                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Categorization</label>
-                <select className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
+                <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Categorization</label>
+                <select className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
                   <option>Strategic Meeting</option>
                   <option>Critical Deadline</option>
                   <option>Operational Reminder</option>
@@ -355,33 +355,33 @@ export default function Calendar() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Environment</label>
-                <input type="text" placeholder="Physical or Virtual Location" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none" />
+                <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Environment</label>
+                <input type="text" placeholder="Physical or Virtual Location" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none" />
               </div>
 
               <div>
-                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Agenda & Brief</label>
-                <textarea rows={4} placeholder="Summary of objectives..." className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none" />
+                <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Agenda & Brief</label>
+                <textarea rows={4} placeholder="Summary of objectives..." className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none" />
               </div>
 
               <div className="pt-6">
-                <button className="w-full py-3 bg-[#1e3a8a] text-white rounded-xl text-sm font-bold shadow-xl shadow-[#1e3a8a]/20">Confirm Schedule</button>
+                <button className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-xl shadow-[#1e3a8a]/20">Confirm Schedule</button>
               </div>
           </div>
         }
         previewContent={
-          <div className="relative font-sans text-gray-900 h-full flex flex-col">
+          <div className="relative font-sans text-t1 h-full flex flex-col">
                {/* Daily Header */}
                <div className="mb-12 border-b-8 border-gray-900 pb-8 flex justify-between items-end">
                   <div>
                     <h2 className="text-5xl font-black tracking-tighter uppercase leading-[0.8] mb-2">Daily<br/>Protocol</h2>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Operational Schedule Tracking</p>
+                    <p className="text-[10px] font-black text-t3 uppercase tracking-[0.2em]">Operational Schedule Tracking</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-4xl font-black text-[#1e3a8a]">
+                    <p className="text-4xl font-black text-accent">
                       {selectedDate?.getDate() || '15'}
                     </p>
-                    <p className="text-[10px] font-black uppercase text-gray-400">
+                    <p className="text-[10px] font-black uppercase text-t3">
                       {monthNames[selectedDate?.getMonth() || month]} {year}
                     </p>
                   </div>
@@ -392,30 +392,30 @@ export default function Calendar() {
                   {[1, 2].map((i) => (
                     <div key={i} className={`flex gap-6 ${i === 2 ? 'opacity-20' : ''}`}>
                        <div className="w-20 text-right">
-                          <p className="text-xs font-black text-gray-900">09:00 AM</p>
-                          <div className="h-full w-px bg-gray-200 ml-auto mr-1 my-2" />
+                          <p className="text-xs font-black text-t1">09:00 AM</p>
+                          <div className="h-full w-px bg-surface-hover ml-auto mr-1 my-2" />
                        </div>
-                       <div className="flex-1 bg-gray-50 rounded-2xl p-6 border-l-4 border-[#1e3a8a]">
+                       <div className="flex-1 bg-surface rounded-2xl p-6 border-l-4 border-accent">
                           <div className="flex justify-between items-start mb-2">
-                             <h4 className="font-black text-gray-900 uppercase text-sm tracking-tight">System Syncing...</h4>
-                             <span className="text-[10px] font-bold text-[#1e3a8a] bg-blue-50 px-2 py-0.5 rounded">Sync active</span>
+                             <h4 className="font-black text-t1 uppercase text-sm tracking-tight">System Syncing...</h4>
+                             <span className="text-[10px] font-bold text-accent bg-[var(--accent-glow)] px-2 py-0.5 rounded">Sync active</span>
                           </div>
-                          <p className="text-xs text-gray-500">Waiting for user input parameters to generate detail view.</p>
+                          <p className="text-xs text-t2">Waiting for user input parameters to generate detail view.</p>
                        </div>
                     </div>
                   ))}
                </div>
 
                {/* Footer Branding */}
-               <div className="mt-20 pt-8 border-t border-gray-100 flex items-center justify-between">
+               <div className="mt-20 pt-8 border-t border-[var(--border-s)] flex items-center justify-between">
                   <div className="flex items-center gap-2">
                      <div className="w-6 h-6 bg-gray-900 rounded-full flex items-center justify-center">
                         <CalendarIcon className="w-3.5 h-3.5 text-white" />
                      </div>
-                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-900">Tek Calendar Engine</span>
+                     <span className="text-[10px] font-black uppercase tracking-widest text-t1">Tek Calendar Engine</span>
                   </div>
-                  <div className="w-24 h-1 bg-gray-100 rounded-full overflow-hidden">
-                     <div className="w-1/2 h-full bg-[#1e3a8a]" />
+                  <div className="w-24 h-1 bg-surface rounded-full overflow-hidden">
+                     <div className="w-1/2 h-full bg-accent" />
                   </div>
                </div>
           </div>
