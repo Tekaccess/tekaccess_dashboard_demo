@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api/v1';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 type ApiResponse<T = null> = {
   success: boolean;
