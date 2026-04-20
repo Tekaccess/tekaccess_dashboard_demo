@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "@tanstack/react-router";
+import Logo from "../../components/Logo";
 
 const LoginPage: React.FC = () => {
   const [step, setStep] = useState<"email" | "password">("email");
@@ -46,7 +47,7 @@ const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-between bg-app">
       <div className="w-full flex justify-center pt-8">
-        <img src="/logo.jpg" alt="TekAccess" className="h-12 object-contain" />
+        <Logo className="h-12 object-contain" />
       </div>
 
       <div className="w-full max-w-[340px] px-4">
