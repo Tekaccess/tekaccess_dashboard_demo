@@ -7,26 +7,24 @@ import { useAuth } from '../contexts/AuthContext';
 export default function RootLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
-  
-  const isPublicRoute = ['/login', '/forgot-password'].includes(location.pathname);
+  const { isAuthenticated, isInitialising } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    if (!isAuthenticated && !isPublicRoute) {
-      navigate({ to: '/login' });
-    }
-  }, [isAuthenticated, isPublicRoute, navigate]);
-
-  if (isPublicRoute) {
-    return <Outlet />;
-  }
+  const isPublicRoute = ['/login', '/forgot-password', '/reset-password'].includes(location.pathname);
 
   const DEPT_IDS = ['executive', 'finance', 'transport', 'operations', 'procurement'];
   const pathParts = location.pathname.split('/').filter(Boolean);
   const firstSegment = pathParts[0] || 'finance';
   const currentDepartmentId = DEPT_IDS.includes(firstSegment) ? firstSegment : 'finance';
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  useEffect(() => {
+    if (!isInitialising && !isAuthenticated && !isPublicRoute) {
+      navigate({ to: '/login' });
+    }
+  }, [isAuthenticated, isInitialising, isPublicRoute, navigate]);
+
+  if (isPublicRoute) return <Outlet />;
+  if (isInitialising) return null;
   if (!isAuthenticated) return null;
 
   return (

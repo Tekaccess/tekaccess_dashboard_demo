@@ -13,6 +13,7 @@ import TaskManagement from "./pages/TaskManagement";
 
 import LoginPage from "./pages/auth/LoginPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import AdminPage from "./pages/AdminPage";
 import PurchaseOrdersPage from "./pages/PurchaseOrdersPage";
 import SuppliersPage from "./pages/SuppliersPage";
@@ -34,6 +35,12 @@ export const forgotPasswordRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/forgot-password",
   component: ForgotPasswordPage,
+});
+
+export const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reset-password",
+  component: ResetPasswordPage,
 });
 
 export const adminRoute = createRoute({
@@ -99,6 +106,7 @@ const routeTree = rootRoute.addChildren([
   sectionRoute,
   loginRoute,
   forgotPasswordRoute,
+  resetPasswordRoute,
   adminRoute,
   // Shared top-level pages
   createRoute({

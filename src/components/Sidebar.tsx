@@ -89,7 +89,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
         {/* Navigation — scrollable */}
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5 scrollbar-hide">
           {/* Admin Menu (Executive only) */}
-          {user?.role === "executive" && (
+          {user?.role === "super_admin" && (
             <div>
               <p className="text-[10px] font-bold text-t3 uppercase tracking-widest mb-2 px-2">
                 Administration
@@ -243,11 +243,11 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
             >
               <div className="h-7 w-7 rounded-lg bg-[var(--accent-glow)] border border-[var(--accent-border)] shrink-0 flex items-center justify-center">
                 <span className="text-accent text-[10px] font-bold leading-none">
-                  {user?.name?.[0].toUpperCase() || "U"}
+                  {user?.fullName?.[0].toUpperCase() || "U"}
                 </span>
               </div>
               <div className="flex-1 min-w-0 text-left">
-                <p className="text-xs font-semibold text-t1 truncate">{user?.name || "User"}</p>
+                <p className="text-xs font-semibold text-t1 truncate">{user?.fullName || "User"}</p>
                 <p className="text-[10px] text-t3 truncate capitalize">{user?.role || "Staff"}</p>
               </div>
               {isDeptDropdownOpen
