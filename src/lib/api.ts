@@ -50,22 +50,35 @@ async function request<T>(
   return json as ApiResponse<T>;
 }
 
+// Deduplicates concurrent refresh calls — only one HTTP request in flight at a time.
+// Without this, page load fires multiple simultaneous refreshes; the server rotates
+// the token on the first one and the rest get 401, which clears the auth state.
+let _refreshPromise: Promise<boolean> | null = null;
+
 async function tryRefresh(): Promise<boolean> {
-  try {
-    const res = await fetch(`${BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    if (!res.ok) return false;
-    const json = await res.json();
-    if (json.success && json.data?.accessToken) {
-      setAccessToken(json.data.accessToken);
-      return true;
+  if (_refreshPromise) return _refreshPromise;
+
+  _refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) return false;
+      const json = await res.json();
+      if (json.success && json.data?.accessToken) {
+        setAccessToken(json.data.accessToken);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    } finally {
+      _refreshPromise = null;
     }
-    return false;
-  } catch {
-    return false;
-  }
+  })();
+
+  return _refreshPromise;
 }
 
 // ─── Auth endpoints ──────────────────────────────────────────────────────────
