@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
-import { UserPlus, Mail, Shield, User, ChevronRight, CheckCircle2, AlertCircle } from "lucide-react";
+import { UserPlus, Mail, Shield, User, ChevronRight, CheckCircle2, AlertCircle, KeyRound } from "lucide-react";
 import { useAuth, UserRole } from "../contexts/AuthContext";
 
 const AdminPage: React.FC = () => {
@@ -8,11 +8,11 @@ const AdminPage: React.FC = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    role: "manager" as UserRole,
+    role: "admin" as UserRole,
   });
   const [isSuccess, setIsSuccess] = useState(false);
 
-  if (user?.role !== "executive") {
+  if (user?.role !== "super_admin") {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center h-full">
         <div className="bg-red-500/10 p-6 rounded-full mb-6">
@@ -32,11 +32,11 @@ const AdminPage: React.FC = () => {
     console.log("Adding user:", formData);
     setIsSuccess(true);
     setTimeout(() => setIsSuccess(false), 3000);
-    setFormData({ name: "", email: "", role: "manager" });
+    setFormData({ name: "", email: "", role: "admin" });
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-8 font-['Outfit']">
+    <div className="max-w-4xl mx-auto p-8">
       <div className="mb-10">
         <h1 className="text-4xl font-extrabold text-white mb-2 tracking-tight">Account Management</h1>
         <p className="text-gray-400 text-lg">As an executive, you can create and manage user permissions.</p>
@@ -92,7 +92,7 @@ const AdminPage: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-400 ml-1">User Role</label>
                 <div className="grid grid-cols-3 gap-4">
-                  {(["executive", "manager", "employee"] as UserRole[]).map((role) => (
+                  {(["super_admin", "admin", "user"] as UserRole[]).map((role) => (
                     <button
                       key={role}
                       type="button"

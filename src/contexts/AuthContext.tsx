@@ -1,76 +1,123 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import {
+  apiLogin,
+  apiLogout,
+  apiForgotPassword,
+  apiResetPassword,
+  apiRefresh,
+  setAccessToken,
+  type BackendUser,
+} from "../lib/api";
 
-export type UserRole = "executive" | "manager" | "employee";
+export type UserRole = "super_admin" | "admin" | "user";
 
 export interface User {
   id: string;
   email: string;
-  name: string;
+  fullName: string;
   role: UserRole;
-  avatar?: string;
+  dashboardAccess: string[];
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  googleLogin: () => Promise<void>;
-  logout: () => void;
-  resetPassword: (email: string) => Promise<void>;
+  isInitialising: boolean;
+  login: (email: string, password: string) => Promise<string | null>;
+  logout: () => Promise<void>;
+  forgotPassword: (email: string) => Promise<string | null>;
+  resetPassword: (token: string, password: string) => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function toUser(u: BackendUser): User {
+  return {
+    id: u._id,
+    email: u.email,
+    fullName: u.fullName,
+    role: u.role,
+    dashboardAccess: u.dashboardAccess,
+  };
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isInitialising, setIsInitialising] = useState(true);
+  const userRef = useRef<User | null>(null);
 
-  // Initialize from localStorage
   useEffect(() => {
-    const savedUser = localStorage.getItem("tekaccess_user");
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    const cached = sessionStorage.getItem("tekaccess_user");
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        userRef.current = parsed;
+        setUser(parsed);
+      } catch {
+        sessionStorage.removeItem("tekaccess_user");
+      }
     }
+
+    // Silently restore the access token from the httpOnly refresh cookie on page load.
+    apiRefresh()
+      .then((ok) => {
+        if (!ok) {
+          setUser(null);
+          sessionStorage.removeItem("tekaccess_user");
+        }
+      })
+      .finally(() => setIsInitialising(false));
   }, []);
 
-  const login = async (email: string, password: string) => {
-    // Mock login logic
-    console.log("Logging in with:", email, password);
-    const mockUser: User = {
-      id: "1",
-      email,
-      name: email.split("@")[0],
-      role: email.includes("admin") ? "executive" : "manager",
-    };
-    setUser(mockUser);
-    localStorage.setItem("tekaccess_user", JSON.stringify(mockUser));
+  const login = async (email: string, password: string): Promise<string | null> => {
+    const res = await apiLogin(email, password);
+    if (!res.success || !res.data) {
+      return res.message || "Invalid email or password.";
+    }
+    setAccessToken(res.data.accessToken);
+    const u = toUser(res.data.user);
+    userRef.current = u;
+    setUser(u);
+    sessionStorage.setItem("tekaccess_user", JSON.stringify(u));
+    return null;
   };
 
-  const googleLogin = async () => {
-    // Mock Google login
-    console.log("Google login initiated");
-    const mockUser: User = {
-      id: "google_123",
-      email: "google.user@example.com",
-      name: "Google User",
-      role: "manager",
-    };
-    setUser(mockUser);
-    localStorage.setItem("tekaccess_user", JSON.stringify(mockUser));
-  };
-
-  const logout = () => {
+  const logout = async () => {
+    await apiLogout();
+    userRef.current = null;
     setUser(null);
-    localStorage.removeItem("tekaccess_user");
+    sessionStorage.removeItem("tekaccess_user");
   };
 
-  const resetPassword = async (email: string) => {
-    console.log("Password reset requested for:", email);
-    // Mock reset logic
-    return new Promise((resolve) => setTimeout(resolve, 1000));
+  const forgotPassword = async (email: string): Promise<string | null> => {
+    const res = await apiForgotPassword(email);
+    if (!res.success) {
+      return res.message || "Could not send reset email. Please try again.";
+    }
+    return null;
+  };
+
+  const resetPassword = async (token: string, password: string): Promise<string | null> => {
+    const res = await apiResetPassword(token, password);
+    if (!res.success) {
+      if (res.errors?.length) return res.errors[0].message;
+      return res.message || "Failed to reset password. The link may have expired.";
+    }
+    return null;
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, googleLogin, logout, resetPassword }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isInitialising,
+        login,
+        logout,
+        forgotPassword,
+        resetPassword,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -70,9 +70,9 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
             className="flex items-center gap-2 p-1 border border-[var(--border)] rounded-full bg-surface hover:bg-[var(--accent-glow)] transition-all overflow-hidden"
           >
             <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-white text-[10px] font-bold">
-              {user?.name?.[0].toUpperCase() || 'U'}
+              {user?.fullName?.[0].toUpperCase() || 'U'}
             </div>
-            <span className="text-xs font-medium text-t1 pr-2 hidden lg:block">{user?.name}</span>
+            <span className="text-xs font-medium text-t1 pr-2 hidden lg:block">{user?.fullName}</span>
           </button>
 
           <AnimatePresence>
