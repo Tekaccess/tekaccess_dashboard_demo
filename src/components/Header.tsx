@@ -8,14 +8,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { apiChangePassword } from '../lib/api';
 
 const SLUG_LABELS: Record<string, string> = {
-  executive:           'Executive',
-  finance:             'Finance',
-  transport:           'Transport',
-  operations:          'Operations',
-  inventory:           'Inventory',
+  executive: 'Executive',
+  finance: 'Finance',
+  transport: 'Transport',
+  operations: 'Operations',
+  inventory: 'Inventory',
   procurement_trading: 'Procurement — Trading',
-  procurement_fleet:   'Procurement — Fleet',
-  data_entry:          'Data Entry',
+  procurement_fleet: 'Procurement — Fleet',
+  data_entry: 'Data Entry',
 };
 
 interface HeaderProps {
@@ -390,10 +390,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
 
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
-                  <div>
-                    <h2 className="text-sm font-bold text-t1">Account Settings</h2>
-                    <p className="text-xs text-t3 mt-0.5">Manage your profile and view your access</p>
-                  </div>
+                  <h2 className="text-base font-bold text-t1">Account Settings</h2>
                   <button
                     onClick={() => setShowSettings(false)}
                     className="p-1.5 rounded-lg text-t3 hover:text-t1 hover:bg-surface transition-colors"
@@ -545,7 +542,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                   You'll need to log in again to access your account.
                 </p>
                 <div className="flex flex-col gap-2">
-                  
+
                   <button
                     onClick={handleLogout}
                     disabled={isLoggingOut}
