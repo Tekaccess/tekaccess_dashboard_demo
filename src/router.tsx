@@ -11,7 +11,9 @@ import Reports from "./pages/Reports";
 import Calendar from "./pages/Calendar";
 import TaskManagement from "./pages/TaskManagement";
 
-// ── Procurement Pages ──────────────────────────────────────────────────────
+import LoginPage from "./pages/auth/LoginPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import AdminPage from "./pages/AdminPage";
 import PurchaseOrdersPage from "./pages/PurchaseOrdersPage";
 import SuppliersPage from "./pages/SuppliersPage";
 import ShipmentsPage from "./pages/ShipmentsPage";
@@ -19,6 +21,25 @@ import SparePartsPage from "./pages/SparePartsPage";
 
 export const rootRoute = createRootRoute({
   component: RootLayout,
+});
+
+// ── Auth Routes ────────────────────────────────────────────────────────────
+export const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/login",
+  component: LoginPage,
+});
+
+export const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/forgot-password",
+  component: ForgotPasswordPage,
+});
+
+export const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  component: AdminPage,
 });
 
 // ── Shared Routes ──────────────────────────────────────────────────────────
@@ -76,6 +97,9 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   departmentRoute,
   sectionRoute,
+  loginRoute,
+  forgotPasswordRoute,
+  adminRoute,
   // Shared top-level pages
   createRoute({
     getParentRoute: () => rootRoute,
@@ -86,7 +110,7 @@ const routeTree = rootRoute.addChildren([
     getParentRoute: () => rootRoute,
     path: "/calendar",
     component: Calendar,
-  }),
+    }),
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/tasks",

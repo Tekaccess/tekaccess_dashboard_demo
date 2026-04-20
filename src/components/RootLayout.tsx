@@ -1,15 +1,33 @@
-import React, { useState } from 'react';
-import { Outlet, useLocation } from '@tanstack/react-router';
+import React, { useState, useEffect } from 'react';
+import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function RootLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
+  
+  const isPublicRoute = ['/login', '/forgot-password'].includes(location.pathname);
+
+  useEffect(() => {
+    if (!isAuthenticated && !isPublicRoute) {
+      navigate({ to: '/login' });
+    }
+  }, [isAuthenticated, isPublicRoute, navigate]);
+
+  if (isPublicRoute) {
+    return <Outlet />;
+  }
+
   const DEPT_IDS = ['executive', 'finance', 'transport', 'operations', 'procurement'];
   const pathParts = location.pathname.split('/').filter(Boolean);
   const firstSegment = pathParts[0] || 'finance';
   const currentDepartmentId = DEPT_IDS.includes(firstSegment) ? firstSegment : 'finance';
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  if (!isAuthenticated) return null;
 
   return (
     <div className="flex h-screen bg-app font-sans text-t1 overflow-hidden">
