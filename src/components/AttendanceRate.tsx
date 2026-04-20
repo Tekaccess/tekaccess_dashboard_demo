@@ -27,14 +27,13 @@ const AttendanceRate: React.FC<AttendanceRateProps> = ({ rate = 98, data = defau
   const maxVal = 100;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col h-full">
-      {/* Header */}
+    <div className="bg-card rounded-xl border border-[var(--border)] p-6 flex flex-col h-full">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-sm font-medium text-gray-700">Attendance Rate</h3>
+        <h3 className="text-sm font-medium text-t2">Attendance Rate</h3>
         <select
           value={selectedPeriod}
           onChange={(e) => setSelectedPeriod(e.target.value)}
-          className="text-xs border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 outline-none cursor-pointer hover:bg-gray-50"
+          className="text-xs border border-[var(--border)] rounded-lg px-2 py-1 bg-surface text-t2 outline-none cursor-pointer hover:bg-surface-hover transition-colors"
         >
           <option>Monthly</option>
           <option>Weekly</option>
@@ -42,39 +41,25 @@ const AttendanceRate: React.FC<AttendanceRateProps> = ({ rate = 98, data = defau
         </select>
       </div>
 
-      {/* Rate Display */}
       <div className="mb-2">
-        <span className="text-4xl font-bold text-gray-900">{rate}%</span>
+        <span className="text-4xl font-bold text-t1">{rate}%</span>
         <div className="flex items-center mt-2">
-          <span className="flex items-center text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+          <span className="flex items-center text-xs text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">
             <TrendingUp className="w-3 h-3 mr-1" />
             12% better than last month
           </span>
         </div>
       </div>
 
-      {/* Bar Chart */}
       <div className="flex items-end justify-between gap-2 flex-1 mt-6">
         {data.map((item, idx) => (
           <div key={idx} className="flex-1 flex flex-col items-center gap-1">
             <div className="w-full flex flex-col items-center gap-1" style={{ height: '140px' }}>
-              {/* Present */}
-              <div
-                className="w-full bg-[#1e3a8a] rounded-t-sm transition-all"
-                style={{ height: `${(item.present / maxVal) * 100}%` }}
-              />
-              {/* Late */}
-              <div
-                className="w-full bg-[#f59e0b]/60 transition-all"
-                style={{ height: `${(item.late / maxVal) * 100}%` }}
-              />
-              {/* Absent */}
-              <div
-                className="w-full bg-[#10b981]/60 rounded-b-sm transition-all"
-                style={{ height: `${(item.absent / maxVal) * 100}%` }}
-              />
+              <div className="w-full bg-accent rounded-t-sm transition-all" style={{ height: `${(item.present / maxVal) * 100}%` }} />
+              <div className="w-full bg-amber-500/60 transition-all" style={{ height: `${(item.late / maxVal) * 100}%` }} />
+              <div className="w-full bg-emerald-500/60 rounded-b-sm transition-all" style={{ height: `${(item.absent / maxVal) * 100}%` }} />
             </div>
-            <span className="text-xs text-gray-500 mt-2">{item.month}</span>
+            <span className="text-xs text-t3 mt-2 truncate">{item.month.slice(0, 3)}</span>
           </div>
         ))}
       </div>

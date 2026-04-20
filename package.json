@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
+    "@phosphor-icons/react": "^2.1.10",
     "@tailwindcss/vite": "^4.1.14",
     "@tanstack/react-router": "^1.168.22",
     "@tanstack/react-table": "^8.21.3",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
+    "@types/react": "^19.2.14",
     "autoprefixer": "^10.4.21",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, ChevronUp, ChevronDown } from 'lucide-react';
+import { CaretUp, CaretDown } from '@phosphor-icons/react';
 
 interface DocumentSidePanelProps {
   isOpen: boolean;
@@ -24,86 +24,76 @@ export default function DocumentSidePanel({
   currentIndex,
   totalItems,
   onNext,
-  onPrev
+  onPrev,
 }: DocumentSidePanelProps) {
-  // Prevent body scroll when open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
+    document.body.style.overflow = isOpen ? 'hidden' : 'unset';
+    return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-gray-900/20 backdrop-blur-sm transition-opacity"
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
-      
-      {/* Panel */}
-      <div className="relative w-full max-w-[1200px] bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-        
-        {/* Navigation Floating Control (Optional) */}
+
+      <div className="relative w-full max-w-[1200px] bg-card h-full shadow-2xl flex flex-col">
+        {/* Floating nav control */}
         {(onNext || onPrev) && (
-          <div className="absolute top-4 left-[-48px] flex flex-col gap-1 bg-white rounded-lg shadow-lg border border-gray-200 p-1">
-            <button 
+          <div className="absolute top-4 left-[-48px] flex flex-col gap-1 bg-card rounded-xl shadow-2xl border border-[var(--border)] p-1">
+            <button
               onClick={onPrev}
               disabled={currentIndex === 1}
-              className="p-1.5 hover:bg-gray-100 rounded text-gray-600 disabled:opacity-30"
+              className="p-1.5 hover:bg-surface rounded-lg text-t2 disabled:opacity-30 transition-colors"
             >
-              <ChevronUp className="w-5 h-5" />
+              <CaretUp size={18} weight="bold" />
             </button>
-            <button 
+            <button
               onClick={onNext}
               disabled={currentIndex === totalItems}
-              className="p-1.5 hover:bg-gray-100 rounded text-gray-600 disabled:opacity-30"
+              className="p-1.5 hover:bg-surface rounded-lg text-t2 disabled:opacity-30 transition-colors"
             >
-              <ChevronDown className="w-5 h-5" />
+              <CaretDown size={18} weight="bold" />
             </button>
           </div>
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0 bg-white">
-          <div className="text-sm font-medium text-gray-600">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
+          <div className="text-sm font-medium text-t2">
             {currentIndex && totalItems ? (
-              <span>{currentIndex} of {totalItems} in <span className="text-gray-900">{title}</span></span>
+              <span>{currentIndex} of {totalItems} in <span className="text-t1">{title}</span></span>
             ) : (
               title
             )}
           </div>
-          <button 
+          <button
             onClick={onClose}
-            className="text-green-600 hover:text-green-700 text-sm font-semibold transition-colors"
+            className="text-emerald-500 hover:text-emerald-400 text-sm font-semibold transition-colors"
           >
             Close
           </button>
         </div>
-        
-        {/* Content Split Layout */}
+
+        {/* Split layout */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Left: Form Section */}
-          <div className="w-[400px] border-r border-gray-100 flex flex-col bg-white">
+          {/* Form pane */}
+          <div className="w-[400px] border-r border-[var(--border)] flex flex-col bg-card">
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {formContent}
             </div>
             {footerInfo && (
-              <div className="p-4 border-t border-gray-50 text-[11px] text-gray-400 italic">
+              <div className="p-4 border-t border-[var(--border-s)] text-[11px] text-t3 italic">
                 {footerInfo}
               </div>
             )}
           </div>
 
-          {/* Right: Preview Section */}
-          <div className="flex-1 bg-gray-50/50 overflow-y-auto p-12 flex justify-center">
+          {/* Preview pane */}
+          <div className="flex-1 bg-app overflow-y-auto p-12 flex justify-center">
             <div className="w-full max-w-[800px] bg-white shadow-sm border border-gray-100 min-h-[1000px] p-12">
               {previewContent}
             </div>

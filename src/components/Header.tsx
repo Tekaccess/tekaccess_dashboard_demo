@@ -1,56 +1,63 @@
 import React from 'react';
-import { Search, Bell, Inbox, Command, Menu } from 'lucide-react';
+import { MagnifyingGlass, Bell, List, Sun, Moon, CalendarBlank, UserCircle, Plus } from '@phosphor-icons/react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  pageTitle?: string;
 }
 
-export default function Header({ onMenuClick }: HeaderProps) {
+export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderProps) {
+  const { theme, toggleTheme } = useTheme();
+
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 shrink-0">
-      <div className="flex items-center">
-        <button 
+    <header className="h-14 bg-card border-b border-[var(--border)] flex items-center justify-between px-4 sm:px-6 shrink-0 gap-4">
+      {/* Left: hamburger + page title */}
+      <div className="flex items-center gap-3 min-w-0">
+        <button
           onClick={onMenuClick}
-          className="mr-4 p-2 text-gray-500 hover:text-gray-700 lg:hidden"
+          className="p-1.5 text-t3 hover:text-t1 lg:hidden transition-colors shrink-0"
         >
-          <Menu className="h-5 w-5" />
+          <List size={20} weight="bold" />
         </button>
-        <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">
-          Dashboard <span className="text-gray-400 font-normal hidden sm:inline">/ Overview</span>
-        </h1>
+        <h1 className="text-sm font-semibold text-t1 truncate">{pageTitle}</h1>
       </div>
 
-      <div className="flex items-center space-x-2 sm:space-x-4">
+      {/* Right: controls */}
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Search — desktop */}
         <div className="relative hidden md:block">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400" />
-          </div>
+          <MagnifyingGlass size={14} weight="regular" className="absolute left-3 top-1/2 -translate-y-1/2 text-t3 pointer-events-none" />
           <input
             type="text"
             placeholder="Search..."
-            className="block w-48 lg:w-64 pl-10 pr-12 py-2 border border-gray-200 rounded-md leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="w-44 pl-8 pr-3 py-[8px] border border-[var(--border)] rounded-lg bg-surface placeholder-[var(--text-3)] text-t1 text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
           />
-          <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
-            <div className="flex items-center space-x-1">
-              <kbd className="inline-flex items-center border border-gray-200 rounded px-1.5 text-xs font-sans font-medium text-gray-400">
-                <Command className="h-3 w-3 mr-0.5" />
-              </kbd>
-              <kbd className="inline-flex items-center border border-gray-200 rounded px-1.5 text-xs font-sans font-medium text-gray-400">
-                K
-              </kbd>
-            </div>
-          </div>
         </div>
+        
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          className="p-1.5 text-t3 hover:text-t1 border border-[var(--border)] rounded-lg bg-card transition-colors"
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {theme === 'dark'
+            ? <Sun size={18} weight="duotone" />
+            : <Moon size={18} weight="duotone" />
+          }
+        </button>
 
-        <button className="p-2 text-gray-400 hover:text-gray-500 border border-gray-200 rounded-md bg-white md:hidden">
-          <Search className="h-4 w-4" />
+        {/* Notifications */}
+        <button className="relative p-1.5 text-t3 hover:text-t1 border border-[var(--border)] rounded-lg bg-card transition-colors">
+          <Bell size={18} weight="duotone" />
+          <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-accent rounded-full ring-1 ring-card" />
         </button>
-        <button className="p-2 text-gray-400 hover:text-gray-500 border border-gray-200 rounded-md bg-white">
-          <Bell className="h-4 w-4" />
+
+        {/* User avatar */}
+        <button className="p-1.5 text-t3 hover:text-t1 border border-[var(--border)] rounded-lg bg-card transition-colors hidden sm:block">
+          <UserCircle size={18} weight="duotone" />
         </button>
-        <button className="p-2 text-gray-400 hover:text-gray-500 border border-gray-200 rounded-md bg-white hidden sm:block">
-          <Inbox className="h-4 w-4" />
-        </button>
+
       </div>
     </header>
   );

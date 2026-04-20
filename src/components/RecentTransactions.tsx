@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { MoreHorizontal, Plus, Search } from 'lucide-react';
+import { DotsThree, Plus, MagnifyingGlass } from '@phosphor-icons/react';
 import {
   createColumnHelper,
   flexRender,
@@ -27,7 +27,7 @@ const transactions: Transaction[] = [
 
 const columnHelper = createColumnHelper<Transaction>();
 
-const ActionCell = ({ transaction, onSelect }: { transaction: Transaction, onSelect: (tx: Transaction) => void }) => {
+const ActionCell = ({ transaction, onSelect }: { transaction: Transaction; onSelect: (tx: Transaction) => void }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -44,33 +44,22 @@ const ActionCell = ({ transaction, onSelect }: { transaction: Transaction, onSel
   return (
     <div className="relative flex justify-end" ref={dropdownRef}>
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsOpen(!isOpen);
-        }}
-        className="text-gray-400 hover:text-gray-600 border border-gray-200 rounded p-1 inline-flex"
+        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+        className="text-t3 hover:text-t1 border border-[var(--border)] rounded-lg p-1 inline-flex transition-colors"
       >
-        <MoreHorizontal className="w-4 h-4" />
+        <DotsThree size={16} weight="bold" />
       </button>
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-1 w-40 bg-card rounded-xl shadow-2xl border border-[var(--border)] z-50 overflow-hidden">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsOpen(false);
-              onSelect(transaction);
-            }}
-            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            onClick={(e) => { e.stopPropagation(); setIsOpen(false); onSelect(transaction); }}
+            className="block w-full text-left px-4 py-2.5 text-sm text-t2 hover:bg-surface hover:text-t1 transition-colors"
           >
             View Details
           </button>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsOpen(false);
-              onSelect(transaction);
-            }}
-            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            onClick={(e) => { e.stopPropagation(); setIsOpen(false); onSelect(transaction); }}
+            className="block w-full text-left px-4 py-2.5 text-sm text-t2 hover:bg-surface hover:text-t1 transition-colors"
           >
             Edit Transaction
           </button>
@@ -86,20 +75,20 @@ export default function RecentTransactions() {
   const columns = useMemo(() => [
     columnHelper.display({
       id: 'select',
-      header: () => <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />,
-      cell: () => <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" onClick={e => e.stopPropagation()} />,
+      header: () => <input type="checkbox" className="rounded border-[var(--border)] accent-accent" />,
+      cell: () => <input type="checkbox" className="rounded border-[var(--border)] accent-accent" onClick={e => e.stopPropagation()} />,
     }),
     columnHelper.accessor('id', {
       header: 'ID :',
-      cell: info => <span className="text-sm text-gray-500">{info.getValue()}</span>,
+      cell: info => <span className="text-sm text-t3">{info.getValue()}</span>,
     }),
     columnHelper.accessor('customer', {
       header: 'CUSTOMER :',
-      cell: info => <span className="text-sm font-medium text-gray-900">{info.getValue()}</span>,
+      cell: info => <span className="text-sm font-medium text-t1">{info.getValue()}</span>,
     }),
     columnHelper.accessor('product', {
       header: 'PRODUCT :',
-      cell: info => <span className="text-sm text-gray-500">{info.getValue()}</span>,
+      cell: info => <span className="text-sm text-t2">{info.getValue()}</span>,
     }),
     columnHelper.accessor('status', {
       header: 'STATUS :',
@@ -107,13 +96,11 @@ export default function RecentTransactions() {
         const status = info.getValue();
         return (
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-            status === 'Success' 
-              ? 'bg-green-50 text-green-700 border-green-200' 
-              : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+            status === 'Success'
+              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+              : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
           }`}>
-            <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-              status === 'Success' ? 'bg-green-500' : 'bg-yellow-500'
-            }`}></span>
+            <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${status === 'Success' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
             {status}
           </span>
         );
@@ -121,15 +108,15 @@ export default function RecentTransactions() {
     }),
     columnHelper.accessor('qty', {
       header: 'QTY :',
-      cell: info => <span className="text-sm font-bold text-gray-900">{info.getValue()}</span>,
+      cell: info => <span className="text-sm font-bold text-t1">{info.getValue()}</span>,
     }),
     columnHelper.accessor('price', {
       header: 'UNIT PRICE :',
-      cell: info => <span className="text-sm font-bold text-gray-900">{info.getValue()}</span>,
+      cell: info => <span className="text-sm font-bold text-t1">{info.getValue()}</span>,
     }),
     columnHelper.accessor('total', {
       header: 'TOTAL REVENUE :',
-      cell: info => <span className="text-sm font-bold text-gray-900">{info.getValue()}</span>,
+      cell: info => <span className="text-sm font-bold text-t1">{info.getValue()}</span>,
     }),
     columnHelper.display({
       id: 'actions',
@@ -138,68 +125,57 @@ export default function RecentTransactions() {
     }),
   ], []);
 
-  const table = useReactTable({
-    data: transactions,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
+  const table = useReactTable({ data: transactions, columns, getCoreRowModel: getCoreRowModel() });
 
   return (
     <>
-      <div className="bg-white rounded-lg border border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 bg-gray-50 rounded-t-lg">
+      <div className="bg-card rounded-xl border border-[var(--border)] flex flex-col">
+        <div className="p-4 border-b border-[var(--border)] flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 bg-surface rounded-t-xl">
           <div className="flex items-center space-x-2">
-            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Recent Transactions</h2>
-            <div className="w-4 h-4 rounded-full bg-gray-200"></div>
+            <h2 className="text-xs font-bold text-t3 uppercase tracking-wider">Recent Transactions</h2>
+            <div className="w-4 h-4 rounded-full bg-surface-hover"></div>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <div className="relative flex-1 sm:flex-none">
-              <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                <Search className="h-3.5 w-3.5 text-gray-400" />
-              </div>
+              <MagnifyingGlass size={14} weight="regular" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-t3" />
               <input
                 type="text"
                 placeholder="Search transactions..."
-                className="block w-full sm:w-48 pl-8 pr-3 py-1.5 border border-gray-200 rounded-md leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
+                className="block w-full sm:w-48 pl-8 pr-3 py-1.5 border border-[var(--border)] rounded-lg leading-5 bg-card placeholder-[var(--text-3)] text-t1 focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent text-xs transition-colors"
               />
             </div>
-            <button className="flex items-center px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-50">
-              <Plus className="w-3.5 h-3.5 mr-1" />
+            <button className="flex items-center px-3 py-1.5 bg-card border border-[var(--border)] text-t2 text-xs font-medium rounded-lg hover:bg-surface transition-colors">
+              <Plus size={13} weight="bold" className="mr-1" />
               Add Transaction
             </button>
-            <button className="p-1.5 bg-white border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50">
-              <MoreHorizontal className="w-4 h-4" />
+            <button className="p-1.5 bg-card border border-[var(--border)] rounded-lg text-t3 hover:bg-surface transition-colors">
+              <DotsThree size={16} weight="bold" />
             </button>
           </div>
         </div>
 
         <div className="overflow-x-auto min-h-[250px]">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-white">
+          <table className="min-w-full divide-y divide-[var(--border)]">
+            <thead className="bg-card">
               {table.getHeaderGroups().map(headerGroup => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map(header => (
-                    <th 
-                      key={header.id} 
-                      scope="col" 
-                      className={`px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider ${header.id === 'select' ? 'w-10' : ''}`}
+                    <th
+                      key={header.id}
+                      scope="col"
+                      className={`px-6 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider ${header.id === 'select' ? 'w-10' : ''}`}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </th>
                   ))}
                 </tr>
               ))}
             </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
+            <tbody className="bg-card divide-y divide-[var(--border-s)]">
               {table.getRowModel().rows.map(row => (
-                <tr 
-                  key={row.id} 
-                  className="hover:bg-gray-50 cursor-pointer"
+                <tr
+                  key={row.id}
+                  className="hover:bg-surface cursor-pointer transition-colors"
                   onClick={() => setSelectedTx(row.original)}
                 >
                   {row.getVisibleCells().map(cell => (
@@ -214,8 +190,8 @@ export default function RecentTransactions() {
         </div>
       </div>
 
-      <SidePanel 
-        isOpen={!!selectedTx} 
+      <SidePanel
+        isOpen={!!selectedTx}
         onClose={() => setSelectedTx(null)}
         title={selectedTx ? `Transaction ${selectedTx.id}` : ''}
       >

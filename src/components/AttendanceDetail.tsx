@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, ArrowUpDown, ExternalLink } from 'lucide-react';
+import { MagnifyingGlass, Funnel, ArrowsDownUp, ArrowSquareOut } from '@phosphor-icons/react';
 
 interface AttendanceRecord {
   id: string;
@@ -23,89 +23,78 @@ const defaultRecords: AttendanceRecord[] = [
   { id: '6', employeeId: '#EMP-12467', name: 'Aisyah Clara Riyanti', checkIn: '06:50:01', checkOut: '00:00:00', status: 'Attend' },
 ];
 
+const statusStyle = (status: string) => {
+  switch (status) {
+    case 'Late': return 'bg-amber-500/10 text-amber-500';
+    case 'Attend': return 'bg-emerald-500/10 text-emerald-500';
+    case 'Absent': return 'bg-red-500/10 text-red-500';
+    default: return 'bg-surface text-t3';
+  }
+};
+
 const AttendanceDetail: React.FC<AttendanceDetailProps> = ({ records = defaultRecords }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredRecords = records.filter(
-    (record) =>
-      record.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.employeeId.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredRecords = records.filter(r =>
+    r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.employeeId.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'Late':
-        return 'bg-orange-50 text-orange-600';
-      case 'Attend':
-        return 'bg-green-50 text-green-600';
-      case 'Absent':
-        return 'bg-red-50 text-red-600';
-      default:
-        return 'bg-gray-50 text-gray-600';
-    }
-  };
-
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-      {/* Header */}
+    <div className="bg-card rounded-xl border border-[var(--border)] p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h3 className="text-sm font-medium text-gray-700">Attendance Detail</h3>
-        <button className="p-2 hover:bg-gray-100 rounded-md transition-colors self-end sm:self-auto">
-          <ExternalLink className="w-4 h-4 text-gray-500" />
+        <h3 className="text-sm font-medium text-t2">Attendance Detail</h3>
+        <button className="p-2 hover:bg-surface rounded-lg transition-colors self-end sm:self-auto">
+          <ArrowSquareOut size={16} weight="duotone" className="text-t3" />
         </button>
       </div>
 
-      {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <MagnifyingGlass size={15} weight="regular" className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
           <input
             type="text"
             placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]"
+            className="w-full pl-9 pr-4 py-2 border border-[var(--border)] rounded-lg text-sm bg-surface text-t1 placeholder-[var(--text-3)] outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
           />
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50">
-          <Filter className="w-4 h-4" />
-          Filter
+        <button className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
+          <Funnel size={14} weight="duotone" /> Filter
         </button>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50">
-          <ArrowUpDown className="w-4 h-4" />
-          Sort By
+        <button className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
+          <ArrowsDownUp size={14} weight="duotone" /> Sort By
         </button>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200">
-              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Check In</th>
-              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Check Out</th>
-              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <tr className="border-b border-[var(--border)]">
+              {['Employee', 'Check In', 'Check Out', 'Status'].map(h => (
+                <th key={h} className="text-left py-3 px-4 text-xs font-medium text-t3 uppercase tracking-wider">{h}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {filteredRecords.map((record) => (
-              <tr key={record.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+              <tr key={record.id} className="border-b border-[var(--border-s)] hover:bg-surface transition-colors">
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#1e3a8a]/20 flex items-center justify-center text-xs font-medium text-[#1e3a8a]">
+                    <div className="w-8 h-8 rounded-full bg-[var(--accent-glow)] border border-[var(--accent-border)] flex items-center justify-center text-xs font-semibold text-accent">
                       {record.name.charAt(0)}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{record.name}</p>
-                      <p className="text-xs text-gray-500">{record.employeeId}</p>
+                      <p className="text-sm font-medium text-t1">{record.name}</p>
+                      <p className="text-xs text-t3">{record.employeeId}</p>
                     </div>
                   </div>
                 </td>
-                <td className="py-3 px-4 text-sm text-gray-900">{record.checkIn}</td>
-                <td className="py-3 px-4 text-sm text-gray-900">{record.checkOut}</td>
+                <td className="py-3 px-4 text-sm text-t1">{record.checkIn}</td>
+                <td className="py-3 px-4 text-sm text-t1">{record.checkOut}</td>
                 <td className="py-3 px-4">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusStyle(record.status)}`}>
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusStyle(record.status)}`}>
                     {record.status}
                   </span>
                 </td>

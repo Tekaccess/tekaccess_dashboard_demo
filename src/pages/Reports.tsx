@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import {
-  Download,
-  Calendar,
-  TrendingUp,
+  DownloadSimple,
+  CalendarDots,
+  TrendUp,
   Users,
-  DollarSign,
+  CurrencyDollar,
   Truck,
   Package,
-  Activity,
+  Pulse,
   FileText,
-  Filter,
-  Search
-} from 'lucide-react';
+  Funnel,
+  MagnifyingGlass
+} from '@phosphor-icons/react';
 
 interface ReportItem {
   id: string;
@@ -39,7 +39,7 @@ const defaultReports: ReportItem[] = [
     title: 'Revenue Report',
     description: 'Monthly revenue breakdown by department',
     category: 'Finance',
-    icon: DollarSign,
+    icon: CurrencyDollar,
     lastGenerated: '2 hours ago',
     format: ['PDF', 'Excel', 'CSV']
   },
@@ -75,7 +75,7 @@ const defaultReports: ReportItem[] = [
     title: 'Profit & Loss',
     description: 'Comprehensive P&L statement for the period',
     category: 'Finance',
-    icon: TrendingUp,
+    icon: TrendUp,
     lastGenerated: '1 week ago',
     format: ['PDF', 'Excel', 'CSV']
   },
@@ -84,7 +84,7 @@ const defaultReports: ReportItem[] = [
     title: 'Operational Efficiency',
     description: 'Key performance indicators and metrics',
     category: 'Operations',
-    icon: Activity,
+    icon: Pulse,
     lastGenerated: '2 days ago',
     format: ['PDF', 'Excel']
   },
@@ -115,9 +115,9 @@ export default function Reports() {
 
   const filteredReports = defaultReports.filter((report) => {
     const matchesCategory = selectedCategory === 'All Reports' || report.category === selectedCategory;
-    const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesMagnifyingGlass = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          report.description.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return matchesCategory && matchesMagnifyingGlass;
   });
 
   return (
@@ -125,27 +125,27 @@ export default function Reports() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Reports</h2>
-          <p className="text-sm text-gray-500 mt-1">Generate and download comprehensive reports</p>
+          <h2 className="text-2xl font-bold text-t1">Reports</h2>
+          <p className="text-sm text-t2 mt-1">Generate and download comprehensive reports</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-[#1e3a8a] text-white rounded-md text-sm font-medium hover:bg-[#1e40af] transition-colors">
-          <Download className="w-4 h-4" />
+        <button className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent-h transition-colors">
+          <DownloadSimple className="w-4 h-4" />
           Export All
         </button>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-card rounded-xl border border-[var(--border)] p-6">
         <div className="flex flex-col lg:flex-row gap-4">
-          {/* Search */}
+          {/* MagnifyingGlass */}
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-t3" />
             <input
               type="text"
-              placeholder="Search reports..."
+              placeholder="MagnifyingGlass reports..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md text-sm outline-none focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a]"
+              className="w-full pl-10 pr-4 py-2 border border-[var(--border)] rounded-xl text-sm outline-none focus:border-accent focus:ring-1 focus:ring-[#1e3a8a]"
             />
           </div>
 
@@ -153,7 +153,7 @@ export default function Reports() {
           <select
             value={selectedDateRange}
             onChange={(e) => setSelectedDateRange(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-md text-sm text-gray-700 outline-none cursor-pointer hover:bg-gray-50"
+            className="px-4 py-2 border border-[var(--border)] rounded-xl text-sm text-t2 outline-none cursor-pointer hover:bg-surface"
           >
             <option>Last 7 Days</option>
             <option>Last 30 Days</option>
@@ -162,9 +162,9 @@ export default function Reports() {
             <option>Custom Range</option>
           </select>
 
-          {/* Filter Button */}
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50">
-            <Filter className="w-4 h-4" />
+          {/* Funnel Button */}
+          <button className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-xl text-sm text-t2 hover:bg-surface">
+            <Funnel className="w-4 h-4" />
             More Filters
           </button>
         </div>
@@ -176,10 +176,10 @@ export default function Reports() {
           <button
             key={category}
             onClick={() => setSelectedCategory(category)}
-            className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
+            className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
               selectedCategory === category
-                ? 'bg-[#1e3a8a] text-white'
-                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                ? 'bg-accent text-white'
+                : 'bg-card text-t2 border border-[var(--border)] hover:bg-surface'
             }`}
           >
             {category}
@@ -192,29 +192,29 @@ export default function Reports() {
         {filteredReports.map((report) => (
           <div
             key={report.id}
-            className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer group"
+            className="bg-card rounded-xl border border-[var(--border)] p-6 hover:shadow-lg transition-shadow cursor-pointer group"
           >
             <div className="flex items-start justify-between mb-4">
-              <div className="p-3 bg-[#1e3a8a]/10 rounded-lg">
-                <report.icon className="w-6 h-6 text-[#1e3a8a]" />
+              <div className="p-3 bg-accent/10 rounded-xl">
+                <report.icon className="w-6 h-6 text-accent" />
               </div>
-              <span className="text-xs text-gray-500">{report.lastGenerated}</span>
+              <span className="text-xs text-t2">{report.lastGenerated}</span>
             </div>
 
-            <h3 className="text-base font-semibold text-gray-900 mb-1 group-hover:text-[#1e3a8a] transition-colors">
+            <h3 className="text-base font-semibold text-t1 mb-1 group-hover:text-accent transition-colors">
               {report.title}
             </h3>
-            <p className="text-sm text-gray-500 mb-4">{report.description}</p>
+            <p className="text-sm text-t2 mb-4">{report.description}</p>
 
             <div className="flex items-center justify-between">
-              <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
+              <span className="text-xs px-2 py-1 bg-surface text-t2 rounded">
                 {report.category}
               </span>
               <div className="flex gap-2">
                 {report.format.map((fmt) => (
                   <button
                     key={fmt}
-                    className="text-xs px-2 py-1 bg-[#1e3a8a]/10 text-[#1e3a8a] rounded hover:bg-[#1e3a8a]/20 transition-colors"
+                    className="text-xs px-2 py-1 bg-accent/10 text-accent rounded hover:bg-accent/20 transition-colors"
                   >
                     {fmt}
                   </button>
@@ -227,8 +227,8 @@ export default function Reports() {
 
       {filteredReports.length === 0 && (
         <div className="text-center py-12">
-          <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No reports found matching your criteria</p>
+          <FileText className="w-12 h-12 text-t3 mx-auto mb-4" />
+          <p className="text-t2">No reports found matching your criteria</p>
         </div>
       )}
     </div>

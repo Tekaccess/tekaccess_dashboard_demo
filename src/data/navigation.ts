@@ -1,37 +1,50 @@
 import {
-  LayoutDashboard,
-  Bell,
-  FileText,
-  Calendar,
-  Briefcase,
+  SquaresFour,
+  ChartBar,
+  CalendarDots,
+  BriefcaseMetal,
   Users,
-  Settings,
-  BarChart3,
+  Gear,
   Truck,
-  Box,
+  Cube,
   ShoppingCart,
   Database,
-  FileCheck,
+  CheckSquare,
   CreditCard,
-  Building,
+  Buildings,
   Receipt,
-  FileSpreadsheet,
-  Activity,
+  Pulse,
   MapPin,
   Package,
-  RefreshCw,
-  ClipboardList,
-  AlertTriangle,
-  Server,
-} from "lucide-react";
+  ArrowsCounterClockwise,
+  ClipboardText,
+  Warning,
+  HardDrives,
+  Handshake,
+  Boat,
+  Wrench,
+  ChartPie,
+  FileText,
+  GitBranch,
+  ShieldWarning,
+  ChatText,
+  Desktop,
+  CurrencyCircleDollar,
+  Invoice,
+  SpeedometerIcon,
+  CheckFatIcon,
+  ClipboardTextIcon,
+  CalendarDotsIcon,
+} from "@phosphor-icons/react";
+import { CalendarIcon, ChartBarIcon } from "lucide-react";
 
 export const sharedMenu = {
   title: "Main menu",
   items: [
-    { name: "Dashboard", icon: LayoutDashboard, active: true },
-    { name: "Reports", icon: FileText },
-    { name: "Calendar", icon: Calendar },
-    { name: "Task management", icon: Briefcase },
+    { name: "Dashboard", icon: SpeedometerIcon, active: true },
+    { name: "Reports", icon: ClipboardTextIcon },
+    { name: "Calendar", icon: CalendarDotsIcon },
+    { name: "Task management", icon: CheckFatIcon },
   ],
 };
 
@@ -44,17 +57,17 @@ export const departmentsData = [
       {
         title: "Departments",
         items: [
-          { name: "Finance Overview", icon: BarChart3 },
+          { name: "Finance Overview", icon: CurrencyCircleDollar },
           { name: "Transport Overview", icon: Truck },
-          { name: "Operations Overview", icon: Activity },
-          { name: "Inventory Overview", icon: Box },
+          { name: "Operations Overview", icon: Pulse },
+          { name: "Inventory Overview", icon: Cube },
           { name: "Procurement Overview", icon: ShoppingCart },
         ],
       },
       {
         title: "Company",
         items: [
-          { name: "Company Settings", icon: Building },
+          { name: "Company Settings", icon: Buildings },
           {
             name: "Employees",
             icon: Users,
@@ -74,7 +87,7 @@ export const departmentsData = [
         items: [
           {
             name: "Receivables",
-            icon: Receipt,
+            icon: Invoice,
             subItems: ["Invoices", "Client Payments", "Aging Report"],
           },
           {
@@ -88,7 +101,7 @@ export const departmentsData = [
           },
           {
             name: "Banking",
-            icon: Building,
+            icon: Buildings,
             subItems: [
               "Bank Accounts",
               "Cash Flow Forecast",
@@ -97,12 +110,12 @@ export const departmentsData = [
           },
           {
             name: "Expenses",
-            icon: FileSpreadsheet,
+            icon: Receipt,
             subItems: ["All Expenses", "Pending Approval", "By Category"],
           },
           {
             name: "Tax & Compliance",
-            icon: FileCheck,
+            icon: CheckSquare,
             subItems: ["Tax Periods", "Filing Status"],
           },
         ],
@@ -129,12 +142,12 @@ export const departmentsData = [
           },
           {
             name: "Fuel",
-            icon: Activity,
+            icon: Pulse,
             subItems: ["Fuel Logs", "Fuel Stock", "Anomaly Flags"],
           },
           {
             name: "Maintenance",
-            icon: Settings,
+            icon: Wrench,
             subItems: [
               "Open Records",
               "Scheduled Services",
@@ -196,7 +209,7 @@ export const departmentsData = [
         items: [
           {
             name: "Stock",
-            icon: Box,
+            icon: Cube,
             subItems: [
               "All Stock Items",
               "By Warehouse",
@@ -206,17 +219,17 @@ export const departmentsData = [
           },
           {
             name: "Movements",
-            icon: RefreshCw,
+            icon: ArrowsCounterClockwise,
             subItems: ["Inbound", "Outbound", "Transfers", "Adjustments"],
           },
           {
             name: "Warehouses",
-            icon: Building,
+            icon: Buildings,
             subItems: ["Warehouse List", "Capacity Usage"],
           },
           {
             name: "Stock Counts",
-            icon: ClipboardList,
+            icon: ClipboardText,
             subItems: ["Reconciliation", "Discrepancy Log"],
           },
         ],
@@ -234,36 +247,27 @@ export const departmentsData = [
           {
             name: "Purchase Orders",
             icon: ShoppingCart,
-            subItems: [
-              "Active Orders",
-              "Pending / Draft",
-              "Overdue",
-              "Order History",
-            ],
+            subItems: [],
           },
           {
             name: "Suppliers",
-            icon: Users,
-            subItems: [
-              "Supplier List",
-              "Performance & Ranking",
-              "Payment Status",
-            ],
+            icon: Handshake,
+            subItems: [],
           },
           {
             name: "Shipments",
-            icon: Truck,
-            subItems: ["Incoming Shipments", "In Transit", "Delayed"],
+            icon: Boat,
+            subItems: [],
           },
           {
             name: "Spare Parts",
-            icon: Settings,
-            subItems: ["Parts Inventory", "Low Stock / Reorder Alerts"],
+            icon: Gear,
+            subItems: [],
           },
           {
             name: "Reports",
-            icon: FileText,
-            subItems: ["Cost per Ton", "Savings", "Price Trends", "Cycle Time"],
+            icon: ChartPie,
+            subItems: [],
           },
         ],
       },
@@ -279,7 +283,7 @@ export const departmentsData = [
         items: [
           {
             name: "Pipelines & Jobs",
-            icon: Database,
+            icon: GitBranch,
             subItems: [
               "All Integrations",
               "Snapshot Jobs",
@@ -289,7 +293,7 @@ export const departmentsData = [
           },
           {
             name: "Data Quality",
-            icon: AlertTriangle,
+            icon: ShieldWarning,
             subItems: [
               "Open Issues",
               "By Department",
@@ -299,12 +303,12 @@ export const departmentsData = [
           },
           {
             name: "Data Requests",
-            icon: FileText,
+            icon: ChatText,
             subItems: ["Pending Requests", "Resolved"],
           },
           {
             name: "System",
-            icon: Server,
+            icon: HardDrives,
             subItems: ["Platform Uptime", "Alert History"],
           },
         ],
