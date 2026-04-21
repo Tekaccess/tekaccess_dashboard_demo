@@ -1,123 +1,417 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, DownloadSimple, Funnel, DotsThree,
   ListDashes, ChartBar, TrendUp, CaretDown,
-  CheckCircle, Clock, Warning, FileText, Eye, PencilSimple, X
+  CheckCircle, Warning, FileText, Eye, PencilSimple, X, Trash,
+  Spinner, Package
 } from '@phosphor-icons/react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line
 } from 'recharts';
-import {
-  purchaseOrders, poMonthlyVolume, poCategoryBreakdown,
-  PurchaseOrder, PurchaseOrderStatus
-} from '../data/procurement';
 import DocumentSidePanel from '../components/DocumentSidePanel';
+import DatePicker from '../components/ui/DatePicker';
+import SearchSelect, { SearchSelectOption } from '../components/ui/SearchSelect';
+import {
+  apiListSuppliers, apiListContractsForPO, apiListTaxRates, apiListCurrencies,
+  apiListProjects, apiListClients, apiListStockItems,
+  apiListPurchaseOrders, apiCreatePurchaseOrder, apiUpdatePurchaseOrder,
+  Supplier, Contract, TaxRate, Currency, Project, Client, StockItem, PurchaseOrder, POLineItem,
+} from '../lib/api';
 
 type ViewMode = 'table' | 'bar' | 'trend' | 'pie';
 type ActiveTab = 'All' | 'Active' | 'Pending / Draft' | 'Overdue' | 'Order History';
 
-const STATUS_STYLES: Record<PurchaseOrderStatus, string> = {
-  Active: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  Pending: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  Draft: 'bg-surface text-t3 border-border',
-  Overdue: 'bg-red-500/10 text-red-500 border-red-500/20',
-  Completed: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+const STATUS_STYLES: Record<string, string> = {
+  draft: 'bg-surface text-t3 border-border',
+  approved: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  sent_to_supplier: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  partially_received: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
+  fully_received: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  closed: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  cancelled: 'bg-red-500/10 text-red-500 border-red-500/20',
 };
 
-const STATUS_DOT: Record<PurchaseOrderStatus, string> = {
-  Active: 'bg-emerald-500',
-  Pending: 'bg-amber-500',
-  Draft: 'bg-t3',
-  Overdue: 'bg-red-500',
-  Completed: 'bg-blue-400',
+const STATUS_DOT: Record<string, string> = {
+  draft: 'bg-t3',
+  approved: 'bg-blue-400',
+  sent_to_supplier: 'bg-amber-500',
+  partially_received: 'bg-orange-500',
+  fully_received: 'bg-emerald-500',
+  closed: 'bg-blue-400',
+  cancelled: 'bg-red-500',
 };
 
-const TAB_STATUS_MAP: Record<ActiveTab, PurchaseOrderStatus[] | null> = {
+const STATUS_LABEL: Record<string, string> = {
+  draft: 'Draft',
+  approved: 'Approved',
+  sent_to_supplier: 'Sent to Supplier',
+  partially_received: 'Partially Received',
+  fully_received: 'Fully Received',
+  closed: 'Closed',
+  cancelled: 'Cancelled',
+};
+
+const TAB_STATUS_MAP: Record<ActiveTab, string[] | null> = {
   'All': null,
-  'Active': ['Active'],
-  'Pending / Draft': ['Pending', 'Draft'],
-  'Overdue': ['Overdue'],
-  'Order History': ['Completed'],
+  'Active': ['approved', 'sent_to_supplier'],
+  'Pending / Draft': ['draft'],
+  'Overdue': ['sent_to_supplier', 'partially_received'],
+  'Order History': ['fully_received', 'closed', 'cancelled'],
 };
 
 const CHART_COLORS = ['#4285f4', '#93bbfa', '#bfd0fc', '#d5e4ff', '#e8f0ff'];
 
-function formatRWF(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M RWF`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K RWF`;
-  return `${value} RWF`;
+const UNIT_OPTIONS: SearchSelectOption[] = [
+  { value: 'grams', label: 'Grams (g)' },
+  { value: 'kg', label: 'Kilograms (kg)' },
+  { value: 'tons', label: 'Tons (t)' },
+  { value: 'litres', label: 'Litres (L)' },
+  { value: 'ml', label: 'Millilitres (ml)' },
+  { value: 'units', label: 'Units' },
+  { value: 'boxes', label: 'Boxes' },
+];
+
+function formatCurrency(value: number, code = 'RWF'): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M ${code}`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K ${code}`;
+  return `${value.toLocaleString()} ${code}`;
 }
 
-type ModalData = { order: PurchaseOrder; mode: 'view' | 'edit' | 'new' } | null;
+// ─── Empty Line Item ──────────────────────────────────────────────────────────
+
+function emptyLineItem(): DraftLineItem {
+  return {
+    _key: crypto.randomUUID(),
+    stockItemId: null,
+    description: '',
+    analyticProjectId: null,
+    analyticProjectName: null,
+    unit: 'kg',
+    orderedQty: 1,
+    unitPrice: 0,
+    taxRateId: null,
+    taxRateName: null,
+    taxRatePercentage: 0,
+  };
+}
+
+interface DraftLineItem {
+  _key: string;
+  stockItemId: string | null;
+  itemCode?: string | null;
+  description: string;
+  analyticProjectId: string | null;
+  analyticProjectName: string | null;
+  unit: string;
+  orderedQty: number;
+  unitPrice: number;
+  taxRateId: string | null;
+  taxRateName: string | null;
+  taxRatePercentage: number;
+}
+
+interface DraftPO {
+  supplierId: string;
+  supplierName: string;
+  vendorReference: string;
+  contractId: string;
+  contractRef: string;
+  contractTitle: string;
+  currency: string;
+  orderDeadline: Date | null;
+  expectedDeliveryDate: Date | null;
+  deliverToClientId: string;
+  deliverToClientName: string;
+  procurementType: string;
+  lineItems: DraftLineItem[];
+  notes: string;
+}
+
+function emptyDraft(): DraftPO {
+  return {
+    supplierId: '',
+    supplierName: '',
+    vendorReference: '',
+    contractId: '',
+    contractRef: '',
+    contractTitle: '',
+    currency: 'RWF',
+    orderDeadline: null,
+    expectedDeliveryDate: null,
+    deliverToClientId: '',
+    deliverToClientName: '',
+    procurementType: 'general',
+    lineItems: [emptyLineItem()],
+    notes: '',
+  };
+}
+
+// ─── Computed Totals ──────────────────────────────────────────────────────────
+
+function computeLineItem(item: DraftLineItem) {
+  const lineSubtotal = Number(item.orderedQty) * Number(item.unitPrice);
+  const taxAmount = lineSubtotal * (Number(item.taxRatePercentage) / 100);
+  return { lineSubtotal, taxAmount, lineTotal: lineSubtotal + taxAmount };
+}
+
+type ModalState =
+  | { mode: 'new'; draft: DraftPO }
+  | { mode: 'view' | 'edit'; order: PurchaseOrder; draft?: DraftPO }
+  | null;
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PurchaseOrdersPage() {
-  const [orders, setOrders] = useState<PurchaseOrder[]>(purchaseOrders);
   const [activeTab, setActiveTab] = useState<ActiveTab>('All');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [search, setSearch] = useState('');
-  const [modal, setModal] = useState<ModalData>(null);
+  const [modal, setModal] = useState<ModalState>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  const tabs: ActiveTab[] = ['All', 'Active', 'Pending / Draft', 'Overdue', 'Order History'];
+  // Data from API
+  const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [stockItems, setStockItems] = useState<StockItem[]>([]);
 
+  // Load reference data
+  useEffect(() => {
+    Promise.all([
+      apiListSuppliers().then(r => r.success && setSuppliers(r.data.suppliers)),
+      apiListContractsForPO().then(r => r.success && setContracts(r.data.contracts)),
+      apiListTaxRates('purchase').then(r => r.success && setTaxRates(r.data.taxRates)),
+      apiListCurrencies().then(r => r.success && setCurrencies(r.data.currencies)),
+      apiListProjects().then(r => r.success && setProjects(r.data.projects)),
+      apiListClients().then(r => r.success && setClients(r.data.clients)),
+      apiListStockItems().then(r => r.success && setStockItems(r.data.items)),
+    ]);
+  }, []);
+
+  // Load purchase orders
+  const loadOrders = useCallback(async () => {
+    setLoadingOrders(true);
+    const res = await apiListPurchaseOrders({ limit: '200' });
+    if (res.success) setOrders(res.data.orders);
+    setLoadingOrders(false);
+  }, []);
+
+  useEffect(() => { loadOrders(); }, [loadOrders]);
+
+  // Option lists for dropdowns
+  const supplierOptions = useMemo<SearchSelectOption[]>(() =>
+    suppliers.map(s => ({ value: s._id, label: s.name, sublabel: s.supplierCode, meta: s.country })),
+    [suppliers]
+  );
+
+  const contractOptions = useMemo<SearchSelectOption[]>(() =>
+    contracts.map(c => ({ value: c._id, label: c.contractRef, sublabel: c.title, meta: c.clientName })),
+    [contracts]
+  );
+
+  const currencyOptions = useMemo<SearchSelectOption[]>(() =>
+    currencies.map(c => ({ value: c.code, label: `${c.code} — ${c.name}`, sublabel: c.symbol })),
+    [currencies]
+  );
+
+  const taxOptions = useMemo<SearchSelectOption[]>(() => [
+    { value: '', label: 'No Tax (0%)', sublabel: 'Tax exempt' },
+    ...taxRates.map(t => ({ value: t._id, label: `${t.name} (${t.percentage}%)`, sublabel: t.taxType, meta: `${t.percentage}%` })),
+  ], [taxRates]);
+
+  const projectOptions = useMemo<SearchSelectOption[]>(() =>
+    projects.map(p => ({ value: p._id, label: p.name, sublabel: p.projectCode, meta: p.department })),
+    [projects]
+  );
+
+  const clientOptions = useMemo<SearchSelectOption[]>(() =>
+    clients.map(c => ({ value: c._id, label: c.name, sublabel: c.clientCode, meta: c.country })),
+    [clients]
+  );
+
+  const stockOptions = useMemo<SearchSelectOption[]>(() =>
+    stockItems.map(s => ({ value: s._id, label: s.name, sublabel: s.itemCode, meta: `${s.availableQty} ${s.unit}` })),
+    [stockItems]
+  );
+
+  // Filter orders
   const filteredOrders = useMemo(() => {
     const statusFilter = TAB_STATUS_MAP[activeTab];
     return orders.filter(o => {
       const matchesTab = statusFilter ? statusFilter.includes(o.status) : true;
       const matchesSearch = !search ||
-        o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
-        o.supplier.toLowerCase().includes(search.toLowerCase()) ||
-        o.category.toLowerCase().includes(search.toLowerCase());
+        o.poRef.toLowerCase().includes(search.toLowerCase()) ||
+        o.supplierName.toLowerCase().includes(search.toLowerCase()) ||
+        (o.deliverToClientName || '').toLowerCase().includes(search.toLowerCase());
       return matchesTab && matchesSearch;
     });
   }, [orders, activeTab, search]);
 
-  const handleNewOrder = () => {
-    const newPO: any = {
-      id: crypto.randomUUID(),
-      orderNumber: `PO-${Math.floor(10000 + Math.random() * 90000)}`,
-      supplier: '',
-      date: new Date().toLocaleDateString(),
-      expectedDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-      totalAmount: 0,
-      status: 'Draft',
-      items: 1,
-      category: 'General',
-      createdDate: new Date().toLocaleDateString(),
-      approvedBy: 'Thierry',
-      lineItems: [{ description: '', quantity: 1, unitPrice: 0 }],
-      shippingAddress: 'Kigali Central Hub, Sector Gishushu'
-    };
-    setModal({ order: newPO, mode: 'new' });
-  };
-
-  const updateDraft = (updates: any) => {
-    if (!modal) return;
-    const updatedOrder = { ...modal.order, ...updates };
-    if (updates.lineItems) {
-      updatedOrder.totalAmount = updates.lineItems.reduce((acc: number, curr: any) => acc + (curr.quantity * curr.unitPrice), 0);
-      updatedOrder.items = updates.lineItems.length;
-    }
-    setModal({ ...modal, order: updatedOrder });
-  };
-
-  const handleSaveOrder = () => {
-    if (!modal) return;
-    if (modal.mode === 'new') {
-      setOrders([modal.order, ...orders]);
-    } else {
-      setOrders(orders.map(o => o.id === modal.order.id ? modal.order : o));
-    }
-    setModal(null);
-  };
-
+  // Summary stats
   const summaryStats = useMemo(() => ({
     total: orders.length,
-    active: orders.filter(o => o.status === 'Active').length,
-    overdue: orders.filter(o => o.status === 'Overdue').length,
-    totalSpend: orders.reduce((sum, o) => sum + o.totalAmount, 0),
+    active: orders.filter(o => ['approved', 'sent_to_supplier'].includes(o.status)).length,
+    overdue: orders.filter(o => o.status === 'sent_to_supplier').length,
+    totalSpend: orders.reduce((s, o) => s + o.totalValueWithTax, 0),
+    currency: orders[0]?.currency || 'RWF',
   }), [orders]);
+
+  // ─── Draft management ───────────────────────────────────────────────────────
+
+  const draft = useMemo<DraftPO | null>(() => {
+    if (!modal) return null;
+    if (modal.mode === 'new') return modal.draft;
+    if (modal.mode === 'edit') return modal.draft || null;
+    return null;
+  }, [modal]);
+
+  function updateDraft(updates: Partial<DraftPO>) {
+    setModal(prev => {
+      if (!prev) return prev;
+      if (prev.mode === 'new') return { ...prev, draft: { ...prev.draft, ...updates } };
+      if (prev.mode === 'edit') return { ...prev, draft: { ...(prev.draft || emptyDraft()), ...updates } };
+      return prev;
+    });
+  }
+
+  function updateLineItem(key: string, updates: Partial<DraftLineItem>) {
+    if (!draft) return;
+    updateDraft({
+      lineItems: draft.lineItems.map(item =>
+        item._key === key ? { ...item, ...updates } : item
+      ),
+    });
+  }
+
+  function addLineItem() {
+    if (!draft) return;
+    updateDraft({ lineItems: [...draft.lineItems, emptyLineItem()] });
+  }
+
+  function removeLineItem(key: string) {
+    if (!draft) return;
+    if (draft.lineItems.length <= 1) return;
+    updateDraft({ lineItems: draft.lineItems.filter(i => i._key !== key) });
+  }
+
+  // Totals from draft
+  const draftTotals = useMemo(() => {
+    if (!draft) return { subtotal: 0, tax: 0, total: 0 };
+    const subtotal = draft.lineItems.reduce((s, i) => s + computeLineItem(i).lineSubtotal, 0);
+    const tax = draft.lineItems.reduce((s, i) => s + computeLineItem(i).taxAmount, 0);
+    return { subtotal, tax, total: subtotal + tax };
+  }, [draft]);
+
+  // ─── Actions ────────────────────────────────────────────────────────────────
+
+  function handleNewOrder() {
+    setSaveError(null);
+    setModal({ mode: 'new', draft: emptyDraft() });
+  }
+
+  function handleEdit(order: PurchaseOrder) {
+    setSaveError(null);
+    const d: DraftPO = {
+      supplierId: typeof order.supplierId === 'string' ? order.supplierId : order.supplierId._id,
+      supplierName: order.supplierName,
+      vendorReference: order.vendorReference || '',
+      contractId: order.contractId || '',
+      contractRef: order.contractRef || '',
+      contractTitle: order.contractTitle || '',
+      currency: order.currency,
+      orderDeadline: order.orderDeadline ? new Date(order.orderDeadline) : null,
+      expectedDeliveryDate: order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate) : null,
+      deliverToClientId: order.deliverToClientId || '',
+      deliverToClientName: order.deliverToClientName || '',
+      procurementType: order.procurementType,
+      lineItems: order.lineItems.map(li => ({
+        _key: crypto.randomUUID(),
+        stockItemId: li.stockItemId || null,
+        itemCode: li.itemCode || null,
+        description: li.description,
+        analyticProjectId: li.analyticProjectId || null,
+        analyticProjectName: li.analyticProjectName || null,
+        unit: li.unit,
+        orderedQty: li.orderedQty,
+        unitPrice: li.unitPrice,
+        taxRateId: li.taxRateId || null,
+        taxRateName: li.taxRateName || null,
+        taxRatePercentage: li.taxRatePercentage,
+      })),
+      notes: order.notes || '',
+    };
+    setModal({ mode: 'edit', order, draft: d });
+  }
+
+  async function handleSave() {
+    if (!draft) return;
+    if (!draft.supplierId) { setSaveError('Please select a supplier.'); return; }
+    if (draft.lineItems.some(i => !i.description.trim())) { setSaveError('All line items must have a description.'); return; }
+    if (draft.lineItems.some(i => i.orderedQty <= 0)) { setSaveError('All quantities must be greater than 0.'); return; }
+
+    setSaving(true);
+    setSaveError(null);
+
+    const payload = {
+      supplierId: draft.supplierId,
+      supplierName: draft.supplierName,
+      vendorReference: draft.vendorReference || null,
+      contractId: draft.contractId || null,
+      contractRef: draft.contractRef || null,
+      contractTitle: draft.contractTitle || null,
+      deliverToClientId: draft.deliverToClientId || null,
+      deliverToClientName: draft.deliverToClientName || null,
+      currency: draft.currency,
+      procurementType: draft.procurementType,
+      orderDeadline: draft.orderDeadline ? draft.orderDeadline.toISOString() : null,
+      expectedDeliveryDate: draft.expectedDeliveryDate ? draft.expectedDeliveryDate.toISOString() : null,
+      notes: draft.notes || null,
+      lineItems: draft.lineItems.map((item, idx) => {
+        const { lineSubtotal, taxAmount, lineTotal } = computeLineItem(item);
+        return {
+          lineNumber: idx + 1,
+          description: item.description,
+          stockItemId: item.stockItemId || null,
+          itemCode: item.itemCode || null,
+          analyticProjectId: item.analyticProjectId || null,
+          analyticProjectName: item.analyticProjectName || null,
+          unit: item.unit,
+          orderedQty: Number(item.orderedQty),
+          unitPrice: Number(item.unitPrice),
+          taxRateId: item.taxRateId || null,
+          taxRateName: item.taxRateName || null,
+          taxRatePercentage: Number(item.taxRatePercentage),
+          lineSubtotal,
+          taxAmount,
+          lineTotal,
+        };
+      }),
+    };
+
+    let res;
+    if (modal?.mode === 'edit' && modal.order) {
+      res = await apiUpdatePurchaseOrder(modal.order._id, payload as any);
+    } else {
+      res = await apiCreatePurchaseOrder(payload as any);
+    }
+
+    setSaving(false);
+
+    if (!res.success) {
+      setSaveError(res.message || 'Failed to save purchase order.');
+      return;
+    }
+
+    await loadOrders();
+    setModal(null);
+  }
 
   const chartTooltipStyle = {
     backgroundColor: 'var(--card-bg)',
@@ -125,6 +419,550 @@ export default function PurchaseOrdersPage() {
     color: 'var(--text-1)',
     borderRadius: '8px',
   };
+
+  const tabs: ActiveTab[] = ['All', 'Active', 'Pending / Draft', 'Overdue', 'Order History'];
+
+  // ─── Preview of a saved PO ──────────────────────────────────────────────────
+
+  const previewOrder = modal && modal.mode !== 'new' ? (modal as any).order as PurchaseOrder : null;
+
+  // ─── Form Content ───────────────────────────────────────────────────────────
+
+  const formContent = draft && (
+    <div className="space-y-7 pb-10">
+
+      {/* General Info */}
+      <section className="space-y-4">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Supplier Information</p>
+
+        <SearchSelect
+          label="Supplier *"
+          options={supplierOptions}
+          value={draft.supplierId || null}
+          onChange={(val, opt) => {
+            if (!val || !opt) { updateDraft({ supplierId: '', supplierName: '', vendorReference: '' }); return; }
+            const supplier = suppliers.find(s => s._id === val);
+            updateDraft({
+              supplierId: val,
+              supplierName: opt.label,
+              vendorReference: supplier?.supplierCode || '',
+            });
+          }}
+          placeholder="Search supplier..."
+        />
+
+        <div>
+          <label className="block text-[10px] text-t3 mb-1">Vendor Reference (auto-filled)</label>
+          <input
+            type="text"
+            value={draft.vendorReference}
+            onChange={e => updateDraft({ vendorReference: e.target.value })}
+            placeholder="Vendor reference number"
+            className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors"
+          />
+        </div>
+
+        <SearchSelect
+          label="Contract / Agreement"
+          options={contractOptions}
+          value={draft.contractId || null}
+          onChange={(val, opt) => {
+            if (!val || !opt) { updateDraft({ contractId: '', contractRef: '', contractTitle: '' }); return; }
+            const c = contracts.find(x => x._id === val);
+            updateDraft({ contractId: val, contractRef: opt.sublabel || '', contractTitle: c?.title || opt.label });
+          }}
+          placeholder="Select contract (optional)..."
+        />
+      </section>
+
+      {/* Order Details */}
+      <section className="space-y-4">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Order Details</p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <SearchSelect
+            label="Currency *"
+            options={currencyOptions}
+            value={draft.currency || null}
+            onChange={(val) => updateDraft({ currency: val || 'RWF' })}
+            placeholder="Select currency..."
+            clearable={false}
+          />
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">PO Type</label>
+            <select
+              value={draft.procurementType}
+              onChange={e => updateDraft({ procurementType: e.target.value })}
+              className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
+            >
+              <option value="general">General</option>
+              <option value="trading">Trading</option>
+              <option value="fleet_fuel">Fleet Fuel</option>
+              <option value="fleet_parts">Fleet Parts</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <DatePicker
+            label="Order Deadline"
+            value={draft.orderDeadline}
+            onChange={d => updateDraft({ orderDeadline: d })}
+            placeholder="dd/mm/yyyy"
+          />
+          <DatePicker
+            label="Expected Arrival"
+            value={draft.expectedDeliveryDate}
+            onChange={d => updateDraft({ expectedDeliveryDate: d })}
+            placeholder="dd/mm/yyyy"
+            fromDate={draft.orderDeadline || undefined}
+          />
+        </div>
+
+        <SearchSelect
+          label="Deliver To (Client)"
+          options={clientOptions}
+          value={draft.deliverToClientId || null}
+          onChange={(val, opt) => {
+            updateDraft({
+              deliverToClientId: val || '',
+              deliverToClientName: opt?.label || '',
+            });
+          }}
+          placeholder="Search client..."
+        />
+      </section>
+
+      {/* Line Items */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Products</p>
+          <button
+            type="button"
+            onClick={addLineItem}
+            className="flex items-center gap-1 text-[11px] font-bold text-accent hover:underline"
+          >
+            <Plus size={11} weight="bold" /> Add Product
+          </button>
+        </div>
+
+        {draft.lineItems.map((item, idx) => {
+          const { lineSubtotal, taxAmount, lineTotal } = computeLineItem(item);
+          return (
+            <div key={item._key} className="bg-surface rounded-xl border border-border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-t3 uppercase">Item #{idx + 1}</span>
+                {draft.lineItems.length > 1 && (
+                  <button type="button" onClick={() => removeLineItem(item._key)} className="text-red-500 hover:text-red-400">
+                    <X size={13} weight="bold" />
+                  </button>
+                )}
+              </div>
+
+              <SearchSelect
+                options={stockOptions}
+                value={item.stockItemId}
+                onChange={(val, opt) => {
+                  const si = stockItems.find(s => s._id === val);
+                  updateLineItem(item._key, {
+                    stockItemId: val,
+                    itemCode: si?.itemCode || null,
+                    description: opt?.label || item.description,
+                    unit: (si?.unit as any) || item.unit,
+                  });
+                }}
+                placeholder="Select from inventory..."
+              />
+
+              <input
+                type="text"
+                placeholder="Product description *"
+                value={item.description}
+                onChange={e => updateLineItem(item._key, { description: e.target.value })}
+                className="w-full bg-card border border-border px-3 py-1.5 rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors"
+              />
+
+              <SearchSelect
+                options={projectOptions}
+                value={item.analyticProjectId}
+                onChange={(val, opt) => updateLineItem(item._key, {
+                  analyticProjectId: val,
+                  analyticProjectName: opt?.label || null,
+                })}
+                placeholder="Analytic distribution (project)..."
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] text-t3 mb-1">Quantity *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={item.orderedQty}
+                    onChange={e => updateLineItem(item._key, { orderedQty: Number(e.target.value) })}
+                    className="w-full bg-card border border-border px-3 py-1.5 rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
+                  />
+                </div>
+                <SearchSelect
+                  options={UNIT_OPTIONS}
+                  value={item.unit}
+                  onChange={(val) => updateLineItem(item._key, { unit: val || 'kg' })}
+                  placeholder="Unit..."
+                  clearable={false}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] text-t3 mb-1">Unit Price *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={item.unitPrice}
+                    onChange={e => updateLineItem(item._key, { unitPrice: Number(e.target.value) })}
+                    className="w-full bg-card border border-border px-3 py-1.5 rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
+                  />
+                </div>
+                <SearchSelect
+                  options={taxOptions}
+                  value={item.taxRateId || ''}
+                  onChange={(val) => {
+                    const tr = taxRates.find(t => t._id === val);
+                    updateLineItem(item._key, {
+                      taxRateId: val || null,
+                      taxRateName: tr?.name || null,
+                      taxRatePercentage: tr?.percentage || 0,
+                    });
+                  }}
+                  placeholder="Tax..."
+                  clearable={false}
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-1 border-t border-border text-xs">
+                <span className="text-t3">Subtotal: <span className="text-t1 font-semibold">{lineSubtotal.toLocaleString()} {draft.currency}</span></span>
+                {taxAmount > 0 && <span className="text-t3">Tax: <span className="text-amber-500 font-semibold">+{taxAmount.toLocaleString()}</span></span>}
+                <span className="text-t1 font-bold">Total: {lineTotal.toLocaleString()} {draft.currency}</span>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Summary totals */}
+        <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 space-y-1.5">
+          <div className="flex justify-between text-sm">
+            <span className="text-t2">Subtotal</span>
+            <span className="font-semibold text-t1">{draftTotals.subtotal.toLocaleString()} {draft.currency}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-t2">Tax</span>
+            <span className="font-semibold text-amber-500">{draftTotals.tax.toLocaleString()} {draft.currency}</span>
+          </div>
+          <div className="flex justify-between text-base border-t border-accent/20 pt-1.5 mt-1.5">
+            <span className="font-bold text-t1">Grand Total</span>
+            <span className="font-black text-accent">{draftTotals.total.toLocaleString()} {draft.currency}</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Notes */}
+      <section className="space-y-2">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Notes</p>
+        <textarea
+          value={draft.notes}
+          onChange={e => updateDraft({ notes: e.target.value })}
+          placeholder="Additional notes or instructions..."
+          rows={3}
+          className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors resize-none"
+        />
+      </section>
+
+      {saveError && (
+        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-500">
+          {saveError}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        {saving && <Spinner size={15} className="animate-spin" />}
+        {saving ? 'Saving...' : modal?.mode === 'edit' ? 'Update Purchase Order' : 'Submit Purchase Order'}
+      </button>
+    </div>
+  );
+
+  // ─── View mode: show saved PO details ───────────────────────────────────────
+
+  const viewFormContent = previewOrder && modal?.mode === 'view' && (
+    <div className="space-y-5 pb-10">
+      <section className="space-y-3">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Order Details</p>
+        {[
+          ['PO Reference', previewOrder.poRef],
+          ['Supplier', previewOrder.supplierName],
+          ['Vendor Ref', previewOrder.vendorReference || '—'],
+          ['Contract', previewOrder.contractRef || '—'],
+          ['Currency', previewOrder.currency],
+          ['Deliver To', previewOrder.deliverToClientName || '—'],
+          ['Order Deadline', previewOrder.orderDeadline ? new Date(previewOrder.orderDeadline).toLocaleDateString() : '—'],
+          ['Expected Arrival', previewOrder.expectedDeliveryDate ? new Date(previewOrder.expectedDeliveryDate).toLocaleDateString() : '—'],
+          ['Status', STATUS_LABEL[previewOrder.status] || previewOrder.status],
+        ].map(([label, val]) => (
+          <div key={label} className="flex justify-between text-sm">
+            <span className="text-t3">{label}</span>
+            <span className="font-medium text-t1 text-right max-w-[55%] truncate">{val}</span>
+          </div>
+        ))}
+      </section>
+
+      <section className="space-y-2">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Line Items</p>
+        {previewOrder.lineItems.map((li, i) => (
+          <div key={i} className="p-3 bg-surface rounded-xl border border-border text-sm space-y-1">
+            <div className="font-medium text-t1">{li.description}</div>
+            <div className="flex justify-between text-xs text-t3">
+              <span>{li.orderedQty} {li.unit} × {li.unitPrice.toLocaleString()}</span>
+              {li.analyticProjectName && <span className="text-accent">{li.analyticProjectName}</span>}
+            </div>
+            {li.taxRatePercentage > 0 && (
+              <div className="text-xs text-amber-500">Tax: {li.taxRateName} (+{li.taxAmount.toLocaleString()})</div>
+            )}
+            <div className="text-xs font-bold text-t1 text-right">= {li.lineTotal.toLocaleString()} {previewOrder.currency}</div>
+          </div>
+        ))}
+      </section>
+
+      <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 space-y-1.5">
+        <div className="flex justify-between text-sm">
+          <span className="text-t2">Subtotal</span>
+          <span className="font-semibold text-t1">{previewOrder.totalValue.toLocaleString()} {previewOrder.currency}</span>
+        </div>
+        {previewOrder.totalTaxAmount > 0 && (
+          <div className="flex justify-between text-sm">
+            <span className="text-t2">Tax</span>
+            <span className="font-semibold text-amber-500">{previewOrder.totalTaxAmount.toLocaleString()} {previewOrder.currency}</span>
+          </div>
+        )}
+        <div className="flex justify-between text-base border-t border-accent/20 pt-1.5 mt-1.5">
+          <span className="font-bold text-t1">Grand Total</span>
+          <span className="font-black text-accent">{previewOrder.totalValueWithTax.toLocaleString()} {previewOrder.currency}</span>
+        </div>
+      </div>
+
+      {previewOrder.notes && (
+        <div className="p-3 bg-surface rounded-xl border border-border text-sm text-t2">
+          <p className="text-[10px] font-black text-t3 uppercase mb-1">Notes</p>
+          {previewOrder.notes}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => handleEdit(previewOrder)}
+        className="w-full py-2.5 border border-accent text-accent rounded-xl text-sm font-bold hover:bg-accent/5 transition-all"
+      >
+        Edit Purchase Order
+      </button>
+    </div>
+  );
+
+  // ─── Document Preview (right pane) ──────────────────────────────────────────
+
+  const orderForPreview = previewOrder || (draft ? {
+    poRef: '— DRAFT —',
+    supplierName: draft.supplierName || 'Not selected',
+    vendorReference: draft.vendorReference,
+    contractRef: draft.contractRef,
+    deliverToClientName: draft.deliverToClientName,
+    currency: draft.currency,
+    orderDeadline: draft.orderDeadline,
+    expectedDeliveryDate: draft.expectedDeliveryDate,
+    lineItems: draft.lineItems.map((item, idx) => {
+      const { lineSubtotal, taxAmount, lineTotal } = computeLineItem(item);
+      return {
+        lineNumber: idx + 1,
+        description: item.description || `Item ${idx + 1}`,
+        orderedQty: item.orderedQty,
+        unit: item.unit,
+        unitPrice: item.unitPrice,
+        lineSubtotal,
+        taxRatePercentage: item.taxRatePercentage,
+        taxRateName: item.taxRateName,
+        taxAmount,
+        lineTotal,
+        analyticProjectName: item.analyticProjectName,
+      };
+    }),
+    totalValue: draftTotals.subtotal,
+    totalTaxAmount: draftTotals.tax,
+    totalValueWithTax: draftTotals.total,
+    status: 'draft',
+    notes: draft.notes,
+  } : null);
+
+  const previewContent = orderForPreview && (
+    <div className="font-sans text-[#1a1a1a] w-full">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-3">
+        <div className="w-44">
+          <img src="/logo.jpg" alt="TEKACCESS" className="w-full h-auto mb-1" />
+        </div>
+        <div className="text-right text-[11px] leading-tight text-gray-600">
+          <p className="font-bold text-gray-800 uppercase tracking-wider">TEKACCESS</p>
+          <p>13 KG 599 St, Gishushu</p>
+          <p>Kigali, Rwanda</p>
+        </div>
+      </div>
+
+      <p className="text-[11px] font-bold text-[#4285f4] mb-8 italic">Built on trust. Delivered with Excellence</p>
+
+      <div className="flex justify-between items-start mb-8">
+        <div className="text-[12px]">
+          <p className="font-bold text-gray-800 uppercase tracking-tighter mb-1">Bill To / Deliver To</p>
+          <p className="text-gray-600">{(orderForPreview as any).deliverToClientName || 'N/A'}</p>
+        </div>
+        <div className="text-right text-[12px]">
+          <p className="text-[10px] text-gray-400 uppercase font-black mb-1">Supplier</p>
+          <p className="text-lg uppercase tracking-tight font-bold">{(orderForPreview as any).supplierName}</p>
+          {(orderForPreview as any).vendorReference && (
+            <p className="text-gray-400 text-[10px]">Ref: {(orderForPreview as any).vendorReference}</p>
+          )}
+          {(orderForPreview as any).contractRef && (
+            <p className="text-gray-400 text-[10px]">Contract: {(orderForPreview as any).contractRef}</p>
+          )}
+        </div>
+      </div>
+
+      <h1 className="text-[24px] font-medium text-[#4285f4] mb-6">
+        Purchase Order <span className="font-bold text-gray-800">#{(orderForPreview as any).poRef}</span>
+      </h1>
+
+      <div className="flex justify-between items-start mb-6 text-[12px] border-y border-gray-100 py-5">
+        <div>
+          <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Currency</p>
+          <p className="text-sm font-bold text-gray-800">{(orderForPreview as any).currency}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Order Deadline</p>
+          <p className="text-sm font-bold text-gray-800">
+            {(orderForPreview as any).orderDeadline
+              ? new Date((orderForPreview as any).orderDeadline).toLocaleDateString()
+              : '—'}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Expected Arrival</p>
+          <p className="text-sm font-bold text-gray-800">
+            {(orderForPreview as any).expectedDeliveryDate
+              ? new Date((orderForPreview as any).expectedDeliveryDate).toLocaleDateString()
+              : '—'}
+          </p>
+        </div>
+      </div>
+
+      {/* Line Items Table */}
+      <div className="mb-6 border border-gray-800 rounded-sm text-[11px]">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-gray-800 bg-gray-50">
+              <th className="py-2.5 px-3 text-left font-black uppercase tracking-wider border-r border-gray-800 w-[30%]">Product</th>
+              <th className="py-2.5 px-3 text-left font-black uppercase tracking-wider border-r border-gray-800 w-[20%]">Project</th>
+              <th className="py-2.5 px-3 text-center font-black uppercase tracking-wider border-r border-gray-800">Qty / Unit</th>
+              <th className="py-2.5 px-3 text-right font-black uppercase tracking-wider border-r border-gray-800">Unit Price</th>
+              <th className="py-2.5 px-3 text-right font-black uppercase tracking-wider border-r border-gray-800">Tax</th>
+              <th className="py-2.5 px-3 text-right font-black uppercase tracking-wider">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(orderForPreview as any).lineItems.map((item: any, i: number) => (
+              <tr key={i} className="border-b border-gray-200">
+                <td className="py-3 px-3 border-r border-gray-200 font-semibold">{item.description}</td>
+                <td className="py-3 px-3 border-r border-gray-200 text-gray-500 text-[10px]">{item.analyticProjectName || '—'}</td>
+                <td className="py-3 px-3 text-center border-r border-gray-200">{item.orderedQty} {item.unit}</td>
+                <td className="py-3 px-3 text-right border-r border-gray-200">{item.unitPrice.toLocaleString()}</td>
+                <td className="py-3 px-3 text-right border-r border-gray-200 text-amber-600">
+                  {item.taxRatePercentage > 0 ? `${item.taxRatePercentage}%` : '—'}
+                </td>
+                <td className="py-3 px-3 text-right font-bold">{item.lineTotal.toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="border-t border-gray-300 text-[11px]">
+          <div className="flex justify-end px-3 py-1.5 gap-8">
+            <span className="text-gray-500 uppercase font-black tracking-wider">Subtotal</span>
+            <span className="font-bold min-w-[100px] text-right">{(orderForPreview as any).totalValue.toLocaleString()} {(orderForPreview as any).currency}</span>
+          </div>
+          {(orderForPreview as any).totalTaxAmount > 0 && (
+            <div className="flex justify-end px-3 py-1 gap-8 border-t border-gray-100">
+              <span className="text-amber-600 uppercase font-black tracking-wider">Tax</span>
+              <span className="font-bold min-w-[100px] text-right text-amber-600">+{(orderForPreview as any).totalTaxAmount.toLocaleString()}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end items-stretch border-t border-gray-800 bg-[#851C1C] text-white text-[11px]">
+          <div className="py-3 px-6 font-black uppercase border-r border-white/20 tracking-widest">Grand Total</div>
+          <div className="py-3 px-8 font-black text-right min-w-[160px] text-base">{(orderForPreview as any).totalValueWithTax.toLocaleString()} {(orderForPreview as any).currency}</div>
+        </div>
+      </div>
+
+      {(orderForPreview as any).notes && (
+        <div className="mb-6">
+          <p className="text-[10px] font-black text-gray-400 uppercase mb-1.5">Notes</p>
+          <p className="text-[11px] text-gray-600">{(orderForPreview as any).notes}</p>
+        </div>
+      )}
+
+      <div className="text-[10px] text-gray-400 space-y-1 mb-8">
+        <p className="font-black uppercase mb-1">Conditions of Purchase</p>
+        <p>• This order is subject to standard procurement terms of Tekaccess Ltd.</p>
+        <p>• Delivery must be confirmed to the address / client specified above.</p>
+        <p>• Invoice must reference this PO number for successful processing.</p>
+      </div>
+
+      <div className="flex justify-between items-end border-t border-gray-100 pt-6">
+        <div className="text-center w-36 border-t border-gray-300 pt-2">
+          <p className="text-[9px] font-black uppercase text-gray-400">Authorized Signature</p>
+        </div>
+        <div className="bg-gray-50 p-3 rounded-full border-4 border-double border-gray-100">
+          <CheckCircle size={36} weight="duotone" className="text-green-200" />
+        </div>
+      </div>
+    </div>
+  );
+
+  // ─── Chart data from orders ──────────────────────────────────────────────────
+
+  const monthlyData = useMemo(() => {
+    const map: Record<string, { month: string; orders: number; amount: number }> = {};
+    orders.forEach(o => {
+      const d = new Date(o.issuedAt);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleString('default', { month: 'short', year: '2-digit' });
+      if (!map[key]) map[key] = { month: label, orders: 0, amount: 0 };
+      map[key].orders++;
+      map[key].amount += o.totalValueWithTax;
+    });
+    return Object.values(map).slice(-12);
+  }, [orders]);
+
+  const categoryData = useMemo(() => {
+    const map: Record<string, number> = {};
+    orders.forEach(o => { map[o.procurementType] = (map[o.procurementType] || 0) + 1; });
+    const total = orders.length || 1;
+    return Object.entries(map).map(([category, count]) => ({
+      category,
+      value: Math.round(count / total * 100),
+    }));
+  }, [orders]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -139,7 +977,7 @@ export default function PurchaseOrdersPage() {
           onClick={handleNewOrder}
           className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-h transition-colors"
         >
-          <Plus size={15} weight="bold" /> Initialize PO
+          <Plus size={15} weight="bold" /> New Purchase Order
         </button>
       </div>
 
@@ -148,8 +986,8 @@ export default function PurchaseOrdersPage() {
         {[
           { label: 'Total Orders', value: summaryStats.total, Icon: FileText, color: 'text-accent', bg: 'bg-accent-glow' },
           { label: 'Active Orders', value: summaryStats.active, Icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-          { label: 'Overdue', value: summaryStats.overdue, Icon: Warning, color: 'text-red-500', bg: 'bg-red-500/10' },
-          { label: 'Total Spend', value: formatRWF(summaryStats.totalSpend), Icon: TrendUp, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+          { label: 'In Transit', value: summaryStats.overdue, Icon: Warning, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+          { label: 'Total Spend', value: formatCurrency(summaryStats.totalSpend, summaryStats.currency), Icon: TrendUp, color: 'text-blue-400', bg: 'bg-blue-500/10' },
         ].map(card => (
           <div key={card.label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
             <div className={`p-2.5 rounded-xl ${card.bg}`}>
@@ -163,7 +1001,7 @@ export default function PurchaseOrdersPage() {
         ))}
       </div>
 
-      {/* Toolbar */}
+      {/* Main Table/Charts Card */}
       <div className="bg-card rounded-xl border border-border">
         {/* Tabs */}
         <div className="flex items-center justify-between border-b border-border px-4">
@@ -173,9 +1011,7 @@ export default function PurchaseOrdersPage() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`whitespace-nowrap py-3.5 px-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab
-                    ? 'border-accent text-accent'
-                    : 'border-transparent text-t3 hover:text-t2 hover:border-border'
+                  activeTab === tab ? 'border-accent text-accent' : 'border-transparent text-t3 hover:text-t2 hover:border-border'
                 }`}
               >
                 {tab}
@@ -187,7 +1023,7 @@ export default function PurchaseOrdersPage() {
         {/* Filter row */}
         <div className="flex flex-wrap items-center gap-3 p-4">
           <div className="relative flex-1 min-w-[200px]">
-            <MagnifyingGlass size={15} weight="regular" className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+            <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
             <input
               type="text"
               placeholder="Search orders..."
@@ -202,8 +1038,6 @@ export default function PurchaseOrdersPage() {
           <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
             <DownloadSimple size={14} weight="duotone" /> Export
           </button>
-
-          {/* View mode toggle */}
           <div className="flex border border-border rounded-lg overflow-hidden ml-auto">
             {([
               { mode: 'table', Icon: ListDashes, label: 'Table' },
@@ -216,12 +1050,10 @@ export default function PurchaseOrdersPage() {
                 onClick={() => setViewMode(v.mode)}
                 title={v.label}
                 className={`px-3 py-2 flex items-center gap-1.5 text-xs font-medium transition-colors ${
-                  viewMode === v.mode
-                    ? 'bg-accent text-white'
-                    : 'bg-card text-t3 hover:bg-surface hover:text-t2'
+                  viewMode === v.mode ? 'bg-accent text-white' : 'bg-card text-t3 hover:bg-surface hover:text-t2'
                 }`}
               >
-                <v.Icon size={15} weight={viewMode === v.mode ? "fill" : "regular"} />
+                <v.Icon size={15} weight={viewMode === v.mode ? 'fill' : 'regular'} />
                 <span className="hidden sm:inline">{v.label}</span>
               </button>
             ))}
@@ -230,67 +1062,71 @@ export default function PurchaseOrdersPage() {
 
         {/* TABLE VIEW */}
         {viewMode === 'table' && (
-          <OverlayScrollbarsComponent
-            options={{ scrollbars: { autoHide: 'scroll' } }}
-            defer
-          >
+          <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'scroll' } }} defer>
             <table className="min-w-full divide-y divide-border">
               <thead className="bg-surface">
                 <tr>
-                  {['Order #', 'Supplier', 'Category', 'Items', 'Total Amount', 'Status', 'Expected Date', 'Approved By', ''].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">{h}</th>
+                  {['PO Ref', 'Supplier', 'Deliver To', 'Contract', 'Currency', 'Total', 'Status', 'Expected', 'Actions'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="bg-card divide-y divide-border-s">
-                {filteredOrders.length === 0 ? (
+                {loadingOrders ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-16 text-center">
+                      <Spinner size={24} className="animate-spin text-t3 mx-auto" />
+                    </td>
+                  </tr>
+                ) : filteredOrders.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="px-4 py-16 text-center text-t3 text-sm">
-                      No orders match your criteria
+                      {orders.length === 0 ? (
+                        <div className="flex flex-col items-center gap-3">
+                          <Package size={40} weight="duotone" className="text-t3/40" />
+                          <p>No purchase orders yet.</p>
+                          <button onClick={handleNewOrder} className="text-accent font-semibold hover:underline text-sm">Create your first PO</button>
+                        </div>
+                      ) : 'No orders match your criteria'}
                     </td>
                   </tr>
                 ) : (
                   filteredOrders.map(order => (
                     <tr
-                      key={order.id}
+                      key={order._id}
                       className="hover:bg-surface transition-colors cursor-pointer"
-                      onClick={() => setModal({ order, mode: 'view' })}
+                      onClick={() => setModal({ mode: 'view', order })}
                     >
-                      <td className="px-4 py-3.5 text-sm font-semibold text-accent">{order.orderNumber}</td>
-                      <td className="px-4 py-3.5 text-sm font-medium text-t1">{order.supplier}</td>
-                      <td className="px-4 py-3.5 text-sm text-t2">{order.category}</td>
-                      <td className="px-4 py-3.5 text-sm text-t1 font-medium">{order.items}</td>
-                      <td className="px-4 py-3.5 text-sm font-bold text-t1">{formatRWF(order.totalAmount)}</td>
+                      <td className="px-4 py-3.5 text-sm font-semibold text-accent whitespace-nowrap">{order.poRef}</td>
+                      <td className="px-4 py-3.5 text-sm font-medium text-t1 max-w-[150px] truncate">{order.supplierName}</td>
+                      <td className="px-4 py-3.5 text-sm text-t2 max-w-[130px] truncate">{order.deliverToClientName || '—'}</td>
+                      <td className="px-4 py-3.5 text-sm text-t2">{order.contractRef || '—'}</td>
+                      <td className="px-4 py-3.5 text-sm text-t2">{order.currency}</td>
+                      <td className="px-4 py-3.5 text-sm font-bold text-t1 whitespace-nowrap">{formatCurrency(order.totalValueWithTax, order.currency)}</td>
                       <td className="px-4 py-3.5">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[order.status]}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[order.status]}`} />
-                          {order.status}
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[order.status] || STATUS_STYLES.draft}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[order.status] || STATUS_DOT.draft}`} />
+                          {STATUS_LABEL[order.status] || order.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-sm text-t2">{order.expectedDate}</td>
-                      <td className="px-4 py-3.5 text-sm text-t2">{order.approvedBy}</td>
+                      <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">
+                        {order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toLocaleDateString() : '—'}
+                      </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center justify-end gap-1">
                           <button
-                            onClick={e => { e.stopPropagation(); setModal({ order, mode: 'view' }); }}
+                            onClick={e => { e.stopPropagation(); setModal({ mode: 'view', order }); }}
                             className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"
                             title="View"
                           >
                             <Eye size={14} weight="duotone" />
                           </button>
                           <button
-                            onClick={e => { e.stopPropagation(); setModal({ order, mode: 'edit' }); }}
+                            onClick={e => { e.stopPropagation(); handleEdit(order); }}
                             className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"
                             title="Edit"
                           >
                             <PencilSimple size={14} weight="duotone" />
-                          </button>
-                          <button
-                            onClick={e => e.stopPropagation()}
-                            className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"
-                            title="More"
-                          >
-                            <DotsThree size={14} weight="bold" />
                           </button>
                         </div>
                       </td>
@@ -301,12 +1137,7 @@ export default function PurchaseOrdersPage() {
             </table>
             {filteredOrders.length > 0 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-border text-xs text-t3">
-                <span>Showing {filteredOrders.length} of {purchaseOrders.length} orders</span>
-                <div className="flex gap-1">
-                  <button className="px-2.5 py-1 border border-border rounded-lg hover:bg-surface transition-colors">Previous</button>
-                  <button className="px-2.5 py-1 bg-accent text-white rounded-lg">1</button>
-                  <button className="px-2.5 py-1 border border-border rounded-lg hover:bg-surface transition-colors">Next</button>
-                </div>
+                <span>Showing {filteredOrders.length} of {orders.length} orders</span>
               </div>
             )}
           </OverlayScrollbarsComponent>
@@ -317,15 +1148,15 @@ export default function PurchaseOrdersPage() {
           <div className="p-6">
             <h3 className="text-sm font-semibold text-t2 mb-4">Monthly Order Volume & Spend</h3>
             <ResponsiveContainer width="100%" height={360}>
-              <BarChart data={poMonthlyVolume} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <BarChart data={monthlyData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'var(--text-3)' }} />
                 <YAxis yAxisId="left" tick={{ fontSize: 12, fill: 'var(--text-3)' }} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12, fill: 'var(--text-3)' }} tickFormatter={v => `${(v / 1_000_000).toFixed(0)}M`} />
-                <Tooltip contentStyle={chartTooltipStyle} formatter={(value: number, name: string) => name === 'amount' ? [`${(value / 1_000_000).toFixed(1)}M RWF`, 'Spend'] : [value, 'Orders']} />
-                <Legend wrapperStyle={{ color: 'var(--text-2)' }} />
+                <Tooltip contentStyle={chartTooltipStyle} />
+                <Legend />
                 <Bar yAxisId="left" dataKey="orders" name="Orders" fill="#4285f4" radius={[4, 4, 0, 0]} />
-                <Bar yAxisId="right" dataKey="amount" name="amount" fill="#93bbfa" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="right" dataKey="amount" name="Spend" fill="#93bbfa" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -334,14 +1165,14 @@ export default function PurchaseOrdersPage() {
         {/* TREND VIEW */}
         {viewMode === 'trend' && (
           <div className="p-6">
-            <h3 className="text-sm font-semibold text-t2 mb-4">Procurement Spend Trend (RWF)</h3>
+            <h3 className="text-sm font-semibold text-t2 mb-4">Procurement Spend Trend</h3>
             <ResponsiveContainer width="100%" height={360}>
-              <LineChart data={poMonthlyVolume} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <LineChart data={monthlyData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'var(--text-3)' }} />
                 <YAxis tick={{ fontSize: 12, fill: 'var(--text-3)' }} tickFormatter={v => `${(v / 1_000_000).toFixed(0)}M`} />
-                <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number) => [`${(v / 1_000_000).toFixed(1)}M RWF`, 'Spend']} />
-                <Line type="monotone" dataKey="amount" stroke="#4285f4" strokeWidth={2.5} dot={{ fill: '#4285f4', r: 5 }} activeDot={{ r: 7 }} />
+                <Tooltip contentStyle={chartTooltipStyle} />
+                <Line type="monotone" dataKey="amount" name="Spend" stroke="#4285f4" strokeWidth={2.5} dot={{ fill: '#4285f4', r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -351,23 +1182,21 @@ export default function PurchaseOrdersPage() {
         {viewMode === 'pie' && (
           <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
             <div>
-              <h3 className="text-sm font-semibold text-t2 mb-4">Order Breakdown by Category</h3>
+              <h3 className="text-sm font-semibold text-t2 mb-4">Orders by Type</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie data={poCategoryBreakdown} cx="50%" cy="50%" outerRadius={110} dataKey="value" label={false} labelLine={false}>
-                    {poCategoryBreakdown.map((_, idx) => (
-                      <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
-                    ))}
+                  <Pie data={categoryData} cx="50%" cy="50%" outerRadius={110} dataKey="value" label={false} labelLine={false}>
+                    {categoryData.map((_, idx) => <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />)}
                   </Pie>
                   <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number) => [`${v}%`, 'Share']} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
             <div className="space-y-3">
-              {poCategoryBreakdown.map((item, idx) => (
+              {categoryData.map((item, idx) => (
                 <div key={item.category} className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: CHART_COLORS[idx] }} />
-                  <span className="text-sm text-t2 flex-1">{item.category}</span>
+                  <span className="text-sm text-t2 flex-1 capitalize">{item.category.replace('_', ' ')}</span>
                   <div className="flex-1 bg-surface rounded-full h-2 mx-2">
                     <div className="h-2 rounded-full" style={{ width: `${item.value}%`, backgroundColor: CHART_COLORS[idx] }} />
                   </div>
@@ -379,228 +1208,38 @@ export default function PurchaseOrdersPage() {
         )}
       </div>
 
-      {/* Side Panel */}
+      {/* Document Side Panel */}
       <DocumentSidePanel
         isOpen={!!modal}
-        onClose={() => setModal(null)}
-        title={modal?.mode === 'new' ? 'Initialize New Purchase Order' : 'Purchase Order Management'}
-        currentIndex={modal && modal.mode !== 'new' ? filteredOrders.findIndex(o => o.id === modal.order.id) + 1 : undefined}
+        onClose={() => { setModal(null); setSaveError(null); }}
+        title={
+          modal?.mode === 'new' ? 'New Purchase Order' :
+          modal?.mode === 'edit' ? `Edit — ${(modal as any).order?.poRef}` :
+          `PO — ${(modal as any)?.order?.poRef}`
+        }
+        currentIndex={
+          modal && modal.mode !== 'new'
+            ? filteredOrders.findIndex(o => o._id === (modal as any).order?._id) + 1
+            : undefined
+        }
         totalItems={filteredOrders.length}
-        footerInfo={`System Draft Mode • ${new Date().toLocaleDateString()}`}
-        formContent={
-          modal && (
-            <div className="space-y-8 pb-10">
-              <div className="space-y-4">
-                <label className="block text-[11px] font-black text-t3 uppercase tracking-widest">General Information</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] text-t3 mb-1">PO Reference</label>
-                    <input type="text" value={modal.order.orderNumber} disabled className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t3" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-t3 mb-1">Target Supplier</label>
-                    <input
-                      type="text"
-                      value={modal.order.supplier}
-                      onChange={(e) => updateDraft({ supplier: e.target.value })}
-                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors"
-                      placeholder="Company Name"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] text-t3 mb-1">Shipping Destination</label>
-                  <textarea
-                    value={(modal.order as any).shippingAddress}
-                    onChange={(e) => updateDraft({ shippingAddress: e.target.value } as any)}
-                    className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 outline-none resize-none transition-colors"
-                    rows={2}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <label className="block text-[11px] font-black text-t3 uppercase tracking-widest">Line Items</label>
-                  <button
-                    onClick={() => {
-                      const items = (modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }];
-                      updateDraft({ lineItems: [...items, { description: '', quantity: 1, unitPrice: 0 }] } as any);
-                    }}
-                    className="text-[10px] font-bold text-accent hover:underline"
-                  >
-                    + Add Product
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  {((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).map((item: any, idx: number) => (
-                    <div key={idx} className="p-3 bg-surface rounded-xl border border-border space-y-3">
-                      <div className="flex justify-between">
-                        <span className="text-[10px] font-bold text-t3 uppercase">Item #{idx + 1}</span>
-                        <button
-                          onClick={() => {
-                            const items = ((modal.order as any).lineItems || []).filter((_: any, i: number) => i !== idx);
-                            updateDraft({ lineItems: items } as any);
-                          }}
-                          className="text-red-500 hover:text-red-400 transition-colors"
-                        >
-                          <X size={12} weight="bold" />
-                        </button>
-                      </div>
-                      <input
-                        type="text"
-                        placeholder="Description"
-                        value={item.description}
-                        onChange={(e) => {
-                          const items = [...((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }])];
-                          items[idx].description = e.target.value;
-                          updateDraft({ lineItems: items } as any);
-                        }}
-                        className="w-full bg-card border border-border px-3 py-1.5 rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors"
-                      />
-                      <div className="grid grid-cols-2 gap-3">
-                        <input
-                          type="number"
-                          placeholder="Qty"
-                          value={item.quantity}
-                          onChange={(e) => {
-                            const items = [...((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }])];
-                            items[idx].quantity = Number(e.target.value);
-                            updateDraft({ lineItems: items } as any);
-                          }}
-                          className="w-full bg-card border border-border px-3 py-1.5 rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
-                        />
-                        <input
-                          type="number"
-                          placeholder="Unit Price"
-                          value={item.unitPrice}
-                          onChange={(e) => {
-                            const items = [...((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }])];
-                            items[idx].unitPrice = Number(e.target.value);
-                            updateDraft({ lineItems: items } as any);
-                          }}
-                          className="w-full bg-card border border-border px-3 py-1.5 rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-6 border-t border-border">
-                <button
-                  onClick={handleSaveOrder}
-                  className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all"
-                >
-                  {modal.mode === 'new' ? 'Submit Final Purchase Order' : 'Update Record'}
-                </button>
-              </div>
-            </div>
-          )
+        onPrev={() => {
+          if (!modal || modal.mode === 'new') return;
+          const idx = filteredOrders.findIndex(o => o._id === (modal as any).order._id);
+          if (idx > 0) setModal({ mode: 'view', order: filteredOrders[idx - 1] });
+        }}
+        onNext={() => {
+          if (!modal || modal.mode === 'new') return;
+          const idx = filteredOrders.findIndex(o => o._id === (modal as any).order._id);
+          if (idx < filteredOrders.length - 1) setModal({ mode: 'view', order: filteredOrders[idx + 1] });
+        }}
+        footerInfo={
+          modal?.mode === 'new'
+            ? `Draft • ${new Date().toLocaleDateString()}`
+            : `Status: ${STATUS_LABEL[(modal as any)?.order?.status] || '—'} • ${new Date().toLocaleDateString()}`
         }
-        previewContent={
-          modal && (
-            <div className="w-full h-full bg-white flex flex-col font-sans p-12 text-[#1a1a1a] shadow-sm relative group">
-              <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 no-print">
-                <button onClick={() => window.print()} className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl">
-                  <DownloadSimple size={13} weight="bold" /> Download PDF
-                </button>
-                <button onClick={() => window.print()} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-900 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl">
-                  Print Order
-                </button>
-              </div>
-
-              <div className="flex justify-between items-start mb-2">
-                <div className="w-48">
-                  <img src="/logo.jpg" alt="TEKACCESS" className="w-full h-auto mb-2" />
-                </div>
-                <div className="text-right text-[11px] leading-tight text-gray-600 font-medium">
-                  <p className="font-bold text-gray-800 uppercase tracking-wider">TEKACCESS</p>
-                  <p>13 KG 599 St, Gishushu</p>
-                  <p>Kigali Rwanda</p>
-                </div>
-              </div>
-
-              <p className="text-[12px] font-bold text-[#4285f4] mb-12 italic">Built on trust. Delivered with Excellence</p>
-
-              <div className="flex justify-between items-start mb-10">
-                <div className="text-[12px] max-w-[40%]">
-                  <p className="font-bold text-gray-800 uppercase tracking-tighter mb-1">Shipping address</p>
-                  <p className="text-gray-600 leading-relaxed">{(modal.order as any).shippingAddress || "N/A"}</p>
-                </div>
-                <div className="text-right text-[12px] font-bold text-gray-800">
-                  <p className="text-[10px] text-gray-400 uppercase font-black mb-1">Supplier Entity</p>
-                  <p className="text-lg uppercase tracking-tight">{modal.order.supplier || "DRAFT MODE..."}</p>
-                </div>
-              </div>
-
-              <h1 className="text-[26px] font-medium text-[#4285f4] mb-8">
-                Purchase Order <span className="font-semibold text-gray-800">#{modal.order.orderNumber}</span>
-              </h1>
-
-              <div className="flex justify-between items-start mb-8 text-[12px] border-y border-gray-100 py-6">
-                <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Authorized Buyer</p>
-                  <p className="text-sm font-bold text-gray-800">{modal.order.approvedBy || "Procurement Admin"}</p>
-                </div>
-                <div className="w-40">
-                  <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Issue Date</p>
-                  <p className="text-sm font-bold text-gray-800">{modal.order.createdDate}</p>
-                </div>
-                <div className="w-40 text-right">
-                  <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Exp. Delivery</p>
-                  <p className="text-sm font-bold text-gray-800">{modal.order.expectedDate}</p>
-                </div>
-              </div>
-
-              <div className="mb-8 border border-gray-800 rounded-sm">
-                <table className="w-full border-collapse text-[11px]">
-                  <thead>
-                    <tr className="border-b border-gray-800 bg-gray-50/30">
-                      <th className="py-2.5 px-4 text-left font-black uppercase tracking-wider border-r border-gray-800 w-1/2">Description</th>
-                      <th className="py-2.5 px-4 text-center font-black uppercase tracking-wider border-r border-gray-800">Qty</th>
-                      <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider border-r border-gray-800">Unit Price</th>
-                      <th className="py-2.5 px-4 text-right font-black uppercase tracking-wider">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).map((item: any, i: number) => (
-                      <tr key={i} className="border-b border-gray-200">
-                        <td className="py-4 px-4 border-r border-gray-800 font-bold">{item.description || "N/A"}</td>
-                        <td className="py-4 px-4 text-center font-medium border-r border-gray-800">{item.quantity}</td>
-                        <td className="py-4 px-4 text-right font-medium border-r border-gray-800">{item.unitPrice.toLocaleString()}</td>
-                        <td className="py-4 px-4 text-right font-bold">{(item.quantity * item.unitPrice).toLocaleString()} RWF</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="flex justify-end items-stretch border-t border-gray-800 bg-[#851C1C] text-white">
-                  <div className="py-3 px-8 font-black uppercase border-r border-white/20 tracking-widest">Grand Total Amount</div>
-                  <div className="py-3 px-12 font-black text-right min-w-[200px] text-lg tracking-tighter">{modal.order.totalAmount.toLocaleString()} RWF</div>
-                </div>
-              </div>
-
-              <div className="mb-auto">
-                <p className="text-[11px] font-black text-gray-400 uppercase mb-2">Conditions of Purchase:</p>
-                <ul className="text-[10px] text-gray-500 space-y-1 list-disc pl-4">
-                  <li>This order is subject to standard procurement terms of Tekaccess Ltd.</li>
-                  <li>Delivery must be made to the shipping address specified above.</li>
-                  <li>Invoice must include this PO number for successful processing.</li>
-                </ul>
-              </div>
-
-              <div className="mt-12 flex justify-between items-end border-t border-gray-100 pt-8">
-                <div className="text-center w-40 border-t border-gray-200 pt-2">
-                  <p className="text-[9px] font-black uppercase text-gray-400">Authorized Signature</p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-full border-4 border-double border-gray-100">
-                  <CheckCircle size={40} weight="duotone" className="text-green-200" />
-                </div>
-              </div>
-            </div>
-          )
-        }
+        formContent={modal?.mode === 'view' ? viewFormContent : formContent}
+        previewContent={previewContent}
       />
     </div>
   );
