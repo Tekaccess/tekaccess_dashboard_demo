@@ -18,7 +18,7 @@ const STOCK_LEVEL_CONFIG: Record<StockLevel, { style: string; bg: string }> = {
   Critical: { style: 'bg-red-50 text-red-700 border-red-200', bg: 'bg-red-500' },
   Low: { style: 'bg-amber-50 text-amber-700 border-amber-200', bg: 'bg-amber-500' },
   Normal: { style: 'bg-green-50 text-green-700 border-green-200', bg: 'bg-green-500' },
-  Overstocked: { style: 'bg-[var(--accent-glow)] text-accent border-blue-200', bg: 'bg-[var(--accent-glow)]0' },
+  Overstocked: { style: 'bg-accent-glow text-accent border-blue-200', bg: 'bg-accent-glow0' },
 };
 
 function formatRWF(v: number): string {
@@ -85,12 +85,12 @@ export default function SparePartsPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Parts', value: summary.total, icon: Package, color: 'text-accent', bg: 'bg-[var(--accent-glow)]' },
+          { label: 'Total Parts', value: summary.total, icon: Package, color: 'text-accent', bg: 'bg-accent-glow' },
           { label: 'Critical Stock', value: summary.critical, icon: Warning, color: 'text-red-600', bg: 'bg-red-50' },
           { label: 'Low Stock', value: summary.low, icon: Warning, color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'Stock Value', value: formatRWF(summary.totalValue), icon: TrendUp, color: 'text-indigo-600', bg: 'bg-indigo-50' },
         ].map(card => (
-          <div key={card.label} className="bg-card rounded-xl border border-[var(--border)] p-4 flex items-center gap-4">
+          <div key={card.label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
             <div className={`p-2.5 rounded-xl ${card.bg}`}>
               <card.icon className={`w-5 h-5 ${card.color}`} />
             </div>
@@ -116,9 +116,9 @@ export default function SparePartsPage() {
       )}
 
       {/* Main Panel */}
-      <div className="bg-card rounded-xl border border-[var(--border)]">
+      <div className="bg-card rounded-xl border border-border">
         {/* Tabs */}
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-4">
+        <div className="flex items-center justify-between border-b border-border px-4">
           <nav className="-mb-px flex gap-0 overflow-x-auto scrollbar-hide">
             {tabs.map(tab => (
               <button
@@ -150,18 +150,18 @@ export default function SparePartsPage() {
               placeholder="MagnifyingGlass parts..."
               value={search}
               onChange={e => setMagnifyingGlass(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-[var(--border)] rounded-xl text-sm outline-none focus:border-accent focus:ring-1 focus:ring-[#1e3a8a]"
+              className="w-full pl-9 pr-4 py-2 border border-border rounded-xl text-sm outline-none focus:border-accent focus:ring-1 focus:ring-[#1e3a8a]"
             />
           </div>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] rounded-xl text-sm text-t2 hover:bg-surface">
+          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-sm text-t2 hover:bg-surface">
             <Funnel className="w-4 h-4" /> Funnel <CaretDown className="w-3.5 h-3.5" />
           </button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] rounded-xl text-sm text-t2 hover:bg-surface">
+          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-sm text-t2 hover:bg-surface">
             <DownloadSimple className="w-4 h-4" /> Export
           </button>
 
           {/* View toggle */}
-          <div className="flex border border-[var(--border)] rounded-xl overflow-hidden ml-auto">
+          <div className="flex border border-border rounded-xl overflow-hidden ml-auto">
             {([
               { mode: 'table', icon: ListDashes, label: 'Table' },
               { mode: 'cards', icon: Package, label: 'Cards' },
@@ -190,7 +190,7 @@ export default function SparePartsPage() {
             options={{ scrollbars: { autoHide: 'scroll' } }}
             defer
           >
-            <table className="min-w-full divide-y divide-[var(--border-s)]">
+            <table className="min-w-full divide-y divide-border-s">
               <thead className="bg-surface">
                 <tr>
                   {['Part #', 'Name', 'Category', 'Supplier', 'Unit Price', 'Stock Level', 'In Stock', 'Min', 'Location', 'Condition', ''].map(h => (
@@ -200,7 +200,7 @@ export default function SparePartsPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-card divide-y divide-[var(--border-s)]">
+              <tbody className="bg-card divide-y divide-border-s">
                 {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={11} className="px-4 py-16 text-center text-t3 text-sm">
@@ -231,7 +231,7 @@ export default function SparePartsPage() {
                       <td className="px-4 py-3.5 text-sm text-t2">{p.condition}</td>
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1">
-                          <button onClick={e => { e.stopPropagation(); setSelected(p); }} className="p-1.5 text-t3 hover:text-accent hover:bg-[var(--accent-glow)] rounded transition-colors">
+                          <button onClick={e => { e.stopPropagation(); setSelected(p); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded transition-colors">
                             <Eye className="w-4 h-4" />
                           </button>
                           <button onClick={e => e.stopPropagation()} className="p-1.5 text-t3 hover:text-t2 hover:bg-surface rounded transition-colors">
@@ -252,7 +252,7 @@ export default function SparePartsPage() {
           <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(p => (
               <div key={p.id} onClick={() => setSelected(p)}
-                className="border border-[var(--border)] rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer">
+                className="border border-border rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer">
                 <div className="flex items-start justify-between mb-2">
                   <p className="text-xs font-mono text-accent font-semibold">{p.partNumber}</p>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${STOCK_LEVEL_CONFIG[p.stockLevel].style}`}>
@@ -273,7 +273,7 @@ export default function SparePartsPage() {
                   <StockBar part={p} />
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-[var(--border-s)] flex justify-between text-xs">
+                <div className="mt-4 pt-4 border-t border-border-s flex justify-between text-xs">
                   <div>
                     <p className="text-t3">Unit Price</p>
                     <p className="font-bold text-t1">{formatRWF(p.unitPrice)}</p>
@@ -349,18 +349,18 @@ export default function SparePartsPage() {
                   <div>
                     <label className="block text-[10px] text-t2 mb-1">Current Stock Quantity</label>
                     <div className="flex items-center gap-3">
-                      <input type="number" defaultValue={selected.stockQuantity} className="flex-1 px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none focus:border-accent" />
+                      <input type="number" defaultValue={selected.stockQuantity} className="flex-1 px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none focus:border-accent" />
                       <span className="text-xs text-t3 font-medium">Units</span>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] text-t2 mb-1">Minimum Level</label>
-                      <input type="number" defaultValue={selected.minStock} className="w-full px-3 py-1.5 border border-[var(--border)] rounded-xl text-xs outline-none focus:border-accent" />
+                      <input type="number" defaultValue={selected.minStock} className="w-full px-3 py-1.5 border border-border rounded-xl text-xs outline-none focus:border-accent" />
                     </div>
                     <div>
                       <label className="block text-[10px] text-t2 mb-1">Maximum Level</label>
-                      <input type="number" defaultValue={selected.maxStock} className="w-full px-3 py-1.5 border border-[var(--border)] rounded-xl text-xs outline-none focus:border-accent" />
+                      <input type="number" defaultValue={selected.maxStock} className="w-full px-3 py-1.5 border border-border rounded-xl text-xs outline-none focus:border-accent" />
                     </div>
                   </div>
                 </div>
@@ -371,7 +371,7 @@ export default function SparePartsPage() {
                 <div className="space-y-3">
                    <div className="relative">
                     <label className="block text-[10px] text-t2 mb-1">Preferred Supplier</label>
-                    <select defaultValue={selected.supplier} className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
+                    <select defaultValue={selected.supplier} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
                       <option>{selected.supplier}</option>
                       <option>Alternative Supplier A</option>
                       <option>Alternative Supplier B</option>
@@ -380,14 +380,14 @@ export default function SparePartsPage() {
                   </div>
                   <div>
                     <label className="block text-[10px] text-t2 mb-1">Unit Price (RWF)</label>
-                    <input type="number" defaultValue={selected.unitPrice} className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-xs outline-none focus:border-accent" />
+                    <input type="number" defaultValue={selected.unitPrice} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs outline-none focus:border-accent" />
                   </div>
                 </div>
               </div>
 
               <div>
                 <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Warehouse Placement</label>
-                <div className="flex items-center gap-3 p-3 bg-[var(--accent-glow)]/50 rounded-xl border border-blue-100/50">
+                <div className="flex items-center gap-3 p-3 bg-accent-glow/50 rounded-xl border border-blue-100/50">
                   <div className="p-2 bg-card rounded-xl shadow-sm"><Package className="w-4 h-4 text-accent" /></div>
                   <div className="flex-1">
                     <p className="text-[10px] text-t3 uppercase font-black">Storage Location</p>
@@ -432,14 +432,14 @@ export default function SparePartsPage() {
                       <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 ${STOCK_LEVEL_CONFIG[selected.stockLevel].style}`}>
                          Stock level: {selected.stockLevel}
                       </span>
-                      <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 border-[var(--border-s)] text-t2 bg-surface">
+                      <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 border-border-s text-t2 bg-surface">
                          Condition: {selected.condition}
                       </span>
                    </div>
                </div>
 
                {/* Description Box */}
-               <div className="mb-12 p-8 bg-surface rounded-2xl border border-[var(--border-s)]">
+               <div className="mb-12 p-8 bg-surface rounded-2xl border border-border-s">
                   <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-4">Technical Description:</label>
                   <p className="text-lg font-medium leading-relaxed text-t1">
                     {selected.description}. Optimized for high-durability environments and industrial usage.
@@ -451,15 +451,15 @@ export default function SparePartsPage() {
                   <div>
                     <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-6 border-l-4 border-accent pl-3">Inventory Dynamics</label>
                     <div className="space-y-6">
-                       <div className="flex justify-between items-end border-b border-[var(--border-s)] pb-2">
+                       <div className="flex justify-between items-end border-b border-border-s pb-2">
                           <span className="text-xs font-bold text-t2">Current Balance</span>
                           <span className="text-xl font-black text-t1">{selected.stockQuantity} Units</span>
                        </div>
-                       <div className="flex justify-between items-end border-b border-[var(--border-s)] pb-2">
+                       <div className="flex justify-between items-end border-b border-border-s pb-2">
                           <span className="text-xs font-bold text-t2">Unit Acquisition Cost</span>
                           <span className="text-sm font-bold text-t1">{formatRWF(selected.unitPrice)}</span>
                        </div>
-                       <div className="flex justify-between items-end border-b border-[var(--border-s)] pb-2">
+                       <div className="flex justify-between items-end border-b border-border-s pb-2">
                           <span className="text-xs font-bold text-t2">Total Asset Value</span>
                           <span className="text-sm font-bold text-accent">{formatRWF(selected.unitPrice * selected.stockQuantity)}</span>
                        </div>
@@ -469,15 +469,15 @@ export default function SparePartsPage() {
                   <div>
                     <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-6 border-l-4 border-gray-900 pl-3">Sourcing Profile</label>
                     <div className="space-y-6">
-                       <div className="flex justify-between items-end border-b border-[var(--border-s)] pb-2">
+                       <div className="flex justify-between items-end border-b border-border-s pb-2">
                           <span className="text-xs font-bold text-t2">Primary Supplier</span>
                           <span className="text-sm font-bold text-t1 truncate max-w-[120px]">{selected.supplier}</span>
                        </div>
-                       <div className="flex justify-between items-end border-b border-[var(--border-s)] pb-2">
+                       <div className="flex justify-between items-end border-b border-border-s pb-2">
                           <span className="text-xs font-bold text-t2">Shelving Zone</span>
                           <span className="text-sm font-bold text-t1">{selected.location}</span>
                        </div>
-                       <div className="flex justify-between items-end border-b border-[var(--border-s)] pb-2">
+                       <div className="flex justify-between items-end border-b border-border-s pb-2">
                           <span className="text-xs font-bold text-t2">Safety Stock Min.</span>
                           <span className="text-sm font-bold text-red-500">{selected.minStock} Units</span>
                        </div>
@@ -499,7 +499,7 @@ export default function SparePartsPage() {
                </div>
 
                {/* Footer / Auth */}
-               <div className="mt-20 flex justify-between items-end py-8 border-t border-[var(--border-s)]">
+               <div className="mt-20 flex justify-between items-end py-8 border-t border-border-s">
                   <div className="flex items-center gap-2">
                      <Warning className="w-4 h-4 text-t3" />
                      <span className="text-[10px] text-t3 font-medium">Auto-generated technical manifest ID TP-{Math.floor(Math.random()*9000)+1000}</span>

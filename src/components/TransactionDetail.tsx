@@ -25,7 +25,7 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
       {/* Left pane */}
       <OverlayScrollbarsComponent
         element="div"
-        className="w-full md:w-[35%] border-r border-[var(--border)] p-6 flex flex-col bg-card"
+        className="w-full md:w-[35%] border-r border-border p-6 flex flex-col bg-card"
         options={{ scrollbars: { autoHide: 'scroll' } }}
         defer
       >
@@ -49,15 +49,15 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
             <PencilSimple size={14} weight="bold" className="mr-2" />
             Edit Details
           </button>
-          <button className="p-2 border border-[var(--border)] rounded-full text-t3 hover:bg-surface transition-colors">
+          <button className="p-2 border border-border rounded-full text-t3 hover:bg-surface transition-colors">
             <CalendarDots size={16} weight="duotone" />
           </button>
-          <button className="p-2 border border-[var(--border)] rounded-full text-t3 hover:bg-surface transition-colors">
+          <button className="p-2 border border-border rounded-full text-t3 hover:bg-surface transition-colors">
             <DotsThree size={16} weight="bold" />
           </button>
         </div>
 
-        <div className="bg-surface rounded-xl p-5 mb-8 border border-[var(--border)]">
+        <div className="bg-surface rounded-xl p-5 mb-8 border border-border">
           <div className="text-sm text-t3 mb-2">Total Amount</div>
           <div className="flex items-end justify-between">
             <div className="text-2xl font-bold text-t1">{transaction.total}</div>
@@ -91,7 +91,7 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
           </div>
         </div>
 
-        <div className="mt-auto pt-6 border-t border-[var(--border)]">
+        <div className="mt-auto pt-6 border-t border-border">
           <h3 className="text-sm font-bold text-t1 mb-4">Salesperson</h3>
           <div className="flex items-center">
             <img src="https://picsum.photos/seed/sales/100/100" alt="Salesperson" className="w-8 h-8 rounded-full mr-3" referrerPolicy="no-referrer" />
@@ -103,7 +103,7 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
 
       {/* Right pane */}
       <div className="w-full md:w-[65%] flex flex-col bg-card">
-        <div className="p-6 border-b border-[var(--border)]">
+        <div className="p-6 border-b border-border">
           <div className="flex justify-between items-center mb-4">
             <div className="text-sm">
               <span className="text-t3">Pipeline: </span>
@@ -137,9 +137,9 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center mt-6 p-4 bg-surface rounded-xl border border-[var(--border)] gap-4 sm:gap-0">
+          <div className="flex flex-col sm:flex-row sm:items-center mt-6 p-4 bg-surface rounded-xl border border-border gap-4 sm:gap-0">
             <div className="flex-1 flex items-center">
-              <div className="w-8 h-8 rounded-full bg-card border border-[var(--border)] flex items-center justify-center mr-3 shrink-0">
+              <div className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center mr-3 shrink-0">
                 <FileText size={14} weight="duotone" className="text-t3" />
               </div>
               <div>
@@ -148,8 +148,8 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
                 <button className="text-xs text-emerald-500 font-medium mt-0.5 hover:text-emerald-400 transition-colors">Change</button>
               </div>
             </div>
-            <div className="flex-1 flex items-center sm:border-l sm:border-[var(--border)] sm:pl-6 pt-4 sm:pt-0 border-t border-[var(--border)] sm:border-t-0">
-              <div className="w-8 h-8 rounded-full bg-card border border-[var(--border)] flex items-center justify-center mr-3 shrink-0">
+            <div className="flex-1 flex items-center sm:border-l sm:border-border sm:pl-6 pt-4 sm:pt-0 border-t border-border sm:border-t-0">
+              <div className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center mr-3 shrink-0">
                 <Clock size={14} weight="duotone" className="text-t3" />
               </div>
               <div>
@@ -161,7 +161,7 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
           </div>
         </div>
 
-        <div className="px-6 border-b border-[var(--border)]">
+        <div className="px-6 border-b border-border">
           <nav className="flex space-x-6 overflow-x-auto scrollbar-hide">
             {tabs.map(tab => (
               <button
@@ -170,7 +170,7 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
                 className={`py-4 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
                   activeTab === tab
                     ? 'border-emerald-500 text-t1'
-                    : 'border-transparent text-t3 hover:text-t2 hover:border-[var(--border)]'
+                    : 'border-transparent text-t3 hover:text-t2 hover:border-border'
                 }`}
               >
                 {tab}
@@ -193,7 +193,7 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
                   <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center z-10">
                     <Envelope size={11} weight="duotone" className="text-emerald-500" />
                   </div>
-                  <div className="absolute left-3 top-7 bottom-[-32px] w-px bg-[var(--border)]"></div>
+                  <div className="absolute left-3 top-7 bottom-[-32px] w-px bg-border"></div>
                   <div className="flex justify-between items-start">
                     <div>
                       <div className="text-sm font-bold text-t1">Email Delivered: Proposal Sent</div>
@@ -227,8 +227,8 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
                   </button>
                 </div>
 
-                <div className="bg-card border border-[var(--border)] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-0">
-                  <div className="w-full sm:w-48 sm:pr-4 sm:border-r sm:border-[var(--border)] border-b border-[var(--border)] sm:border-b-0 pb-4 sm:pb-0">
+                <div className="bg-card border border-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-0">
+                  <div className="w-full sm:w-48 sm:pr-4 sm:border-r sm:border-border border-b border-border sm:border-b-0 pb-4 sm:pb-0">
                     <div className="text-sm text-emerald-500 font-medium mb-1">Monday</div>
                     <div className="text-lg font-bold text-t1 mb-1">January 19, 2024</div>
                     <div className="text-xs text-t3">10 AM - 10:30 AM</div>

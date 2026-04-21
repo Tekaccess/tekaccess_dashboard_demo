@@ -44,7 +44,7 @@ export default function DocumentSidePanel({
       <div className="relative w-full max-w-[1200px] bg-card h-full shadow-2xl flex flex-col">
         {/* Floating nav control */}
         {(onNext || onPrev) && (
-          <div className="absolute top-4 left-[-48px] flex flex-col gap-1 bg-card rounded-xl shadow-2xl border border-[var(--border)] p-1">
+          <div className="absolute top-4 left-[-48px] flex flex-col gap-1 bg-card rounded-xl shadow-2xl border border-border p-1">
             <button
               onClick={onPrev}
               disabled={currentIndex === 1}
@@ -63,7 +63,7 @@ export default function DocumentSidePanel({
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <div className="text-sm font-medium text-t2">
             {currentIndex && totalItems ? (
               <span>{currentIndex} of {totalItems} in <span className="text-t1">{title}</span></span>
@@ -82,7 +82,7 @@ export default function DocumentSidePanel({
         {/* Split layout */}
         <div className="flex-1 flex overflow-hidden">
           {/* Form pane */}
-          <div className="w-[400px] border-r border-[var(--border)] flex flex-col bg-card">
+          <div className="w-[400px] border-r border-border flex flex-col bg-card">
             <OverlayScrollbarsComponent
               className="flex-1 p-6"
               options={{ scrollbars: { autoHide: 'scroll' } }}
@@ -91,7 +91,7 @@ export default function DocumentSidePanel({
               <div className="space-y-6">{formContent}</div>
             </OverlayScrollbarsComponent>
             {footerInfo && (
-              <div className="p-4 border-t border-[var(--border-s)] text-[11px] text-t3 italic">
+              <div className="p-4 border-t border-border-s text-[11px] text-t3 italic">
                 {footerInfo}
               </div>
             )}

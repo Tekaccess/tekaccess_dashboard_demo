@@ -21,13 +21,13 @@ const KPIScoreCard: React.FC<KPIScoreCardProps> = ({
   const maxVal = Math.max(...monthlyData.map((d) => d.value));
 
   return (
-    <div className="bg-card rounded-xl border border-[var(--border)] p-6 flex flex-col h-full">
+    <div className="bg-card rounded-xl border border-border p-6 flex flex-col h-full">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-sm font-medium text-t2">Average KPI Score</h3>
         <select
           value={selectedPeriod}
           onChange={(e) => setSelectedPeriod(e.target.value)}
-          className="text-xs border border-[var(--border)] rounded-lg px-2 py-1 bg-surface text-t2 outline-none cursor-pointer hover:bg-surface-hover transition-colors"
+          className="text-xs border border-border rounded-lg px-2 py-1 bg-surface text-t2 outline-none cursor-pointer hover:bg-surface-hover transition-colors"
         >
           <option>Last 90 Days</option>
           <option>Last 30 Days</option>
@@ -50,7 +50,7 @@ const KPIScoreCard: React.FC<KPIScoreCardProps> = ({
             <div className="w-full relative flex justify-center">
               <div
                 className={`w-full rounded-t-md transition-all ${
-                  data.value === maxVal ? 'bg-accent' : 'bg-[var(--accent-glow)]'
+                  data.value === maxVal ? 'bg-accent' : 'bg-accent-glow'
                 }`}
                 style={{ height: `${(data.value / 100) * 120}px`, minHeight: '20px' }}
               >
@@ -66,7 +66,7 @@ const KPIScoreCard: React.FC<KPIScoreCardProps> = ({
         ))}
       </div>
 
-      <div className="border-t border-[var(--border)] pt-4">
+      <div className="border-t border-border pt-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-t1">Below Average Employee</p>
@@ -82,7 +82,7 @@ const KPIScoreCard: React.FC<KPIScoreCardProps> = ({
           {[1, 2, 3, 4, 5].map((i) => (
             <div
               key={i}
-              className="w-8 h-8 rounded-full bg-[var(--accent-glow)] border-2 border-card flex items-center justify-center text-xs font-medium text-accent"
+              className="w-8 h-8 rounded-full bg-accent-glow border-2 border-card flex items-center justify-center text-xs font-medium text-accent"
             >
               {String.fromCharCode(64 + i)}
             </div>

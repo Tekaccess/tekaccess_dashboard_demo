@@ -73,7 +73,7 @@ export default function SectionPage({
         {sectionItem.name === "Employees" && (
           <button
             onClick={() => setShowAddEmployeeModal(true)}
-            className="flex items-center px-4 py-2 bg-surface border border-[var(--border)] text-t1 rounded-lg text-sm font-medium hover:bg-surface-hover transition-colors"
+            className="flex items-center px-4 py-2 bg-surface border border-border text-t1 rounded-lg text-sm font-medium hover:bg-surface-hover transition-colors"
           >
             <Plus size={15} weight="bold" className="mr-2" />
             Add Employee
@@ -83,7 +83,7 @@ export default function SectionPage({
 
       {/* Tabs */}
       {displayTabs.length > 0 && (
-        <div className="border-b border-[var(--border)]">
+        <div className="border-b border-border">
           <nav className="-mb-px flex space-x-8">
             {displayTabs.map((subItem: string) => (
               <button
@@ -92,7 +92,7 @@ export default function SectionPage({
                 className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === subItem
                     ? "border-accent text-accent"
-                    : "border-transparent text-t3 hover:text-t2 hover:border-[var(--border)]"
+                    : "border-transparent text-t3 hover:text-t2 hover:border-border"
                 }`}
               >
                 {subItem}
@@ -113,7 +113,7 @@ export default function SectionPage({
                 placeholder="Search employees by name, email, department, or role..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2.5 border border-[var(--border)] rounded-lg bg-surface text-t1 placeholder-[var(--text-3)] focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+                className="block w-full pl-10 pr-3 py-2.5 border border-border rounded-lg bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
               />
             </div>
           )}
@@ -126,7 +126,7 @@ export default function SectionPage({
                 ))}
               </div>
             ) : (
-              <div className="bg-card rounded-xl border border-[var(--border)] p-12 flex flex-col items-center justify-center min-h-[300px]">
+              <div className="bg-card rounded-xl border border-border p-12 flex flex-col items-center justify-center min-h-[300px]">
                 <Users size={56} weight="duotone" className="text-t3 mb-4" />
                 <h3 className="text-lg font-medium text-t1 mb-2">No employees found</h3>
                 <p className="text-sm text-t3 text-center">
@@ -145,7 +145,7 @@ export default function SectionPage({
                   placeholder="Search departments by name, manager, or description..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2.5 border border-[var(--border)] rounded-lg bg-surface text-t1 placeholder-[var(--text-3)] focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+                  className="block w-full pl-10 pr-3 py-2.5 border border-border rounded-lg bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
                 />
               </div>
 
@@ -156,7 +156,7 @@ export default function SectionPage({
                   ))}
                 </div>
               ) : (
-                <div className="bg-card rounded-xl border border-[var(--border)] p-12 flex flex-col items-center justify-center min-h-[300px]">
+                <div className="bg-card rounded-xl border border-border p-12 flex flex-col items-center justify-center min-h-[300px]">
                   <Buildings size={56} weight="duotone" className="text-t3 mb-4" />
                   <h3 className="text-lg font-medium text-t1 mb-2">No departments found</h3>
                   <p className="text-sm text-t3 text-center">
@@ -168,9 +168,9 @@ export default function SectionPage({
           )}
         </div>
       ) : (
-        <div className="bg-card rounded-xl border border-[var(--border)] p-8 flex items-center justify-center min-h-[400px]">
+        <div className="bg-card rounded-xl border border-border p-8 flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-surface mb-4 border border-[var(--border)]">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-surface mb-4 border border-border">
               <sectionItem.icon size={28} weight="duotone" className="text-t3" />
             </div>
             <h3 className="text-lg font-medium text-t1">{activeTab || sectionItem.name}</h3>
@@ -191,12 +191,12 @@ export default function SectionPage({
             <div className="space-y-4">
               <div>
                 <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-2">Full Identity</label>
-                <input type="text" placeholder="First and last names" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-lg text-sm text-t1 placeholder-[var(--text-3)] outline-none focus:border-accent transition-colors" />
+                <input type="text" placeholder="First and last names" className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-2">Division</label>
-                  <select className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-lg text-xs text-t1 outline-none focus:border-accent transition-colors">
+                  <select className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-xs text-t1 outline-none focus:border-accent transition-colors">
                     <option>Operations</option>
                     <option>Finance</option>
                     <option>Procurement</option>
@@ -205,13 +205,13 @@ export default function SectionPage({
                 </div>
                 <div>
                   <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-2">Role Tier</label>
-                  <input type="text" placeholder="Job Title" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-lg text-xs text-t1 placeholder-[var(--text-3)] outline-none focus:border-accent transition-colors" />
+                  <input type="text" placeholder="Job Title" className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-xs text-t1 placeholder-t3 outline-none focus:border-accent transition-colors" />
                 </div>
               </div>
             </div>
             <div>
               <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-2">Professional Email</label>
-              <input type="email" placeholder="email@tekaccess.rw" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-lg text-sm text-t1 placeholder-[var(--text-3)] outline-none focus:border-accent transition-colors" />
+              <input type="email" placeholder="email@tekaccess.rw" className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors" />
             </div>
             <div className="pt-6">
               <button className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all">

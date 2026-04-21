@@ -71,7 +71,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
   const navItemClass = (isActive: boolean) =>
     `w-full flex items-center px-3 py-2 text-sm rounded-lg transition-all ${
       isActive
-        ? "bg-[var(--accent-glow)] text-accent font-semibold"
+        ? "bg-accent-glow text-accent font-semibold"
         : "text-t2 hover:bg-surface hover:text-t1 font-medium"
     }`;
 
@@ -83,14 +83,14 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
 
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-60 bg-card border-r border-[var(--border)] flex flex-col h-full overflow-hidden shrink-0
+          fixed inset-y-0 left-0 z-50 w-60 bg-card border-r border-border flex flex-col h-full overflow-hidden shrink-0
           transform transition-transform duration-300 ease-in-out
           lg:relative lg:translate-x-0
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
         {/* Logo */}
-        <div className="px-4 h-[56px] flex items-center justify-between shrink-0 border-b border-[var(--border)]">
+        <div className="px-4 h-[56px] flex items-center justify-between shrink-0 border-b border-border">
           <Logo className="h-8 w-auto object-contain" />
           <button onClick={onClose} className="lg:hidden text-t3 hover:text-t1 transition-colors p-1">
             <XIcon size={16} weight="bold" />
@@ -233,7 +233,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
         </OverlayScrollbarsComponent>
 
         {/* Bottom — department switcher only */}
-        <div className="shrink-0 border-t border-[var(--border)] p-3 relative">
+        <div className="shrink-0 border-t border-border p-3 relative">
           <p className="text-[10px] font-bold text-t3 uppercase tracking-widest mb-2 px-1">
             Department
           </p>
@@ -241,12 +241,12 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
             onClick={() => setIsDeptDropdownOpen(!isDeptDropdownOpen)}
             className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all ${
               isDeptDropdownOpen
-                ? "border-accent bg-[var(--accent-glow)] text-accent"
-                : "border-[var(--border)] bg-surface hover:border-accent/40 hover:bg-[var(--accent-glow)] text-t1"
+                ? "border-accent bg-accent-glow text-accent"
+                : "border-border bg-surface hover:border-accent/40 hover:bg-accent-glow text-t1"
             }`}
           >
             <div className={`h-6 w-6 rounded-md flex items-center justify-center shrink-0 ${
-              isDeptDropdownOpen ? "bg-accent/20" : "bg-[var(--accent-glow)]"
+              isDeptDropdownOpen ? "bg-accent/20" : "bg-accent-glow"
             }`}>
               <BuildingsIcon size={20} weight="duotone" className="text-accent" />
             </div>
@@ -260,8 +260,10 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
           </button>
 
           {isDeptDropdownOpen && (
-            <div className="absolute bottom-[60%] left-3 right-3 mb-2 bg-card border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden z-50">
-              <div className="px-3 py-2 border-b border-[var(--border)]">
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsDeptDropdownOpen(false)} />
+              <div className="absolute bottom-[60%] left-3 right-3 mb-2 bg-card border border-border rounded-xl shadow-2xl overflow-hidden z-50">
+              <div className="px-3 py-2 border-b border-border">
                 <p className="text-[10px] font-bold text-t3 uppercase tracking-widest">Switch Department</p>
               </div>
               <OverlayScrollbarsComponent
@@ -278,7 +280,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
                       onClick={() => handleDepartmentChange(dept.id)}
                       className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition-all ${
                         isSelected
-                          ? "bg-[var(--accent-glow)] text-accent font-semibold"
+                          ? "bg-accent-glow text-accent font-semibold"
                           : "text-t2 hover:bg-surface hover:text-t1 font-medium"
                       }`}
                     >
@@ -289,6 +291,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
               </div>
               </OverlayScrollbarsComponent>
             </div>
+            </>
           )}
         </div>
       </aside>

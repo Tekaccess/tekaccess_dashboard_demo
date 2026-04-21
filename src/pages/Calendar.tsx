@@ -179,7 +179,7 @@ export default function Calendar() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar Grid */}
-        <div className="lg:col-span-2 bg-card rounded-xl border border-[var(--border)] p-6">
+        <div className="lg:col-span-2 bg-card rounded-xl border border-border p-6">
           {/* Month Navigation */}
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-t1">
@@ -223,7 +223,7 @@ export default function Calendar() {
                   className={`
                     relative p-2 min-h-[80px] border rounded-xl transition-all
                     ${!item.currentMonth ? 'bg-surface text-t3' : 'bg-card hover:bg-surface'}
-                    ${isSelected(item.day) ? 'border-accent bg-accent/5' : 'border-[var(--border)]'}
+                    ${isSelected(item.day) ? 'border-accent bg-accent/5' : 'border-border'}
                     ${isToday(item.day) && item.currentMonth ? 'ring-2 ring-[#1e3a8a]' : ''}
                   `}
                   disabled={!item.currentMonth}
@@ -251,7 +251,7 @@ export default function Calendar() {
         </div>
 
         {/* Event Details Sidebar */}
-        <div className="bg-card rounded-xl border border-[var(--border)] p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <h3 className="text-lg font-semibold text-t1 mb-4">
             {selectedDate
               ? `${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`
@@ -262,7 +262,7 @@ export default function Calendar() {
           {selectedDateEvents.length > 0 ? (
             <div className="space-y-4">
               {selectedDateEvents.map((event) => (
-                <div key={event.id} className="border border-[var(--border)] rounded-xl p-4 hover:shadow-md transition-shadow">
+                <div key={event.id} className="border border-border rounded-xl p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="text-sm font-semibold text-t1">{event.title}</h4>
                     <button className="p-1 hover:bg-surface rounded">
@@ -290,7 +290,7 @@ export default function Calendar() {
                   </div>
 
                   {event.description && (
-                    <p className="text-xs text-t2 mt-2 pt-2 border-t border-[var(--border-s)]">
+                    <p className="text-xs text-t2 mt-2 pt-2 border-t border-border-s">
                       {event.description}
                     </p>
                   )}
@@ -311,7 +311,7 @@ export default function Calendar() {
           )}
 
           {/* Legend */}
-          <div className="mt-6 pt-6 border-t border-[var(--border)]">
+          <div className="mt-6 pt-6 border-t border-border">
             <h4 className="text-xs font-semibold text-t2 mb-3">Event Types</h4>
             <div className="space-y-2">
               {Object.entries(eventTypeDots).map(([type, color]) => (
@@ -336,17 +336,17 @@ export default function Calendar() {
              <div>
                 <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Event Identity</label>
                 <div className="space-y-4">
-                  <input type="text" placeholder="Title of the event" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none focus:border-accent" />
+                  <input type="text" placeholder="Title of the event" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none focus:border-accent" />
                   <div className="grid grid-cols-2 gap-4">
-                    <input type="time" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none" />
-                    <input type="time" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none" />
+                    <input type="time" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none" />
+                    <input type="time" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none" />
                   </div>
                 </div>
               </div>
 
                <div>
                 <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Categorization</label>
-                <select className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
+                <select className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
                   <option>Strategic Meeting</option>
                   <option>Critical Deadline</option>
                   <option>Operational Reminder</option>
@@ -356,12 +356,12 @@ export default function Calendar() {
 
               <div>
                 <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Environment</label>
-                <input type="text" placeholder="Physical or Virtual Location" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none" />
+                <input type="text" placeholder="Physical or Virtual Location" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none" />
               </div>
 
               <div>
                 <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Agenda & Brief</label>
-                <textarea rows={4} placeholder="Summary of objectives..." className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none" />
+                <textarea rows={4} placeholder="Summary of objectives..." className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none" />
               </div>
 
               <div className="pt-6">
@@ -398,7 +398,7 @@ export default function Calendar() {
                        <div className="flex-1 bg-surface rounded-2xl p-6 border-l-4 border-accent">
                           <div className="flex justify-between items-start mb-2">
                              <h4 className="font-black text-t1 uppercase text-sm tracking-tight">System Syncing...</h4>
-                             <span className="text-[10px] font-bold text-accent bg-[var(--accent-glow)] px-2 py-0.5 rounded">Sync active</span>
+                             <span className="text-[10px] font-bold text-accent bg-accent-glow px-2 py-0.5 rounded">Sync active</span>
                           </div>
                           <p className="text-xs text-t2">Waiting for user input parameters to generate detail view.</p>
                        </div>
@@ -407,7 +407,7 @@ export default function Calendar() {
                </div>
 
                {/* Footer Branding */}
-               <div className="mt-20 pt-8 border-t border-[var(--border-s)] flex items-center justify-between">
+               <div className="mt-20 pt-8 border-t border-border-s flex items-center justify-between">
                   <div className="flex items-center gap-2">
                      <div className="w-6 h-6 bg-gray-900 rounded-full flex items-center justify-center">
                         <CalendarIcon className="w-3.5 h-3.5 text-white" />

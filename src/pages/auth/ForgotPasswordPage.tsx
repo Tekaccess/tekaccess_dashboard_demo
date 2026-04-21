@@ -46,7 +46,7 @@ const ForgotPasswordPage: React.FC = () => {
         >
           <button
             onClick={() => navigate({ to: "/login" })}
-            className="flex items-center text-[var(--text-3)] hover:text-[var(--text-2)] transition-colors mb-6 text-sm font-medium group"
+            className="flex items-center text-t3 hover:text-t2 transition-colors mb-6 text-sm font-medium group"
           >
             <ArrowLeft size={18} weight="bold" className="mr-1 group-hover:-translate-x-1 transition-transform" />
             Back to Login
@@ -54,8 +54,8 @@ const ForgotPasswordPage: React.FC = () => {
 
           {!isSubmitted ? (
             <>
-              <h1 className="text-2xl font-bold text-[var(--text-1)] mb-1">Reset Password</h1>
-              <p className="text-sm text-[var(--text-3)] mb-6">
+              <h1 className="text-2xl font-bold text-t1 mb-1">Reset Password</h1>
+              <p className="text-sm text-t3 mb-6">
                 Enter your email and we'll send you reset instructions.
               </p>
               <form onSubmit={handleSubmit} className="space-y-3">
@@ -66,14 +66,14 @@ const ForgotPasswordPage: React.FC = () => {
                   autoFocus
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-indigo-300/50 dark:focus:ring-indigo-500/30 transition-all text-sm"
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm"
                   placeholder="Enter Email address"
                 />
                 {submitError && <p className="text-xs text-red-500">{submitError}</p>}
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-3 bg-indigo-400 hover:bg-indigo-500 disabled:opacity-75 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-sm"
+                  className="w-full py-3 bg-accent hover:bg-accent-h disabled:opacity-75 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   {isLoading ? (
                     <><CircleNotch size={18} weight="bold" className="animate-spin" /> Sending…</>
@@ -93,14 +93,14 @@ const ForgotPasswordPage: React.FC = () => {
               <div className="w-14 h-14 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle size={28} weight="duotone" className="text-green-500" />
               </div>
-              <h2 className="text-xl font-bold text-[var(--text-1)] mb-2">Check your email</h2>
-              <p className="text-sm text-[var(--text-3)] mb-6 max-w-[260px]">
+              <h2 className="text-xl font-bold text-t1 mb-2">Check your email</h2>
+              <p className="text-sm text-t3 mb-6 max-w-[260px]">
                 We've sent reset instructions to{" "}
-                <span className="text-[var(--text-1)] font-medium">{email}</span>
+                <span className="text-t1 font-medium">{email}</span>
               </p>
               <button
                 onClick={() => navigate({ to: "/login" })}
-                className="w-full py-3 border border-gray-200 dark:border-white/10 hover:bg-[var(--surface)] text-[var(--text-1)] rounded-xl font-medium transition-colors text-sm"
+                className="w-full py-3 border border-border hover:bg-surface text-t1 rounded-xl font-medium transition-colors text-sm"
               >
                 Back to Login
               </button>
@@ -109,7 +109,7 @@ const ForgotPasswordPage: React.FC = () => {
         </motion.div>
       </div>
 
-      <p className="text-xs text-[var(--text-3)] pb-6">Authorized Personnel Only!</p>
+      <p className="text-xs text-t3 pb-6">Authorized Personnel Only!</p>
     </div>
   );
 };

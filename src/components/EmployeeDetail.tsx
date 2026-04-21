@@ -29,9 +29,9 @@ export default function EmployeeDetail({ employee, onBack }: EmployeeDetailProps
         </button>
       </div>
 
-      <div className="bg-card border border-[var(--border)] rounded-xl p-6">
+      <div className="bg-card border border-border rounded-xl p-6">
         <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
-          <div className="h-20 w-20 rounded-2xl bg-[var(--accent-glow)] border border-[var(--accent-border)] flex items-center justify-center text-accent font-bold text-2xl">
+          <div className="h-20 w-20 rounded-2xl bg-accent-glow border border-accent-border flex items-center justify-center text-accent font-bold text-2xl">
             {employee.fullName.split(' ').map(n => n[0]).join('')}
           </div>
           <div className="flex-1">
@@ -59,7 +59,7 @@ export default function EmployeeDetail({ employee, onBack }: EmployeeDetailProps
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-card border border-[var(--border)] rounded-xl p-6">
+        <div className="bg-card border border-border rounded-xl p-6">
           <h3 className="text-lg font-semibold text-t1 mb-4 flex items-center">
             <User size={18} weight="duotone" className="mr-2 text-t3" />
             Personal Information
@@ -72,7 +72,7 @@ export default function EmployeeDetail({ employee, onBack }: EmployeeDetailProps
               { label: 'Emergency Contact', value: employee.personalInfo.emergencyContact },
               { label: 'Emergency Phone', value: employee.personalInfo.emergencyPhone },
             ].map(({ label, value }, i, arr) => (
-              <div key={label} className={`flex justify-between py-2 ${i < arr.length - 1 ? 'border-b border-[var(--border-s)]' : ''}`}>
+              <div key={label} className={`flex justify-between py-2 ${i < arr.length - 1 ? 'border-b border-border-s' : ''}`}>
                 <span className="text-sm text-t2">{label}</span>
                 <span className="text-sm font-medium text-t1">{value}</span>
               </div>
@@ -80,7 +80,7 @@ export default function EmployeeDetail({ employee, onBack }: EmployeeDetailProps
           </div>
         </div>
 
-        <div className="bg-card border border-[var(--border)] rounded-xl p-6">
+        <div className="bg-card border border-border rounded-xl p-6">
           <h3 className="text-lg font-semibold text-t1 mb-4 flex items-center">
             <Briefcase size={18} weight="duotone" className="mr-2 text-t3" />
             Contract Details
@@ -93,7 +93,7 @@ export default function EmployeeDetail({ employee, onBack }: EmployeeDetailProps
               { label: 'Department', value: employee.department },
               { label: 'Salary', value: employee.contract.salary },
             ].map(({ label, value }, i, arr) => (
-              <div key={label} className={`flex justify-between py-2 ${i < arr.length - 1 ? 'border-b border-[var(--border-s)]' : ''}`}>
+              <div key={label} className={`flex justify-between py-2 ${i < arr.length - 1 ? 'border-b border-border-s' : ''}`}>
                 <span className="text-sm text-t2">{label}</span>
                 <span className="text-sm font-medium text-t1 capitalize">{value}</span>
               </div>
@@ -102,7 +102,7 @@ export default function EmployeeDetail({ employee, onBack }: EmployeeDetailProps
         </div>
       </div>
 
-      <div className="bg-card border border-[var(--border)] rounded-xl p-6">
+      <div className="bg-card border border-border rounded-xl p-6">
         <h3 className="text-lg font-semibold text-t1 mb-4 flex items-center">
           <Target size={18} weight="duotone" className="mr-2 text-t3" />
           Key Performance Indicators
@@ -126,7 +126,7 @@ export default function EmployeeDetail({ employee, onBack }: EmployeeDetailProps
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 w-full bg-[var(--border)] rounded-full h-2">
+                  <div className="mt-3 w-full bg-border rounded-full h-2">
                     <div
                       className={`h-2 rounded-full ${
                         kpi.status === 'on-track' ? 'bg-emerald-500' :

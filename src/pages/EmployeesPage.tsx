@@ -49,7 +49,7 @@ export default function EmployeesPage() {
         </button>
       </div>
 
-      <div className="border-b border-[var(--border)]">
+      <div className="border-b border-border">
         <nav className="-mb-px flex space-x-8">
           {displayTabs.map((subItem: string) => (
             <button
@@ -58,7 +58,7 @@ export default function EmployeesPage() {
               className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === subItem
                   ? "border-accent text-accent"
-                  : "border-transparent text-t3 hover:text-t2 hover:border-[var(--border)]"
+                  : "border-transparent text-t3 hover:text-t2 hover:border-border"
               }`}
             >
               {subItem}
@@ -76,7 +76,7 @@ export default function EmployeesPage() {
               placeholder="Search employees by name, email, department, or role..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2.5 border border-[var(--border)] rounded-xl bg-surface text-t1 placeholder-[var(--text-3)] focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+              className="block w-full pl-10 pr-3 py-2.5 border border-border rounded-xl bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
             />
           </div>
         )}
@@ -90,7 +90,7 @@ export default function EmployeesPage() {
                 ))}
               </div>
             ) : (
-              <div className="bg-card rounded-xl border border-[var(--border)] p-12 flex flex-col items-center justify-center min-h-[300px]">
+              <div className="bg-card rounded-xl border border-border p-12 flex flex-col items-center justify-center min-h-[300px]">
                 <Users size={56} weight="duotone" className="text-t3 mb-4" />
                 <h3 className="text-lg font-medium text-t1 mb-2">No employees found</h3>
               </div>
@@ -107,7 +107,7 @@ export default function EmployeesPage() {
                 placeholder="Search departments..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2.5 border border-[var(--border)] rounded-xl bg-surface text-t1 placeholder-[var(--text-3)] focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+                className="block w-full pl-10 pr-3 py-2.5 border border-border rounded-xl bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
               />
             </div>
 
@@ -118,7 +118,7 @@ export default function EmployeesPage() {
                 ))}
               </div>
             ) : (
-              <div className="bg-card rounded-xl border border-[var(--border)] p-12 flex flex-col items-center justify-center min-h-[300px]">
+              <div className="bg-card rounded-xl border border-border p-12 flex flex-col items-center justify-center min-h-[300px]">
                 <Buildings size={56} weight="duotone" className="text-t3 mb-4" />
                 <h3 className="text-lg font-medium text-t1 mb-2">No departments found</h3>
               </div>
@@ -151,16 +151,16 @@ export default function EmployeesPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-[10px] text-t3 mb-1">Full Name</label>
-                    <input type="text" defaultValue={currentEmployee.fullName} className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm text-t1 outline-none focus:border-accent transition-colors" />
+                    <input type="text" defaultValue={currentEmployee.fullName} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-t1 outline-none focus:border-accent transition-colors" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] text-t3 mb-1">Role</label>
-                      <input type="text" defaultValue={currentEmployee.role} className="w-full px-3 py-1.5 border border-[var(--border)] rounded-xl text-xs text-t1 bg-surface outline-none focus:border-accent transition-colors" />
+                      <input type="text" defaultValue={currentEmployee.role} className="w-full px-3 py-1.5 border border-border rounded-xl text-xs text-t1 bg-surface outline-none focus:border-accent transition-colors" />
                     </div>
                     <div>
                       <label className="block text-[10px] text-t3 mb-1">Department</label>
-                      <select defaultValue={currentEmployee.department} className="w-full px-3 py-1.5 border border-[var(--border)] rounded-xl text-xs text-t1 bg-surface outline-none focus:border-accent transition-colors">
+                      <select defaultValue={currentEmployee.department} className="w-full px-3 py-1.5 border border-border rounded-xl text-xs text-t1 bg-surface outline-none focus:border-accent transition-colors">
                         <option>Executive</option>
                         <option>Finance</option>
                         <option>Transport</option>
@@ -176,11 +176,11 @@ export default function EmployeesPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-[10px] text-t3 mb-1">Professional Email</label>
-                    <input type="email" defaultValue={currentEmployee.email} className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-xs text-t1 outline-none focus:border-accent transition-colors" />
+                    <input type="email" defaultValue={currentEmployee.email} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs text-t1 outline-none focus:border-accent transition-colors" />
                   </div>
                   <div>
                     <label className="block text-[10px] text-t3 mb-1">Mobile Phone</label>
-                    <input type="tel" defaultValue={currentEmployee.phone} className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-xs text-t1 outline-none focus:border-accent transition-colors" />
+                    <input type="tel" defaultValue={currentEmployee.phone} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs text-t1 outline-none focus:border-accent transition-colors" />
                   </div>
                 </div>
               </div>
@@ -196,7 +196,7 @@ export default function EmployeesPage() {
           currentEmployee && (
             <div className="relative font-sans text-gray-900">
               <div className="flex flex-col items-center text-center mb-16 border-b border-dashed border-gray-200 pb-12">
-                <div className="w-32 h-32 rounded-full ring-8 ring-gray-50 bg-[var(--accent)] flex items-center justify-center text-white text-5xl font-black mb-6 shadow-2xl relative">
+                <div className="w-32 h-32 rounded-full ring-8 ring-gray-50 bg-accent flex items-center justify-center text-white text-5xl font-black mb-6 shadow-2xl relative">
                   {currentEmployee.fullName.split(' ').map(n => n[0]).join('')}
                   <div className="absolute right-0 bottom-1 w-6 h-6 bg-green-500 border-4 border-white rounded-full" />
                 </div>
@@ -259,25 +259,25 @@ export default function EmployeesPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-[11px] font-black text-t3 uppercase mb-2">Full Identity</label>
-                <input type="text" placeholder="First and last names" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm text-t1 placeholder-[var(--text-3)] outline-none focus:border-accent transition-colors" />
+                <input type="text" placeholder="First and last names" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-black text-t3 uppercase mb-2">Division</label>
-                  <select className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-xs text-t1 outline-none focus:border-accent transition-colors">
+                  <select className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs text-t1 outline-none focus:border-accent transition-colors">
                     <option>Operations</option>
                     <option>Finance</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-[11px] font-black text-t3 uppercase mb-2">Role Tier</label>
-                  <input type="text" placeholder="Job Title" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-xs text-t1 placeholder-[var(--text-3)] outline-none focus:border-accent transition-colors" />
+                  <input type="text" placeholder="Job Title" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs text-t1 placeholder-t3 outline-none focus:border-accent transition-colors" />
                 </div>
               </div>
             </div>
             <div>
               <label className="block text-[11px] font-black text-t3 uppercase mb-2">Professional Email</label>
-              <input type="email" placeholder="email@tekaccess.rw" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm text-t1 placeholder-[var(--text-3)] outline-none focus:border-accent transition-colors" />
+              <input type="email" placeholder="email@tekaccess.rw" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors" />
             </div>
             <div className="pt-6">
               <button className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all">

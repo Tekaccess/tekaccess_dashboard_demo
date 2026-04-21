@@ -148,3 +148,22 @@ export async function apiUpdateProfile(userId: string, fields: { fullName?: stri
     body: JSON.stringify(fields),
   });
 }
+
+export type ActivityLog = {
+  _id: string;
+  action: 'create' | 'read' | 'update' | 'delete';
+  collection: string;
+  documentRef: string | null;
+  dashboard: string;
+  status: 'success' | 'failed';
+  errorMessage: string | null;
+  note: string | null;
+  changedFields: string[];
+  createdAt: string;
+};
+
+export async function apiGetMyActivity(page = 1, limit = 20) {
+  return request<{ logs: ActivityLog[]; pagination: { page: number; limit: number; total: number; pages: number } }>(
+    `/users/me/activity?page=${page}&limit=${limit}`
+  );
+}

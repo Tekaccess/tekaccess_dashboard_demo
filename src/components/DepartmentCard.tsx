@@ -17,7 +17,7 @@ export default function DepartmentCard({ department, onClick }: DepartmentCardPr
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-card border border-[var(--border)] rounded-xl p-5 hover:border-[var(--accent-border)] hover:shadow-lg transition-all"
+      className="w-full text-left bg-card border border-border rounded-xl p-5 hover:border-accent-border hover:shadow-lg transition-all"
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">

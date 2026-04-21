@@ -35,6 +35,10 @@ import {
   CheckFatIcon,
   ClipboardTextIcon,
   CalendarDotsIcon,
+  GitBranchIcon,
+  ShieldWarningIcon,
+  ChatTextIcon,
+  HardDrivesIcon,
 } from "@phosphor-icons/react";
 
 
@@ -283,7 +287,7 @@ export const departmentsData = [
         items: [
           {
             name: "Pipelines & Jobs",
-            icon: GitBranch,
+            icon: GitBranchIcon,
             subItems: [
               "All Integrations",
               "Snapshot Jobs",
@@ -293,7 +297,7 @@ export const departmentsData = [
           },
           {
             name: "Data Quality",
-            icon: ShieldWarning,
+            icon: ShieldWarningIcon,
             subItems: [
               "Open Issues",
               "By Department",
@@ -303,12 +307,12 @@ export const departmentsData = [
           },
           {
             name: "Data Requests",
-            icon: ChatText,
+            icon: ChatTextIcon,
             subItems: ["Pending Requests", "Resolved"],
           },
           {
             name: "System",
-            icon: HardDrives,
+            icon: HardDrivesIcon,
             subItems: ["Platform Uptime", "Alert History"],
           },
         ],

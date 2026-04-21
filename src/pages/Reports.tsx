@@ -135,7 +135,7 @@ export default function Reports() {
       </div>
 
       {/* Filters */}
-      <div className="bg-card rounded-xl border border-[var(--border)] p-6">
+      <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* MagnifyingGlass */}
           <div className="flex-1 relative">
@@ -145,7 +145,7 @@ export default function Reports() {
               placeholder="MagnifyingGlass reports..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-[var(--border)] rounded-xl text-sm outline-none focus:border-accent focus:ring-1 focus:ring-[#1e3a8a]"
+              className="w-full pl-10 pr-4 py-2 border border-border rounded-xl text-sm outline-none focus:border-accent focus:ring-1 focus:ring-[#1e3a8a]"
             />
           </div>
 
@@ -153,7 +153,7 @@ export default function Reports() {
           <select
             value={selectedDateRange}
             onChange={(e) => setSelectedDateRange(e.target.value)}
-            className="px-4 py-2 border border-[var(--border)] rounded-xl text-sm text-t2 outline-none cursor-pointer hover:bg-surface"
+            className="px-4 py-2 border border-border rounded-xl text-sm text-t2 outline-none cursor-pointer hover:bg-surface"
           >
             <option>Last 7 Days</option>
             <option>Last 30 Days</option>
@@ -163,7 +163,7 @@ export default function Reports() {
           </select>
 
           {/* Funnel Button */}
-          <button className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-xl text-sm text-t2 hover:bg-surface">
+          <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-xl text-sm text-t2 hover:bg-surface">
             <Funnel className="w-4 h-4" />
             More Filters
           </button>
@@ -179,7 +179,7 @@ export default function Reports() {
             className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
               selectedCategory === category
                 ? 'bg-accent text-white'
-                : 'bg-card text-t2 border border-[var(--border)] hover:bg-surface'
+                : 'bg-card text-t2 border border-border hover:bg-surface'
             }`}
           >
             {category}
@@ -192,7 +192,7 @@ export default function Reports() {
         {filteredReports.map((report) => (
           <div
             key={report.id}
-            className="bg-card rounded-xl border border-[var(--border)] p-6 hover:shadow-lg transition-shadow cursor-pointer group"
+            className="bg-card rounded-xl border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer group"
           >
             <div className="flex items-start justify-between mb-4">
               <div className="p-3 bg-accent/10 rounded-xl">

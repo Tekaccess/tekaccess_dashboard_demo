@@ -42,7 +42,7 @@ const AttendanceDetail: React.FC<AttendanceDetailProps> = ({ records = defaultRe
   );
 
   return (
-    <div className="bg-card rounded-xl border border-[var(--border)] p-6">
+    <div className="bg-card rounded-xl border border-border p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h3 className="text-sm font-medium text-t2">Attendance Detail</h3>
         <button className="p-2 hover:bg-surface rounded-lg transition-colors self-end sm:self-auto">
@@ -58,13 +58,13 @@ const AttendanceDetail: React.FC<AttendanceDetailProps> = ({ records = defaultRe
             placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-[var(--border)] rounded-lg text-sm bg-surface text-t1 placeholder-[var(--text-3)] outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
+            className="w-full pl-9 pr-4 py-2 border border-border rounded-lg text-sm bg-surface text-t1 placeholder-t3 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
           />
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
+        <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
           <Funnel size={14} weight="duotone" /> Filter
         </button>
-        <button className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
+        <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
           <ArrowsDownUp size={14} weight="duotone" /> Sort By
         </button>
       </div>
@@ -75,7 +75,7 @@ const AttendanceDetail: React.FC<AttendanceDetailProps> = ({ records = defaultRe
       >
         <table className="w-full">
           <thead>
-            <tr className="border-b border-[var(--border)]">
+            <tr className="border-b border-border">
               {['Employee', 'Check In', 'Check Out', 'Status'].map(h => (
                 <th key={h} className="text-left py-3 px-4 text-xs font-medium text-t3 uppercase tracking-wider">{h}</th>
               ))}
@@ -83,10 +83,10 @@ const AttendanceDetail: React.FC<AttendanceDetailProps> = ({ records = defaultRe
           </thead>
           <tbody>
             {filteredRecords.map((record) => (
-              <tr key={record.id} className="border-b border-[var(--border-s)] hover:bg-surface transition-colors">
+              <tr key={record.id} className="border-b border-border-s hover:bg-surface transition-colors">
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[var(--accent-glow)] border border-[var(--accent-border)] flex items-center justify-center text-xs font-semibold text-accent">
+                    <div className="w-8 h-8 rounded-full bg-accent-glow border border-accent-border flex items-center justify-center text-xs font-semibold text-accent">
                       {record.name.charAt(0)}
                     </div>
                     <div>

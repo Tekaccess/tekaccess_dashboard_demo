@@ -23,7 +23,7 @@ const defaultEntries: PayrollEntry[] = [
 
 const RecentPayroll: React.FC<RecentPayrollProps> = ({ entries = defaultEntries }) => {
   return (
-    <div className="bg-card rounded-xl border border-[var(--border)] p-6 flex flex-col h-full">
+    <div className="bg-card rounded-xl border border-border p-6 flex flex-col h-full">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-sm font-medium text-t2">Recent Payroll</h3>
         <button className="p-2 bg-accent text-white rounded-lg hover:bg-accent-h transition-colors">
@@ -35,7 +35,7 @@ const RecentPayroll: React.FC<RecentPayrollProps> = ({ entries = defaultEntries 
         {entries.map((entry, idx) => (
           <div key={idx} className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--accent-glow)] border border-[var(--accent-border)] flex items-center justify-center text-sm font-semibold text-accent">
+              <div className="w-10 h-10 rounded-full bg-accent-glow border border-accent-border flex items-center justify-center text-sm font-semibold text-accent">
                 {entry.name.charAt(0)}
               </div>
               <div>

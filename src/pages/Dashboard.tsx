@@ -53,7 +53,7 @@ export default function Dashboard({ currentDepartmentId }: DashboardProps) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-card border border-[var(--border)] rounded-lg text-xs font-medium text-t2 hover:bg-surface transition-colors">
+          <button className="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-lg text-xs font-medium text-t2 hover:bg-surface transition-colors">
             <CalendarDots size={13} weight="duotone" className="text-t3" />
             6 Nov 2025
             <svg className="w-3 h-3 text-t3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,7 +87,7 @@ export default function Dashboard({ currentDepartmentId }: DashboardProps) {
       </div>
 
       {/* Finance charts */}
-      <div className="border-t border-[var(--border)] pt-6">
+      <div className="border-t border-border pt-6">
         <h3 className="text-sm font-semibold text-t1 mb-4">
           Finance Overview — <span className="text-t3 font-normal">{currentDepartment.name}</span>
         </h3>

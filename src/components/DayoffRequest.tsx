@@ -21,13 +21,13 @@ const defaultRequests: DayoffRequest[] = [
 
 const DayoffRequest: React.FC<DayoffRequestProps> = ({ requests = defaultRequests }) => {
   return (
-    <div className="bg-card rounded-xl border border-[var(--border)] p-6">
+    <div className="bg-card rounded-xl border border-border p-6">
       <h3 className="text-sm font-medium text-t2 mb-6">Dayoff Request</h3>
       <div className="space-y-4">
         {requests.map((request) => (
           <div key={request.id} className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--accent-glow)] border border-[var(--accent-border)] flex items-center justify-center text-sm font-semibold text-accent">
+              <div className="w-10 h-10 rounded-full bg-accent-glow border border-accent-border flex items-center justify-center text-sm font-semibold text-accent">
                 {request.name.charAt(0)}
               </div>
               <div>

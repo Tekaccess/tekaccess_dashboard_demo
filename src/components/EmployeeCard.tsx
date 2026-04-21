@@ -18,11 +18,11 @@ export default function EmployeeCard({ employee, onClick }: EmployeeCardProps) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-card border border-[var(--border)] rounded-xl p-4 hover:border-[var(--accent-border)] hover:shadow-lg transition-all"
+      className="w-full text-left bg-card border border-border rounded-xl p-4 hover:border-accent-border hover:shadow-lg transition-all"
     >
       <div className="flex items-start justify-between">
         <div className="flex items-start space-x-3 flex-1">
-          <div className="h-12 w-12 rounded-xl bg-[var(--accent-glow)] border border-[var(--accent-border)] flex items-center justify-center text-accent font-bold text-lg flex-shrink-0">
+          <div className="h-12 w-12 rounded-xl bg-accent-glow border border-accent-border flex items-center justify-center text-accent font-bold text-lg flex-shrink-0">
             {employee.fullName.split(" ").map((n) => n[0]).join("")}
           </div>
           <div className="flex-1 min-w-0">
@@ -46,7 +46,7 @@ export default function EmployeeCard({ employee, onClick }: EmployeeCardProps) {
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[employee.status]}`}>
             {employee.status.charAt(0).toUpperCase() + employee.status.slice(1)}
           </span>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--accent-glow)] text-accent">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-glow text-accent">
             <Briefcase size={11} weight="duotone" className="mr-1" />
             {employee.contract.type}
           </span>

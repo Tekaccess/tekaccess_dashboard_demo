@@ -12,11 +12,11 @@ interface StatCardProps {
 
 export default function StatCard({ title, value, change, isPositive, subtitle, icon: IconComp }: StatCardProps): React.ReactElement {
   return (
-    <div className="bg-card rounded-2xl border border-[var(--border)] px-4 pt-4 pb-3 flex flex-col gap-3 hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-2xl border border-border px-4 pt-4 pb-3 flex flex-col gap-3 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
         <span className="text-xs font-medium text-t3">{title}</span>
         {IconComp && (
-          <div className="w-8 h-8 rounded-3xl bg-[var(--accent-glow)] flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-3xl bg-accent-glow flex items-center justify-center shrink-0">
             <IconComp size={16} weight="duotone" className="text-accent" />
           </div>
         )}
@@ -27,7 +27,7 @@ export default function StatCard({ title, value, change, isPositive, subtitle, i
         {subtitle && <p className="text-xs text-t3 mt-0.5">{subtitle}</p>}
       </div>
 
-      <div className="flex items-center justify-between pt-1 border-t border-[var(--border-s)] pt-3">
+      <div className="flex items-center justify-between pt-1 border-t border-border-s pt-3">
         <span
           className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
             isPositive

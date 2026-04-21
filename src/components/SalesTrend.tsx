@@ -19,7 +19,7 @@ const { data, rows } = generateData();
 
 export default function SalesTrend() {
   return (
-    <div className="bg-card rounded-xl border border-[var(--border)] p-6 flex flex-col h-full">
+    <div className="bg-card rounded-xl border border-border p-6 flex flex-col h-full">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-2">
           <h2 className="text-xs font-bold text-t3 uppercase tracking-wider">Sales Trend</h2>
@@ -36,7 +36,7 @@ export default function SalesTrend() {
             Total revenue <span className="text-2xl font-bold text-t1 ml-2">20,320 RWF</span>
           </div>
         </div>
-        <div className="flex bg-surface rounded-lg p-1 border border-[var(--border)]">
+        <div className="flex bg-surface rounded-lg p-1 border border-border">
           <button className="px-3 py-1 text-xs font-medium text-t3 hover:text-t1 rounded transition-colors">Weekly</button>
           <button className="px-3 py-1 text-xs font-medium bg-card text-t1 shadow-sm rounded transition-colors">Monthly</button>
           <button className="px-3 py-1 text-xs font-medium text-t3 hover:text-t1 rounded transition-colors">Yearly</button>
@@ -48,7 +48,7 @@ export default function SalesTrend() {
           {yAxis.map((label, i) => (
             <div key={i} className="flex items-center h-4">
               {label}
-              <div className="w-1 h-1 rounded-full bg-[var(--border)] ml-2"></div>
+              <div className="w-1 h-1 rounded-full bg-border ml-2"></div>
             </div>
           ))}
         </div>
@@ -56,7 +56,7 @@ export default function SalesTrend() {
         <div className="flex-1 flex flex-col relative">
           <div className="absolute inset-0 flex flex-col justify-between pb-6 pointer-events-none">
             {yAxis.map((_, i) => (
-              <div key={i} className="w-full border-t border-[var(--border-s)] h-4"></div>
+              <div key={i} className="w-full border-t border-border-s h-4"></div>
             ))}
           </div>
 
@@ -73,7 +73,7 @@ export default function SalesTrend() {
             ))}
           </div>
 
-          <div className="flex justify-between text-xs text-t3 pt-2 border-t border-[var(--border-s)]">
+          <div className="flex justify-between text-xs text-t3 pt-2 border-t border-border-s">
             {months.map((month, i) => (
               <div key={i}>{month}</div>
             ))}

@@ -21,7 +21,7 @@ type ActiveTab = 'All' | 'Active' | 'Pending / Draft' | 'Overdue' | 'Order Histo
 const STATUS_STYLES: Record<PurchaseOrderStatus, string> = {
   Active: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
   Pending: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  Draft: 'bg-surface text-t3 border-[var(--border)]',
+  Draft: 'bg-surface text-t3 border-border',
   Overdue: 'bg-red-500/10 text-red-500 border-red-500/20',
   Completed: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
 };
@@ -146,12 +146,12 @@ export default function PurchaseOrdersPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Orders', value: summaryStats.total, Icon: FileText, color: 'text-accent', bg: 'bg-[var(--accent-glow)]' },
+          { label: 'Total Orders', value: summaryStats.total, Icon: FileText, color: 'text-accent', bg: 'bg-accent-glow' },
           { label: 'Active Orders', value: summaryStats.active, Icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
           { label: 'Overdue', value: summaryStats.overdue, Icon: Warning, color: 'text-red-500', bg: 'bg-red-500/10' },
           { label: 'Total Spend', value: formatRWF(summaryStats.totalSpend), Icon: TrendUp, color: 'text-blue-400', bg: 'bg-blue-500/10' },
         ].map(card => (
-          <div key={card.label} className="bg-card rounded-xl border border-[var(--border)] p-4 flex items-center gap-4">
+          <div key={card.label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
             <div className={`p-2.5 rounded-xl ${card.bg}`}>
               <card.Icon size={18} weight="duotone" className={card.color} />
             </div>
@@ -164,9 +164,9 @@ export default function PurchaseOrdersPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="bg-card rounded-xl border border-[var(--border)]">
+      <div className="bg-card rounded-xl border border-border">
         {/* Tabs */}
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-4">
+        <div className="flex items-center justify-between border-b border-border px-4">
           <nav className="-mb-px flex gap-0 overflow-x-auto scrollbar-hide">
             {tabs.map(tab => (
               <button
@@ -175,7 +175,7 @@ export default function PurchaseOrdersPage() {
                 className={`whitespace-nowrap py-3.5 px-4 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === tab
                     ? 'border-accent text-accent'
-                    : 'border-transparent text-t3 hover:text-t2 hover:border-[var(--border)]'
+                    : 'border-transparent text-t3 hover:text-t2 hover:border-border'
                 }`}
               >
                 {tab}
@@ -193,18 +193,18 @@ export default function PurchaseOrdersPage() {
               placeholder="Search orders..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-[var(--border)] rounded-lg text-sm bg-surface text-t1 placeholder-[var(--text-3)] outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
+              className="w-full pl-9 pr-4 py-2 border border-border rounded-lg text-sm bg-surface text-t1 placeholder-t3 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
             />
           </div>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
+          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
             <Funnel size={14} weight="duotone" /> Filter <CaretDown size={11} weight="bold" />
           </button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
+          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
             <DownloadSimple size={14} weight="duotone" /> Export
           </button>
 
           {/* View mode toggle */}
-          <div className="flex border border-[var(--border)] rounded-lg overflow-hidden ml-auto">
+          <div className="flex border border-border rounded-lg overflow-hidden ml-auto">
             {([
               { mode: 'table', Icon: ListDashes, label: 'Table' },
               { mode: 'bar', Icon: ChartBar, label: 'Bar Chart' },
@@ -234,7 +234,7 @@ export default function PurchaseOrdersPage() {
             options={{ scrollbars: { autoHide: 'scroll' } }}
             defer
           >
-            <table className="min-w-full divide-y divide-[var(--border)]">
+            <table className="min-w-full divide-y divide-border">
               <thead className="bg-surface">
                 <tr>
                   {['Order #', 'Supplier', 'Category', 'Items', 'Total Amount', 'Status', 'Expected Date', 'Approved By', ''].map(h => (
@@ -242,7 +242,7 @@ export default function PurchaseOrdersPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-card divide-y divide-[var(--border-s)]">
+              <tbody className="bg-card divide-y divide-border-s">
                 {filteredOrders.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="px-4 py-16 text-center text-t3 text-sm">
@@ -273,7 +273,7 @@ export default function PurchaseOrdersPage() {
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={e => { e.stopPropagation(); setModal({ order, mode: 'view' }); }}
-                            className="p-1.5 text-t3 hover:text-accent hover:bg-[var(--accent-glow)] rounded-lg transition-colors"
+                            className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"
                             title="View"
                           >
                             <Eye size={14} weight="duotone" />
@@ -300,12 +300,12 @@ export default function PurchaseOrdersPage() {
               </tbody>
             </table>
             {filteredOrders.length > 0 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-t3">
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border text-xs text-t3">
                 <span>Showing {filteredOrders.length} of {purchaseOrders.length} orders</span>
                 <div className="flex gap-1">
-                  <button className="px-2.5 py-1 border border-[var(--border)] rounded-lg hover:bg-surface transition-colors">Previous</button>
+                  <button className="px-2.5 py-1 border border-border rounded-lg hover:bg-surface transition-colors">Previous</button>
                   <button className="px-2.5 py-1 bg-accent text-white rounded-lg">1</button>
-                  <button className="px-2.5 py-1 border border-[var(--border)] rounded-lg hover:bg-surface transition-colors">Next</button>
+                  <button className="px-2.5 py-1 border border-border rounded-lg hover:bg-surface transition-colors">Next</button>
                 </div>
               </div>
             )}
@@ -395,7 +395,7 @@ export default function PurchaseOrdersPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] text-t3 mb-1">PO Reference</label>
-                    <input type="text" value={modal.order.orderNumber} disabled className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-lg text-sm text-t3" />
+                    <input type="text" value={modal.order.orderNumber} disabled className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t3" />
                   </div>
                   <div>
                     <label className="block text-[10px] text-t3 mb-1">Target Supplier</label>
@@ -403,7 +403,7 @@ export default function PurchaseOrdersPage() {
                       type="text"
                       value={modal.order.supplier}
                       onChange={(e) => updateDraft({ supplier: e.target.value })}
-                      className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-lg text-sm text-t1 placeholder-[var(--text-3)] outline-none focus:border-accent transition-colors"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors"
                       placeholder="Company Name"
                     />
                   </div>
@@ -413,7 +413,7 @@ export default function PurchaseOrdersPage() {
                   <textarea
                     value={(modal.order as any).shippingAddress}
                     onChange={(e) => updateDraft({ shippingAddress: e.target.value } as any)}
-                    className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-lg text-sm text-t1 outline-none resize-none transition-colors"
+                    className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 outline-none resize-none transition-colors"
                     rows={2}
                   />
                 </div>
@@ -435,7 +435,7 @@ export default function PurchaseOrdersPage() {
 
                 <div className="space-y-3">
                   {((modal.order as any).lineItems || [{ description: modal.order.category, quantity: modal.order.items, unitPrice: modal.order.totalAmount / modal.order.items }]).map((item: any, idx: number) => (
-                    <div key={idx} className="p-3 bg-surface rounded-xl border border-[var(--border)] space-y-3">
+                    <div key={idx} className="p-3 bg-surface rounded-xl border border-border space-y-3">
                       <div className="flex justify-between">
                         <span className="text-[10px] font-bold text-t3 uppercase">Item #{idx + 1}</span>
                         <button
@@ -457,7 +457,7 @@ export default function PurchaseOrdersPage() {
                           items[idx].description = e.target.value;
                           updateDraft({ lineItems: items } as any);
                         }}
-                        className="w-full bg-card border border-[var(--border)] px-3 py-1.5 rounded-lg text-sm text-t1 placeholder-[var(--text-3)] outline-none focus:border-accent transition-colors"
+                        className="w-full bg-card border border-border px-3 py-1.5 rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors"
                       />
                       <div className="grid grid-cols-2 gap-3">
                         <input
@@ -469,7 +469,7 @@ export default function PurchaseOrdersPage() {
                             items[idx].quantity = Number(e.target.value);
                             updateDraft({ lineItems: items } as any);
                           }}
-                          className="w-full bg-card border border-[var(--border)] px-3 py-1.5 rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
+                          className="w-full bg-card border border-border px-3 py-1.5 rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
                         />
                         <input
                           type="number"
@@ -480,7 +480,7 @@ export default function PurchaseOrdersPage() {
                             items[idx].unitPrice = Number(e.target.value);
                             updateDraft({ lineItems: items } as any);
                           }}
-                          className="w-full bg-card border border-[var(--border)] px-3 py-1.5 rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
+                          className="w-full bg-card border border-border px-3 py-1.5 rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
                         />
                       </div>
                     </div>
@@ -488,7 +488,7 @@ export default function PurchaseOrdersPage() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-[var(--border)]">
+              <div className="pt-6 border-t border-border">
                 <button
                   onClick={handleSaveOrder}
                   className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all"

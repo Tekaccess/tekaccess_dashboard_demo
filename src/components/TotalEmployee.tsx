@@ -28,7 +28,7 @@ const TotalEmployee: React.FC<TotalEmployeeProps> = ({
   let accumulatedOffset = 0;
 
   return (
-    <div className="bg-card rounded-xl border border-[var(--border)] p-6 flex flex-col h-full">
+    <div className="bg-card rounded-xl border border-border p-6 flex flex-col h-full">
       <h3 className="text-sm font-medium text-t2 mb-6">Total Employee</h3>
 
       <div className="flex justify-center mb-6">

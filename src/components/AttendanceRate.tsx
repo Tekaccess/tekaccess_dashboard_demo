@@ -27,13 +27,13 @@ const AttendanceRate: React.FC<AttendanceRateProps> = ({ rate = 98, data = defau
   const maxVal = 100;
 
   return (
-    <div className="bg-card rounded-xl border border-[var(--border)] p-6 flex flex-col h-full">
+    <div className="bg-card rounded-xl border border-border p-6 flex flex-col h-full">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-sm font-medium text-t2">Attendance Rate</h3>
         <select
           value={selectedPeriod}
           onChange={(e) => setSelectedPeriod(e.target.value)}
-          className="text-xs border border-[var(--border)] rounded-lg px-2 py-1 bg-surface text-t2 outline-none cursor-pointer hover:bg-surface-hover transition-colors"
+          className="text-xs border border-border rounded-lg px-2 py-1 bg-surface text-t2 outline-none cursor-pointer hover:bg-surface-hover transition-colors"
         >
           <option>Monthly</option>
           <option>Weekly</option>

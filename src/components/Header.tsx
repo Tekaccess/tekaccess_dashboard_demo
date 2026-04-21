@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { MagnifyingGlass, Bell, List, Sun, Moon, SignOut, Key, Gear, KeyIcon, GearFineIcon, GearIcon, PencilSimpleIcon, X, CheckIcon, Buildings, ShieldCheck } from '@phosphor-icons/react';
+import React, { useState, useCallback } from 'react';
+import { MagnifyingGlass, Bell, List, Sun, Moon, SignOut, Key, Gear, KeyIcon, GearFineIcon, GearIcon, PencilSimpleIcon, X, CheckIcon, Buildings, ShieldCheck, ClockCounterClockwise, ClockCounterClockwiseIcon, CircleNotchIcon } from '@phosphor-icons/react';
 import { Eye, EyeSlash, CircleNotch, CheckCircle } from '@phosphor-icons/react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '@tanstack/react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { apiChangePassword } from '../lib/api';
+import { apiChangePassword, apiGetMyActivity, type ActivityLog } from '../lib/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 const SLUG_LABELS: Record<string, string> = {
   executive: 'Executive',
@@ -51,6 +52,13 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
   const [nameError, setNameError] = useState('');
   const [nameSaved, setNameSaved] = useState(false);
 
+  // Activity modal state
+  const [showActivity, setShowActivity] = useState(false);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState('');
+  const [activitySort, setActivitySort] = useState<'newest' | 'oldest' | 'failed'>('newest');
+
   const openSettings = () => {
     setIsProfileOpen(false);
     setNameValue(user?.fullName ?? '');
@@ -59,6 +67,27 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
     setNameSaved(false);
     setShowSettings(true);
   };
+
+  const openActivity = useCallback(async () => {
+    setIsProfileOpen(false);
+    setActivityLogs([]);
+    setActivityError('');
+    setActivitySort('newest');
+    setActivityLoading(true);
+    setShowActivity(true);
+    try {
+      const res = await apiGetMyActivity();
+      if (res.success) {
+        setActivityLogs(res.data.logs);
+      } else {
+        setActivityError('Failed to load activity.');
+      }
+    } catch {
+      setActivityError('Something went wrong.');
+    } finally {
+      setActivityLoading(false);
+    }
+  }, []);
 
   const handleSaveName = async () => {
     if (!nameValue.trim() || nameValue.trim() === user?.fullName) {
@@ -126,7 +155,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
 
   return (
     <>
-      <header className="h-14 bg-card border-b border-[var(--border)] flex items-center justify-between px-4 sm:px-6 shrink-0 gap-4">
+      <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 sm:px-6 shrink-0 gap-4">
         {/* Left */}
         <div className="flex items-center gap-3 min-w-0">
           <button
@@ -145,19 +174,11 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
             <input
               type="text"
               placeholder="Search..."
-              className="w-44 pl-8 pr-3 py-[8px] border border-[var(--border)] rounded-lg bg-surface placeholder-[var(--text-3)] text-t1 text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+              className="w-44 pl-8 pr-3 py-[8px] border border-border rounded-lg bg-surface placeholder-t3 text-t1 text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
             />
           </div>
 
-          <button
-            onClick={toggleTheme}
-            className="p-1.5 text-t3 hover:text-t1 border border-[var(--border)] rounded-lg bg-card transition-colors"
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {theme === 'dark' ? <Sun size={18} weight="duotone" /> : <Moon size={18} weight="duotone" />}
-          </button>
-
-          <button className="relative p-1.5 text-t3 hover:text-t1 border border-[var(--border)] rounded-lg bg-card transition-colors">
+          <button className="relative p-1.5 text-t3 hover:text-t1 border border-border rounded-lg bg-card transition-colors">
             <Bell size={18} weight="duotone" />
             <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-accent rounded-full ring-1 ring-card" />
           </button>
@@ -166,7 +187,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
           <div className="relative ml-2">
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-2 p-1 border border-[var(--border)] rounded-full bg-surface hover:bg-[var(--accent-glow)] transition-all overflow-hidden"
+              className="flex items-center gap-2 p-1 border border-border rounded-full bg-surface hover:bg-accent-glow transition-all overflow-hidden"
             >
               <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-white text-[10px] font-bold">
                 {user?.fullName?.[0].toUpperCase() || 'U'}
@@ -183,17 +204,17 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.96 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-60 bg-card border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden z-50"
+                    className="absolute right-0 mt-2 w-60 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden z-50"
                   >
                     {/* User identity */}
-                    <div className="p-3 flex items-start gap-3 border-b border-[var(--border)]">
+                    <div className="p-3 flex items-start gap-3 border-b border-border">
                       <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-white text-sm font-bold shrink-0">
                         {user?.fullName?.[0].toUpperCase() || 'U'}
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-t1 truncate">{user?.fullName}</p>
                         <p className="text-xs text-t3 truncate">{user?.email}</p>
-                        <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-md bg-[var(--accent-glow)] text-accent text-[9px] font-bold uppercase tracking-wide">
+                        <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-md bg-accent-glow text-accent text-[9px] font-bold uppercase tracking-wide">
                           {user?.role?.replace('_', ' ')}
                         </span>
                       </div>
@@ -201,6 +222,13 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
 
                     {/* Actions */}
                     <div className="p-1.5 space-y-0.5">
+                      <button
+                        onClick={openActivity}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
+                      >
+                        <ClockCounterClockwise size={18} weight="regular" className="text-t3" />
+                        Activity
+                      </button>
                       <button
                         onClick={openChangePassword}
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
@@ -218,7 +246,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                     </div>
 
                     {/* Sign out */}
-                    <div className="p-1.5 border-t border-[var(--border)]">
+                    <div className="p-1.5 border-t border-border">
                       <button
                         onClick={() => { setIsProfileOpen(false); setShowLogoutConfirm(true); }}
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
@@ -259,20 +287,20 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm px-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-card border border-[var(--border)] rounded-2xl shadow-2xl p-6">
+              <div className="bg-card border border-border rounded-2xl shadow-2xl p-6">
 
                 {modalState === 'success' ? (
                   <div className="flex flex-col items-center text-center">
                     <div className="w-12 h-12 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-4">
                       <CheckCircle size={24} weight="duotone" className="text-green-500" />
                     </div>
-                    <h2 className="text-base font-bold text-[var(--text-1)] mb-1">Password Updated</h2>
-                    <p className="text-sm text-[var(--text-3)] mb-10">
+                    <h2 className="text-base font-bold text-t1 mb-1">Password Updated</h2>
+                    <p className="text-sm text-t3 mb-10">
                       Your password has been changed. Other active sessions have been signed out.
                     </p>
                     <button
                       onClick={closeModal}
-                      className="w-full py-2.5 bg-indigo-400 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition-colors"
+                      className="w-full py-2.5 bg-accent hover:bg-accent-h text-white rounded-xl text-sm font-medium transition-colors"
                     >
                       Done
                     </button>
@@ -280,10 +308,10 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                 ) : (
                   <>
                     <div className="flex items-center justify-between mb-5">
-                      <h2 className="text-base font-bold text-[var(--text-1)]">Change Password</h2>
+                      <h2 className="text-base font-bold text-t1">Change Password</h2>
                       <button
                         onClick={closeModal}
-                        className="text-[var(--text-3)] hover:text-[var(--text-1)] text-lg leading-none transition-colors"
+                        className="text-t3 hover:text-t1 text-lg leading-none transition-colors"
                       >
                         ×
                       </button>
@@ -299,12 +327,12 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                           value={currentPassword}
                           onChange={(e) => setCurrentPassword(e.target.value)}
                           placeholder="Current password"
-                          className="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-indigo-300/50 dark:focus:ring-indigo-500/30 transition-all text-sm"
+                          className="w-full px-4 py-2.5 pr-10 rounded-xl border border-border bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm"
                         />
                         <button
                           type="button"
                           onClick={() => setShowCurrent(!showCurrent)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)] hover:text-[var(--text-2)] transition-colors"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-t3 hover:text-t2 transition-colors"
                         >
                           {showCurrent ? <EyeSlash size={20} weight="duotone" /> : <Eye size={20} weight="duotone" />}
                         </button>
@@ -318,12 +346,12 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
                           placeholder="New password"
-                          className="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-indigo-300/50 dark:focus:ring-indigo-500/30 transition-all text-sm"
+                          className="w-full px-4 py-2.5 pr-10 rounded-xl border border-border bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm"
                         />
                         <button
                           type="button"
                           onClick={() => setShowNew(!showNew)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)] hover:text-[var(--text-2)] transition-colors"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-t3 hover:text-t2 transition-colors"
                         >
                           {showNew ? <EyeSlash size={20} weight="duotone" /> : <Eye size={20} weight="duotone" />}
                         </button>
@@ -336,10 +364,10 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="Confirm new password"
-                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-indigo-300/50 dark:focus:ring-indigo-500/30 transition-all text-sm"
+                        className="w-full px-4 py-2.5 rounded-xl border border-border bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm"
                       />
 
-                      <p className="text-xs text-[var(--text-3)] mb-3">
+                      <p className="text-xs text-t3 mb-3">
                         Min. 8 characters · one uppercase · one number
                       </p>
 
@@ -348,7 +376,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full py-2.5 bg-indigo-400 hover:bg-indigo-500 disabled:opacity-75 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-2.5 bg-accent hover:bg-accent-h disabled:opacity-75 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
                       >
                         {isSubmitting ? (
                           <><CircleNotch size={18} weight="bold" className="animate-spin" /> Saving…</>
@@ -386,10 +414,10 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xl px-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-card border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden">
+              <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
 
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                   <h2 className="text-base font-bold text-t1">Account Settings</h2>
                   <button
                     onClick={() => setShowSettings(false)}
@@ -409,14 +437,14 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                     <div>
                       <p className="text-base font-bold text-t1">{user?.fullName}</p>
                       <p className="text-xs text-t3">{user?.email}</p>
-                      <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-[var(--accent-glow)] text-accent text-[10px] font-bold uppercase tracking-wide">
+                      <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-accent-glow text-accent text-[10px] font-bold uppercase tracking-wide">
                         {user?.role?.replace(/_/g, ' ')}
                       </span>
                     </div>
                   </div>
 
                   {/* Divider */}
-                  <div className="border-t border-[var(--border)]" />
+                  <div className="border-t border-border" />
 
                   {/* Name field */}
                   <div>
@@ -431,12 +459,12 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                             value={nameValue}
                             onChange={(e) => setNameValue(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setNameEditing(false); }}
-                            className="flex-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-surface text-sm text-t1 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
+                            className="flex-1 px-3 py-2 rounded-lg border border-border bg-surface text-sm text-t1 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
                           />
                           <button
                             onClick={handleSaveName}
                             disabled={nameSaving}
-                            className="px-3 py-2 bg-accent hover:bg-[var(--accent-h)] text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-60"
+                            className="px-3 py-2 bg-accent hover:bg-accent-h text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-60"
                           >
                             {nameSaving
                               ? <CircleNotch size={14} weight="bold" className="animate-spin" />
@@ -445,7 +473,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                           </button>
                           <button
                             onClick={() => { setNameEditing(false); setNameError(''); }}
-                            className="px-3 py-2 border border-[var(--border)] text-t2 hover:bg-surface text-xs font-medium rounded-lg transition-colors"
+                            className="px-3 py-2 border border-border text-t2 hover:bg-surface text-xs font-medium rounded-lg transition-colors"
                           >
                             Cancel
                           </button>
@@ -457,7 +485,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                           </span>
                           <button
                             onClick={() => { setNameValue(user?.fullName ?? ''); setNameEditing(true); setNameSaved(false); }}
-                            className="px-3 py-2 border border-[var(--border)] text-t2 hover:bg-surface hover:text-t1 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5"
+                            className="px-3 py-2 border border-border text-t2 hover:bg-surface hover:text-t1 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5"
                           >
                             <PencilSimpleIcon size={13} weight="bold" />
                             Edit
@@ -474,7 +502,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                   </div>
 
                   {/* Divider */}
-                  <div className="border-t border-[var(--border)]" />
+                  <div className="border-t border-border" />
 
                   {/* Dashboard access */}
                   <div>
@@ -482,7 +510,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                       Dashboard Access
                     </label>
                     {user?.role === 'super_admin' ? (
-                      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[var(--accent-glow)] border border-[var(--accent-border)]">
+                      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-accent-glow border border-accent-border">
                         <ShieldCheck size={18} weight="duotone" className="text-accent shrink-0" />
                         <p className="text-xs font-medium text-accent">Full access to all dashboards</p>
                       </div>
@@ -491,7 +519,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                         {user.dashboardAccess.map((slug) => (
                           <div
                             key={slug}
-                            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-surface border border-[var(--border)]"
+                            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-surface border border-border"
                           >
                             <Buildings size={15} weight="duotone" className="text-accent shrink-0" />
                             <span className="text-xs font-medium text-t1 truncate">
@@ -505,6 +533,89 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                     )}
                   </div>
 
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Activity Modal */}
+      <AnimatePresence>
+        {showActivity && (
+          <>
+            <motion.div
+              key="activity-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+              onClick={() => setShowActivity(false)}
+            />
+            <motion.div
+              key="activity-dialog"
+              initial={{ opacity: 0, scale: 0.97, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.97, y: 12 }}
+              transition={{ duration: 0.2 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg px-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+                  <div className="flex items-center gap-2">
+                    <ClockCounterClockwiseIcon size={18} weight="regular" className="text-accent" />
+                    <h2 className="text-base font-bold text-t1">Activity</h2>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={activitySort} onValueChange={(v) => setActivitySort(v as typeof activitySort)}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="newest">Newest first</SelectItem>
+                        <SelectItem value="oldest">Oldest first</SelectItem>
+                        <SelectItem value="failed">Failed only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <button
+                      onClick={() => setShowActivity(false)}
+                      className="p-1.5 rounded-lg text-t3 hover:text-t1 hover:bg-surface transition-colors"
+                    >
+                      <X size={18} weight="bold" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="overflow-y-auto flex-1 p-0">
+                  {activityLoading && (
+                    <div className="flex items-center justify-center py-12">
+                      <CircleNotchIcon size={24} weight="bold" className="animate-spin text-accent" />
+                    </div>
+                  )}
+                  {activityError && (
+                    <p className="text-sm text-red-500 text-center py-8">{activityError}</p>
+                  )}
+                  {!activityLoading && !activityError && activityLogs.length === 0 && (
+                    <p className="text-sm text-t3 text-center py-8 italic">No activity recorded yet.</p>
+                  )}
+                  {!activityLoading && activityLogs.length > 0 && (() => {
+                    const sorted = [...activityLogs]
+                      .filter((l) => activitySort === 'failed' ? l.status === 'failed' : true)
+                      .sort((a, b) => {
+                        if (activitySort === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                      });
+                    return sorted.length === 0
+                      ? <p className="text-sm text-t3 text-center py-8 italic">No failed activity recorded.</p>
+                      : (
+                        <div className="space-y-0">
+                          {sorted.map((log) => <ActivityEntry key={log._id} log={log} />)}
+                        </div>
+                      );
+                  })()}
                 </div>
               </div>
             </motion.div>
@@ -533,12 +644,12 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xs px-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-card border border-[var(--border)] rounded-2xl shadow-2xl p-6 text-center">
+              <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 text-center">
                 <div className="w-12 h-12 bg-red-100 dark:bg-red-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
                   <SignOut size={22} weight="duotone" className="text-red-500" />
                 </div>
-                <h2 className="text-base font-bold text-[var(--text-1)] mb-1">Sign out?</h2>
-                <p className="text-xs text-[var(--text-3)] mb-5">
+                <h2 className="text-base font-bold text-t1 mb-1">Sign out?</h2>
+                <p className="text-xs text-t3 mb-5">
                   You'll need to log in again to access your account.
                 </p>
                 <div className="flex flex-col gap-2">
@@ -557,7 +668,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                   <button
                     onClick={() => setShowLogoutConfirm(false)}
                     disabled={isLoggingOut}
-                    className="flex-1 py-2.5 border border-[var(--border)] text-[var(--text-1)] hover:bg-[var(--surface)] rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+                    className="flex-1 py-2.5 border border-border text-t1 hover:bg-surface rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -568,5 +679,62 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+const ACTION_STYLES: Record<string, string> = {
+  create: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400',
+  update: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400',
+  delete: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400',
+  read:   'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-400',
+};
+
+const DASHBOARD_LABELS: Record<string, string> = {
+  executive: 'Executive', finance: 'Finance', transport: 'Transport',
+  operations: 'Operations', inventory: 'Inventory',
+  procurement_trading: 'Procurement', procurement_fleet: 'Fleet',
+  data_entry: 'Data Entry', system: 'Account',
+};
+
+function ActivityEntry({ log }: { log: import('../lib/api').ActivityLog }) {
+  const date = new Date(log.createdAt);
+  const formatted = date.toLocaleString(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+
+  const description = [
+    log.collection.replace(/_/g, ' '),
+    log.documentRef ? `· ${log.documentRef}` : null,
+  ].filter(Boolean).join(' ');
+
+  return (
+    <div className="flex items-start gap-3 px-5 py-4 bg-card border-b border-border transition-colors">
+      <div className="shrink-0 mt-0.5">
+        <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${ACTION_STYLES[log.action] ?? ACTION_STYLES.read}`}>
+          {log.action}
+        </span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-t1 truncate ">{description}</p>
+        {log.changedFields.length > 0 && (
+          <p className="text-[11px] text-t3 truncate mt-0.5">
+            Changed: {log.changedFields.join(', ')}
+          </p>
+        )}
+        {log.note && <p className="text-[11px] text-t3 truncate mt-0.5">{log.note}</p>}
+        {log.status === 'failed' && log.errorMessage && (
+          <p className="text-[11px] text-red-500 truncate mt-0.5">{log.errorMessage}</p>
+        )}
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-[11px] text-t3">{formatted}</span>
+          <span className="text-t3 text-[11px]">·</span>
+          <span className="text-[11px] text-t3">{DASHBOARD_LABELS[log.dashboard] ?? log.dashboard}</span>
+          <span className={`ml-auto text-[10px] font-semibold ${log.status === 'success' ? 'text-green-500' : 'text-red-500'}`}>
+            {log.status}
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -57,8 +57,8 @@ const LoginPage: React.FC = () => {
           transition={{ duration: 0.22 }}
           className="w-full"
         >
-          <h1 className="text-2xl font-bold text-[var(--text-1)] mb-1">Welcome Back</h1>
-          <p className="text-sm text-[var(--text-3)] mb-6">Log in to access your account</p>
+          <h1 className="text-2xl font-bold text-t1 mb-1">Welcome Back</h1>
+          <p className="text-sm text-t3 mb-6">Log in to access your account</p>
 
           <AnimatePresence mode="wait">
             {step === "email" ? (
@@ -79,14 +79,14 @@ const LoginPage: React.FC = () => {
                     autoFocus
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-indigo-300/50 dark:focus:ring-indigo-500/30 transition-all text-sm"
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm"
                     placeholder="Enter Email address"
                   />
                   {emailError && <p className="text-xs text-red-500 mt-1.5">{emailError}</p>}
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-3 bg-indigo-400 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-sm"
+                  className="w-full py-3 bg-accent hover:bg-accent-h text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   Continue <ArrowRight size={18} weight="bold" />
                 </button>
@@ -101,12 +101,12 @@ const LoginPage: React.FC = () => {
                 onSubmit={handleLogin}
                 className="space-y-3"
               >
-                <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--surface)] text-sm">
-                  <span className="text-[var(--text-2)] truncate text-sm">{email}</span>
+                <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-surface text-sm">
+                  <span className="text-t2 truncate text-sm">{email}</span>
                   <button
                     type="button"
                     onClick={() => { setStep("email"); setPassword(""); }}
-                    className="text-indigo-500 hover:text-indigo-600 font-medium ml-3 shrink-0 text-sm"
+                    className="text-accent hover:text-accent-h font-medium ml-3 shrink-0 text-sm"
                   >
                     Edit
                   </button>
@@ -119,13 +119,13 @@ const LoginPage: React.FC = () => {
                     autoFocus
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-indigo-300/50 dark:focus:ring-indigo-500/30 transition-all text-sm"
+                    className="w-full px-4 py-3 pr-11 rounded-xl border border-border bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm"
                     placeholder="Enter your password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)] hover:text-[var(--text-2)] transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-t3 hover:text-t2 transition-colors"
                   >
                     {showPassword
                       ? <EyeSlash size={20} weight="duotone" />
@@ -139,7 +139,7 @@ const LoginPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => navigate({ to: "/forgot-password" })}
-                    className="text-xs text-indigo-500 hover:text-indigo-600 font-medium transition-colors"
+                    className="text-xs text-accent hover:text-accent-h font-medium transition-colors"
                   >
                     Forgot your password?
                   </button>
@@ -148,7 +148,7 @@ const LoginPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-3 bg-indigo-400 hover:bg-indigo-500 disabled:opacity-75 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-sm"
+                  className="w-full py-3 bg-accent hover:bg-accent-h disabled:opacity-75 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   {isLoading ? (
                     <><CircleNotch size={18} weight="bold" className="animate-spin" /> Signing In…</>
@@ -162,7 +162,7 @@ const LoginPage: React.FC = () => {
         </motion.div>
       </div>
 
-      <p className="text-xs text-[var(--text-3)] pb-6">Authorized Personnel Only!</p>
+      <p className="text-xs text-t3 pb-6">Authorized Personnel Only!</p>
     </div>
   );
 };

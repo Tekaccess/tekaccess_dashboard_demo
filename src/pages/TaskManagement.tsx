@@ -163,7 +163,7 @@ export default function TaskManagement() {
         {Object.entries(counts).map(([status, count]) => {
           const Icon = statusIcons[status as keyof typeof statusIcons];
           return (
-            <div key={status} className="bg-card rounded-xl border border-[var(--border)] p-4">
+            <div key={status} className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center justify-between mb-2">
                 <Icon className="w-5 h-5 text-t2" />
                 <span className="text-2xl font-bold text-t1">{count}</span>
@@ -175,7 +175,7 @@ export default function TaskManagement() {
       </div>
 
       {/* Filters */}
-      <div className="bg-card rounded-xl border border-[var(--border)] p-4">
+      <div className="bg-card rounded-xl border border-border p-4">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* MagnifyingGlass */}
           <div className="flex-1 relative">
@@ -185,7 +185,7 @@ export default function TaskManagement() {
               placeholder="MagnifyingGlass tasks..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-[var(--border)] rounded-xl text-sm outline-none focus:border-accent focus:ring-1 focus:ring-[#1e3a8a]"
+              className="w-full pl-10 pr-4 py-2 border border-border rounded-xl text-sm outline-none focus:border-accent focus:ring-1 focus:ring-[#1e3a8a]"
             />
           </div>
 
@@ -193,7 +193,7 @@ export default function TaskManagement() {
           <select
             value={statusFunnel}
             onChange={(e) => setStatusFunnel(e.target.value)}
-            className="px-4 py-2 border border-[var(--border)] rounded-xl text-sm text-t2 outline-none cursor-pointer hover:bg-surface"
+            className="px-4 py-2 border border-border rounded-xl text-sm text-t2 outline-none cursor-pointer hover:bg-surface"
           >
             <option value="all">All Status</option>
             <option value="todo">To Do</option>
@@ -206,7 +206,7 @@ export default function TaskManagement() {
           <select
             value={priorityFunnel}
             onChange={(e) => setPriorityFunnel(e.target.value)}
-            className="px-4 py-2 border border-[var(--border)] rounded-xl text-sm text-t2 outline-none cursor-pointer hover:bg-surface"
+            className="px-4 py-2 border border-border rounded-xl text-sm text-t2 outline-none cursor-pointer hover:bg-surface"
           >
             <option value="all">All Priority</option>
             <option value="low">Low</option>
@@ -216,7 +216,7 @@ export default function TaskManagement() {
           </select>
 
           {/* View Toggle */}
-          <div className="flex border border-[var(--border)] rounded-xl overflow-hidden">
+          <div className="flex border border-border rounded-xl overflow-hidden">
             <button
               onClick={() => setViewMode('list')}
               className={`px-3 py-2 text-sm ${viewMode === 'list' ? 'bg-accent text-white' : 'bg-card text-t2'}`}
@@ -235,13 +235,13 @@ export default function TaskManagement() {
 
       {/* Task List View */}
       {viewMode === 'list' && (
-        <div className="bg-card rounded-xl border border-[var(--border)] overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
           <OverlayScrollbarsComponent
             options={{ scrollbars: { autoHide: 'scroll' } }}
             defer
           >
             <table className="w-full">
-              <thead className="bg-surface border-b border-[var(--border)]">
+              <thead className="bg-surface border-b border-border">
                 <tr>
                   <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Task</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Status</th>
@@ -254,7 +254,7 @@ export default function TaskManagement() {
               </thead>
               <tbody>
                 {filteredTasks.map((task) => (
-                  <tr key={task.id} className="border-b border-[var(--border-s)] hover:bg-surface transition-colors">
+                  <tr key={task.id} className="border-b border-border-s hover:bg-surface transition-colors">
                     <td className="py-4 px-4">
                       <div>
                         <p className="text-sm font-medium text-t1">{task.title}</p>
@@ -331,7 +331,7 @@ export default function TaskManagement() {
                 {filteredTasks
                   .filter(task => task.status === status)
                   .map((task) => (
-                    <div key={task.id} className="bg-card rounded-xl border border-[var(--border)] p-4 hover:shadow-md transition-shadow cursor-pointer">
+                    <div key={task.id} className="bg-card rounded-xl border border-border p-4 hover:shadow-md transition-shadow cursor-pointer">
                       <div className="flex items-start justify-between mb-2">
                         <h4 className="text-sm font-medium text-t1">{task.title}</h4>
                         <button className="p-1 hover:bg-surface rounded">
@@ -396,11 +396,11 @@ export default function TaskManagement() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-[10px] text-t2 mb-1">Task Nomenclature</label>
-                    <input type="text" placeholder="Specify project task name" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none focus:border-accent" />
+                    <input type="text" placeholder="Specify project task name" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none focus:border-accent" />
                   </div>
                   <div>
                     <label className="block text-[10px] text-t2 mb-1">Operational Description</label>
-                    <textarea rows={3} placeholder="Define scope and deliverables" className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none focus:border-accent" />
+                    <textarea rows={3} placeholder="Define scope and deliverables" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none focus:border-accent" />
                   </div>
                 </div>
               </div>
@@ -408,7 +408,7 @@ export default function TaskManagement() {
                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Workflow State</label>
-                    <select className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
+                    <select className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
                       <option>To Do</option>
                       <option>In Progress</option>
                       <option>In Review</option>
@@ -417,7 +417,7 @@ export default function TaskManagement() {
                   </div>
                    <div>
                     <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Strategic Priority</label>
-                    <select className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
+                    <select className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
                       <option>Low Impact</option>
                       <option>Medium Priority</option>
                       <option>High Urgency</option>
@@ -428,7 +428,7 @@ export default function TaskManagement() {
 
               <div>
                 <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Accountability</label>
-                <div className="flex items-center gap-3 p-3 bg-[var(--accent-glow)]/50 rounded-xl border border-blue-100/50">
+                <div className="flex items-center gap-3 p-3 bg-accent-glow/50 rounded-xl border border-blue-100/50">
                   <div className="p-2 bg-card rounded-xl shadow-sm"><Users className="w-4 h-4 text-accent" /></div>
                   <div className="flex-1">
                     <p className="text-[10px] text-t3 uppercase font-black">Assignee</p>
@@ -459,7 +459,7 @@ export default function TaskManagement() {
                </div>
 
                {/* Task ID Block */}
-               <div className="mb-16 flex items-start justify-between border-y border-[var(--border-s)] py-12">
+               <div className="mb-16 flex items-start justify-between border-y border-border-s py-12">
                   <div>
                     <p className="text-[10px] font-black uppercase text-t3 mb-2">Subject Matter</p>
                     <p className="text-xl font-bold italic text-accent">Waiting for definition...</p>

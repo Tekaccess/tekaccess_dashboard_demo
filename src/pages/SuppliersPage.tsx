@@ -17,7 +17,7 @@ type ActiveTab = 'All Suppliers' | 'Performance & Ranking' | 'Payment Status';
 
 const STATUS_STYLES: Record<SupplierStatus, string> = {
   Active: 'bg-green-50 text-green-700 border-green-200',
-  Inactive: 'bg-surface text-t2 border-[var(--border)]',
+  Inactive: 'bg-surface text-t2 border-border',
   'On Hold': 'bg-yellow-50 text-yellow-700 border-yellow-200',
   Blacklisted: 'bg-red-50 text-red-700 border-red-200',
 };
@@ -91,12 +91,12 @@ export default function SuppliersPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Suppliers', value: summaryStats.total, icon: Trophy, color: 'text-accent', bg: 'bg-[var(--accent-glow)]' },
+          { label: 'Total Suppliers', value: summaryStats.total, icon: Trophy, color: 'text-accent', bg: 'bg-accent-glow' },
           { label: 'Active Suppliers', value: summaryStats.active, icon: Trophy, color: 'text-green-600', bg: 'bg-green-50' },
           { label: 'Avg. Rating', value: `${summaryStats.avgRating}/5`, icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'Total Spend', value: formatRWF(summaryStats.totalSpend), icon: TrendUp, color: 'text-indigo-600', bg: 'bg-indigo-50' },
         ].map(card => (
-          <div key={card.label} className="bg-card rounded-xl border border-[var(--border)] p-4 flex items-center gap-4">
+          <div key={card.label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
             <div className={`p-2.5 rounded-xl ${card.bg}`}>
               <card.icon className={`w-5 h-5 ${card.color}`} />
             </div>
@@ -109,9 +109,9 @@ export default function SuppliersPage() {
       </div>
 
       {/* Main Panel */}
-      <div className="bg-card rounded-xl border border-[var(--border)]">
+      <div className="bg-card rounded-xl border border-border">
         {/* Tabs */}
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-4">
+        <div className="flex items-center justify-between border-b border-border px-4">
           <nav className="-mb-px flex gap-0 overflow-x-auto scrollbar-hide">
             {tabs.map(tab => (
               <button
@@ -138,18 +138,18 @@ export default function SuppliersPage() {
               placeholder="MagnifyingGlass suppliers..."
               value={search}
               onChange={e => setMagnifyingGlass(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-[var(--border)] rounded-xl text-sm outline-none focus:border-accent focus:ring-1 focus:ring-[#1e3a8a]"
+              className="w-full pl-9 pr-4 py-2 border border-border rounded-xl text-sm outline-none focus:border-accent focus:ring-1 focus:ring-[#1e3a8a]"
             />
           </div>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] rounded-xl text-sm text-t2 hover:bg-surface">
+          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-sm text-t2 hover:bg-surface">
             <Funnel className="w-4 h-4" /> Funnel <CaretDown className="w-3.5 h-3.5" />
           </button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] rounded-xl text-sm text-t2 hover:bg-surface">
+          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-sm text-t2 hover:bg-surface">
             <DownloadSimple className="w-4 h-4" /> Export
           </button>
 
           {/* View toggle */}
-          <div className="flex border border-[var(--border)] rounded-xl overflow-hidden ml-auto">
+          <div className="flex border border-border rounded-xl overflow-hidden ml-auto">
             {([
               { mode: 'table', icon: ListDashes, label: 'Table' },
               { mode: 'cards', icon: Trophy, label: 'Cards' },
@@ -179,7 +179,7 @@ export default function SuppliersPage() {
             options={{ scrollbars: { autoHide: 'scroll' } }}
             defer
           >
-            <table className="min-w-full divide-y divide-[var(--border-s)]">
+            <table className="min-w-full divide-y divide-border-s">
               <thead className="bg-surface">
                 <tr>
                   {['Supplier Name', 'Contact', 'Country', 'Category', 'Rating', 'On-Time %', 'Total Orders', 'Total Spend', 'Status', ''].map(h => (
@@ -189,7 +189,7 @@ export default function SuppliersPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-card divide-y divide-[var(--border-s)]">
+              <tbody className="bg-card divide-y divide-border-s">
                 {filteredSuppliers.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="px-4 py-16 text-center text-t3 text-sm">
@@ -236,7 +236,7 @@ export default function SuppliersPage() {
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center justify-end gap-1">
-                          <button onClick={e => { e.stopPropagation(); setSelectedSupplier(s); }} className="p-1.5 text-t3 hover:text-accent hover:bg-[var(--accent-glow)] rounded transition-colors">
+                          <button onClick={e => { e.stopPropagation(); setSelectedSupplier(s); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded transition-colors">
                             <Eye className="w-4 h-4" />
                           </button>
                           <button onClick={e => e.stopPropagation()} className="p-1.5 text-t3 hover:text-t2 hover:bg-surface rounded transition-colors">
@@ -250,7 +250,7 @@ export default function SuppliersPage() {
               </tbody>
             </table>
             {filteredSuppliers.length > 0 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border-s)] text-xs text-t2">
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border-s text-xs text-t2">
                 <span>Showing {filteredSuppliers.length} suppliers</span>
               </div>
             )}
@@ -262,7 +262,7 @@ export default function SuppliersPage() {
           <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredSuppliers.map(s => (
               <div key={s.id} onClick={() => setSelectedSupplier(s)}
-                className="border border-[var(--border)] rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer group">
+                className="border border-border rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer group">
                 <div className="flex items-start justify-between mb-3">
                   <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center font-bold text-accent text-lg">
                     {s.name.charAt(0)}
@@ -282,7 +282,7 @@ export default function SuppliersPage() {
                   <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{s.phone}</div>
                   <div className="flex items-center gap-1.5"><Envelope className="w-3.5 h-3.5" />{s.email}</div>
                 </div>
-                <div className="mt-4 pt-4 border-t border-[var(--border-s)] flex justify-between text-xs">
+                <div className="mt-4 pt-4 border-t border-border-s flex justify-between text-xs">
                   <div>
                     <p className="text-t3">On-time</p>
                     <p className={`font-bold ${s.onTimeDelivery >= 90 ? 'text-green-600' : s.onTimeDelivery >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>{s.onTimeDelivery}%</p>
@@ -366,16 +366,16 @@ export default function SuppliersPage() {
                 <input 
                   type="text" 
                   defaultValue={selectedSupplier.name}
-                  className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm focus:ring-2 focus:ring-[#1e3a8a]/10 focus:border-accent outline-none transition-all"
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm focus:ring-2 focus:ring-[#1e3a8a]/10 focus:border-accent outline-none transition-all"
                 />
               </div>
 
               <div>
                 <label className="block text-[11px] font-bold text-t3 uppercase tracking-wider mb-2">Primary Contact</label>
                 <div className="space-y-3">
-                  <input type="text" placeholder="Contact Person" defaultValue={selectedSupplier.contactPerson} className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none focus:border-accent" />
-                  <input type="email" placeholder="Email Address" defaultValue={selectedSupplier.email} className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none focus:border-accent" />
-                  <input type="tel" placeholder="Phone Number" defaultValue={selectedSupplier.phone} className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm outline-none focus:border-accent" />
+                  <input type="text" placeholder="Contact Person" defaultValue={selectedSupplier.contactPerson} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none focus:border-accent" />
+                  <input type="email" placeholder="Email Address" defaultValue={selectedSupplier.email} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none focus:border-accent" />
+                  <input type="tel" placeholder="Phone Number" defaultValue={selectedSupplier.phone} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none focus:border-accent" />
                 </div>
               </div>
 
@@ -385,7 +385,7 @@ export default function SuppliersPage() {
                   <div>
                     <label className="block text-[10px] text-t2 mb-1">Payment Terms</label>
                     <div className="relative">
-                      <select defaultValue={selectedSupplier.paymentTerms} className="w-full px-2 py-1.5 bg-surface border border-[var(--border)] rounded text-xs appearance-none outline-none focus:border-accent">
+                      <select defaultValue={selectedSupplier.paymentTerms} className="w-full px-2 py-1.5 bg-surface border border-border rounded text-xs appearance-none outline-none focus:border-accent">
                         <option>Net 7</option>
                         <option>Net 15</option>
                         <option>Net 30</option>
@@ -398,7 +398,7 @@ export default function SuppliersPage() {
                   <div>
                     <label className="block text-[10px] text-t2 mb-1">Status</label>
                     <div className="relative">
-                      <select defaultValue={selectedSupplier.status} className="w-full px-2 py-1.5 bg-surface border border-[var(--border)] rounded text-xs appearance-none outline-none focus:border-accent">
+                      <select defaultValue={selectedSupplier.status} className="w-full px-2 py-1.5 bg-surface border border-border rounded text-xs appearance-none outline-none focus:border-accent">
                         <option>Active</option>
                         <option>Inactive</option>
                         <option>On Hold</option>
@@ -422,7 +422,7 @@ export default function SuppliersPage() {
           selectedSupplier && (
             <div className="relative font-sans text-t1">
               {/* Header */}
-              <div className="flex justify-between items-start mb-16 pb-8 border-b border-[var(--border-s)]">
+              <div className="flex justify-between items-start mb-16 pb-8 border-b border-border-s">
                 <div className="flex gap-6">
                   <div className="w-20 h-20 bg-accent rounded-2xl flex items-center justify-center text-white text-4xl font-black shadow-xl shadow-[#1e3a8a]/20 shrink-0">
                     {selectedSupplier.name.charAt(0)}
@@ -450,7 +450,7 @@ export default function SuppliersPage() {
                 <div>
                   <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-4">Location Portfolio</label>
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-[var(--accent-glow)] rounded-xl"><MapPin className="w-4 h-4 text-accent" /></div>
+                    <div className="p-2 bg-accent-glow rounded-xl"><MapPin className="w-4 h-4 text-accent" /></div>
                     <div>
                       <p className="text-sm font-bold text-t1">{selectedSupplier.city}, {selectedSupplier.country}</p>
                       <p className="text-xs text-t2">Corporate HQ & Regional Hub</p>
@@ -491,7 +491,7 @@ export default function SuppliersPage() {
                         <span className="text-xs font-black text-blue-500">92%</span>
                       </div>
                       <div className="h-2 bg-surface rounded-full overflow-hidden">
-                        <div className="h-full bg-[var(--accent-glow)]0 rounded-full transition-all duration-1000" style={{ width: '92%' }} />
+                        <div className="h-full bg-accent-glow0 rounded-full transition-all duration-1000" style={{ width: '92%' }} />
                       </div>
                     </div>
                   </div>
@@ -499,7 +499,7 @@ export default function SuppliersPage() {
 
                 <div>
                   <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-4">Supply Chain Category</label>
-                  <div className="p-4 border-2 border-dashed border-[var(--border)] rounded-xl flex items-center gap-4">
+                  <div className="p-4 border-2 border-dashed border-border rounded-xl flex items-center gap-4">
                     <div className="p-2 bg-amber-50 rounded-xl"><Trophy className="w-5 h-5 text-amber-600" /></div>
                     <div>
                       <p className="text-sm font-bold text-t1">{selectedSupplier.category}</p>
@@ -518,7 +518,7 @@ export default function SuppliersPage() {
                     { label: 'Inventory Restock Phase 1', date: 'Mar 28, 2026', status: 'Delivered', id: 'SHP-8211' },
                     { label: 'Q1 Performance Review Meeting', date: 'Mar 15, 2026', status: 'Completed', id: 'EVT-0192' },
                   ].map((item, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 hover:bg-surface rounded-xl border border-transparent hover:border-[var(--border-s)] transition-all cursor-default group">
+                    <div key={i} className="flex items-center justify-between p-4 hover:bg-surface rounded-xl border border-transparent hover:border-border-s transition-all cursor-default group">
                       <div className="flex items-center gap-4">
                         <div className="w-2 h-2 rounded-full bg-accent" />
                         <div>
@@ -526,13 +526,13 @@ export default function SuppliersPage() {
                           <p className="text-[10px] text-t3 uppercase font-black">{item.id} • {item.date}</p>
                         </div>
                       </div>
-                      <span className="text-[10px] font-black uppercase py-1 px-3 bg-card border border-[var(--border-s)] rounded-xl text-t2">{item.status}</span>
+                      <span className="text-[10px] font-black uppercase py-1 px-3 bg-card border border-border-s rounded-xl text-t2">{item.status}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="mt-16 pt-8 border-t border-[var(--border-s)] text-[10px] text-t3 text-center italic">
+              <div className="mt-16 pt-8 border-t border-border-s text-[10px] text-t3 text-center italic">
                 This profile is verified and managed by TEKACCESS Procurement Division.
               </div>
             </div>

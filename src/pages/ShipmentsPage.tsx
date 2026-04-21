@@ -16,11 +16,11 @@ type ViewMode = 'table' | 'timeline' | 'bar' | 'pie';
 type ActiveTab = 'Incoming Shipments' | 'In Transit' | 'Delayed';
 
 const STATUS_CONFIG: Record<ShipmentStatus, { style: string; dot: string; icon: React.ElementType }> = {
-  'In Transit': { style: 'bg-[var(--accent-glow)] text-accent border-blue-200', dot: 'bg-[var(--accent-glow)]0', icon: Truck },
+  'In Transit': { style: 'bg-accent-glow text-accent border-blue-200', dot: 'bg-accent-glow0', icon: Truck },
   'Delivered': { style: 'bg-green-50 text-green-700 border-green-200', dot: 'bg-green-500', icon: CheckCircle },
   'Delayed': { style: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500', icon: Clock },
   'Customs Hold': { style: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500', icon: Shield },
-  'Cancelled': { style: 'bg-surface text-t2 border-[var(--border)]', dot: 'bg-gray-400', icon: XCircle },
+  'Cancelled': { style: 'bg-surface text-t2 border-border', dot: 'bg-gray-400', icon: XCircle },
 };
 
 const TAB_FILTER: Record<ActiveTab, ShipmentStatus[] | null> = {
@@ -84,12 +84,12 @@ export default function ShipmentsPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Shipments', value: summary.total, icon: Package, color: 'text-accent', bg: 'bg-[var(--accent-glow)]' },
+          { label: 'Total Shipments', value: summary.total, icon: Package, color: 'text-accent', bg: 'bg-accent-glow' },
           { label: 'In Transit', value: summary.inTransit, icon: Truck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
           { label: 'Delayed', value: summary.delayed, icon: Warning, color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'Delivered', value: summary.delivered, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
         ].map(card => (
-          <div key={card.label} className="bg-card rounded-xl border border-[var(--border)] p-4 flex items-center gap-4">
+          <div key={card.label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
             <div className={`p-2.5 rounded-xl ${card.bg}`}>
               <card.icon className={`w-5 h-5 ${card.color}`} />
             </div>
@@ -102,9 +102,9 @@ export default function ShipmentsPage() {
       </div>
 
       {/* Main Panel */}
-      <div className="bg-card rounded-xl border border-[var(--border)]">
+      <div className="bg-card rounded-xl border border-border">
         {/* Tabs */}
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-4">
+        <div className="flex items-center justify-between border-b border-border px-4">
           <nav className="-mb-px flex gap-0 overflow-x-auto scrollbar-hide">
             {tabs.map(tab => (
               <button
@@ -131,18 +131,18 @@ export default function ShipmentsPage() {
               placeholder="MagnifyingGlass by supplier, tracking ID, origin..."
               value={search}
               onChange={e => setMagnifyingGlass(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-[var(--border)] rounded-xl text-sm outline-none focus:border-accent focus:ring-1 focus:ring-[#1e3a8a]"
+              className="w-full pl-9 pr-4 py-2 border border-border rounded-xl text-sm outline-none focus:border-accent focus:ring-1 focus:ring-[#1e3a8a]"
             />
           </div>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] rounded-xl text-sm text-t2 hover:bg-surface">
+          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-sm text-t2 hover:bg-surface">
             <Funnel className="w-4 h-4" /> Funnel <CaretDown className="w-3.5 h-3.5" />
           </button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] rounded-xl text-sm text-t2 hover:bg-surface">
+          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-sm text-t2 hover:bg-surface">
             <DownloadSimple className="w-4 h-4" /> Export
           </button>
 
           {/* View mode toggle */}
-          <div className="flex border border-[var(--border)] rounded-xl overflow-hidden ml-auto">
+          <div className="flex border border-border rounded-xl overflow-hidden ml-auto">
             {([
               { mode: 'table', icon: ListDashes, label: 'Table' },
               { mode: 'timeline', icon: Clock, label: 'Timeline' },
@@ -172,7 +172,7 @@ export default function ShipmentsPage() {
             options={{ scrollbars: { autoHide: 'scroll' } }}
             defer
           >
-            <table className="min-w-full divide-y divide-[var(--border-s)]">
+            <table className="min-w-full divide-y divide-border-s">
               <thead className="bg-surface">
                 <tr>
                   {['Shipment #', 'PO Reference', 'Supplier', 'Route', 'Carrier', 'Status', 'Dispatch Date', 'Est. Arrival', 'Packages', 'Weight', ''].map(h => (
@@ -182,7 +182,7 @@ export default function ShipmentsPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-card divide-y divide-[var(--border-s)]">
+              <tbody className="bg-card divide-y divide-border-s">
                 {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={11} className="px-4 py-16 text-center text-t3 text-sm">
@@ -227,7 +227,7 @@ export default function ShipmentsPage() {
                         <td className="px-4 py-3.5 text-sm text-t2">{s.weightKg} kg</td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center justify-end">
-                            <button onClick={e => { e.stopPropagation(); setSelected(s); }} className="p-1.5 text-t3 hover:text-accent hover:bg-[var(--accent-glow)] rounded transition-colors">
+                            <button onClick={e => { e.stopPropagation(); setSelected(s); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded transition-colors">
                               <Eye className="w-4 h-4" />
                             </button>
                             <button onClick={e => e.stopPropagation()} className="p-1.5 text-t3 hover:text-t2 hover:bg-surface rounded transition-colors">
@@ -256,7 +256,7 @@ export default function ShipmentsPage() {
                   <div className={`mt-1 w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${s.status === 'Delivered' ? 'bg-green-100' : s.status === 'Delayed' ? 'bg-amber-100' : s.status === 'Customs Hold' ? 'bg-red-100' : 'bg-blue-100'}`}>
                     <StatusIcon className={`w-4 h-4 ${s.status === 'Delivered' ? 'text-green-600' : s.status === 'Delayed' ? 'text-amber-600' : s.status === 'Customs Hold' ? 'text-red-600' : 'text-accent'}`} />
                   </div>
-                  <div className="flex-1 bg-surface group-hover:bg-[var(--accent-glow)] border border-[var(--border)] group-hover:border-blue-200 rounded-xl p-4 transition-colors">
+                  <div className="flex-1 bg-surface group-hover:bg-accent-glow border border-border group-hover:border-blue-200 rounded-xl p-4 transition-colors">
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-sm font-semibold text-t1">{s.shipmentNumber} — {s.supplier}</p>
@@ -355,7 +355,7 @@ export default function ShipmentsPage() {
               <div>
                 <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Carrier Logistics</label>
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-[var(--border-s)]">
+                  <div className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-border-s">
                     <Truck className="w-5 h-5 text-accent" />
                     <div>
                       <p className="text-xs font-bold">{selected.carrier}</p>
@@ -364,7 +364,7 @@ export default function ShipmentsPage() {
                   </div>
                   <div className="relative">
                     <label className="block text-[10px] text-t2 mb-1">Current Status</label>
-                    <select defaultValue={selected.status} className="w-full px-3 py-2 bg-surface border border-[var(--border)] rounded-xl text-sm appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
+                    <select defaultValue={selected.status} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
                       <option>In Transit</option>
                       <option>Delivered</option>
                       <option>Delayed</option>
@@ -381,11 +381,11 @@ export default function ShipmentsPage() {
                 <div className="grid grid-cols-2 gap-4">
                    <div>
                     <label className="block text-[10px] text-t2 mb-1">Weight (kg)</label>
-                    <input type="number" defaultValue={selected.weightKg} className="w-full px-3 py-1.5 border border-[var(--border)] rounded-xl text-xs outline-none focus:border-accent" />
+                    <input type="number" defaultValue={selected.weightKg} className="w-full px-3 py-1.5 border border-border rounded-xl text-xs outline-none focus:border-accent" />
                   </div>
                   <div>
                     <label className="block text-[10px] text-t2 mb-1">Packages</label>
-                    <input type="number" defaultValue={selected.packages} className="w-full px-3 py-1.5 border border-[var(--border)] rounded-xl text-xs outline-none focus:border-accent" />
+                    <input type="number" defaultValue={selected.packages} className="w-full px-3 py-1.5 border border-border rounded-xl text-xs outline-none focus:border-accent" />
                   </div>
                 </div>
               </div>
@@ -397,14 +397,14 @@ export default function ShipmentsPage() {
                     <MapPin className="w-4 h-4 text-t3 mt-1" />
                     <div className="flex-1">
                       <p className="text-[10px] text-t3 uppercase font-black">Origin</p>
-                      <input type="text" defaultValue={selected.origin} className="w-full mt-1 border-b border-[var(--border-s)] py-1 text-sm outline-none focus:border-accent" />
+                      <input type="text" defaultValue={selected.origin} className="w-full mt-1 border-b border-border-s py-1 text-sm outline-none focus:border-accent" />
                     </div>
                   </div>
                   <div className="flex gap-3">
                     <Shield className="w-4 h-4 text-t3 mt-1" />
                     <div className="flex-1">
                       <p className="text-[10px] text-t3 uppercase font-black">Destination</p>
-                      <input type="text" defaultValue={selected.destination} className="w-full mt-1 border-b border-[var(--border-s)] py-1 text-sm outline-none focus:border-accent" />
+                      <input type="text" defaultValue={selected.destination} className="w-full mt-1 border-b border-border-s py-1 text-sm outline-none focus:border-accent" />
                     </div>
                   </div>
                 </div>
@@ -440,12 +440,12 @@ export default function ShipmentsPage() {
                   <div className="text-right">
                     <p className="text-[10px] text-t3 font-black uppercase mb-1">Shipment ID</p>
                     <p className="text-xl font-black text-t1 tracking-tight">{selected.shipmentNumber}</p>
-                    <p className="text-[10px] font-bold text-accent bg-[var(--accent-glow)] px-2 py-0.5 rounded-full inline-block mt-2">{selected.trackingId}</p>
+                    <p className="text-[10px] font-bold text-accent bg-accent-glow px-2 py-0.5 rounded-full inline-block mt-2">{selected.trackingId}</p>
                   </div>
                </div>
 
                {/* Shipment Route Diagram */}
-               <div className="mb-16 bg-surface/50 rounded-2xl p-8 border border-[var(--border-s)] relative overflow-hidden">
+               <div className="mb-16 bg-surface/50 rounded-2xl p-8 border border-border-s relative overflow-hidden">
                   <div className="flex justify-between relative z-10">
                     <div className="text-center w-1/3">
                        <p className="text-[10px] font-black text-t3 uppercase mb-2">Origin Point</p>
@@ -480,7 +480,7 @@ export default function ShipmentsPage() {
                   <div>
                     <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-3">Manifest Status</label>
                     <div className="flex items-center gap-2">
-                       <div className={`w-2 h-2 rounded-full ${selected.status === 'Delivered' ? 'bg-green-500' : selected.status === 'Delayed' ? 'bg-amber-500' : 'bg-[var(--accent-glow)]0'}`} />
+                       <div className={`w-2 h-2 rounded-full ${selected.status === 'Delivered' ? 'bg-green-500' : selected.status === 'Delayed' ? 'bg-amber-500' : 'bg-accent-glow0'}`} />
                        <p className="text-sm font-black text-t1">{selected.status}</p>
                     </div>
                   </div>
@@ -498,7 +498,7 @@ export default function ShipmentsPage() {
                         <th className="py-3 px-4 text-right text-[10px] font-black uppercase tracking-widest rounded-r-lg">Gross Weight</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[var(--border-s)] font-medium">
+                    <tbody className="divide-y divide-border-s font-medium">
                       <tr className="text-sm">
                         <td className="py-6 px-4">Commercial Cargo Component X-Serie</td>
                         <td className="py-6 px-4 text-center text-t3">Regular</td>
@@ -511,7 +511,7 @@ export default function ShipmentsPage() {
                </div>
 
                {/* Footer Disclaimer */}
-               <div className="mt-20 border-t-4 border-double border-[var(--border-s)] pt-8 flex justify-between items-end">
+               <div className="mt-20 border-t-4 border-double border-border-s pt-8 flex justify-between items-end">
                   <div className="w-1/2">
                     <p className="text-[10px] font-black text-t3 uppercase mb-2 underline">Global Terms of carriage:</p>
                     <p className="text-[9px] text-t3 leading-normal italic pr-8">

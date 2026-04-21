@@ -67,8 +67,8 @@ const ResetPasswordPage: React.FC = () => {
       <div className="w-full max-w-[340px] px-4">
         {pageState === "validating" && (
           <div className="flex flex-col items-center gap-3 py-4">
-            <CircleNotch size={28} weight="bold" className="animate-spin text-indigo-400" />
-            <p className="text-sm text-[var(--text-3)]">Verifying your link…</p>
+            <CircleNotch size={28} weight="bold" className="animate-spin text-accent" />
+            <p className="text-sm text-t3">Verifying your link…</p>
           </div>
         )}
 
@@ -79,8 +79,8 @@ const ResetPasswordPage: React.FC = () => {
             transition={{ duration: 0.22 }}
             className="w-full"
           >
-            <h1 className="text-2xl font-bold text-[var(--text-1)] mb-1">Set New Password</h1>
-            <p className="text-sm text-[var(--text-3)] mb-6">
+            <h1 className="text-2xl font-bold text-t1 mb-1">Set New Password</h1>
+            <p className="text-sm text-t3 mb-6">
               Must be at least 8 characters with one uppercase letter and one number.
             </p>
 
@@ -92,13 +92,13 @@ const ResetPasswordPage: React.FC = () => {
                   autoFocus
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-indigo-300/50 dark:focus:ring-indigo-500/30 transition-all text-sm"
+                  className="w-full px-4 py-3 pr-11 rounded-xl border border-border bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm"
                   placeholder="New password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)] hover:text-[var(--text-2)] transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-t3 hover:text-t2 transition-colors"
                 >
                   {showPassword ? <EyeSlash size={20} weight="duotone" /> : <Eye size={20} weight="duotone" />}
                 </button>
@@ -109,7 +109,7 @@ const ResetPasswordPage: React.FC = () => {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-[var(--card-bg)] text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-indigo-300/50 dark:focus:ring-indigo-500/30 transition-all text-sm"
+                className="w-full px-4 py-3 rounded-xl border border-border bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm"
                 placeholder="Confirm new password"
               />
 
@@ -118,7 +118,7 @@ const ResetPasswordPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3 bg-indigo-400 hover:bg-indigo-500 disabled:opacity-75 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-sm"
+                className="w-full py-3 bg-accent hover:bg-accent-h disabled:opacity-75 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-sm"
               >
                 {isSubmitting ? (
                   <><CircleNotch size={18} weight="bold" className="animate-spin" /> Saving…</>
@@ -140,13 +140,13 @@ const ResetPasswordPage: React.FC = () => {
             <div className="w-14 h-14 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-4">
               <CheckCircle size={28} weight="duotone" className="text-green-500" />
             </div>
-            <h2 className="text-xl font-bold text-[var(--text-1)] mb-2">Password Updated</h2>
-            <p className="text-sm text-[var(--text-3)] mb-6 max-w-[260px]">
+            <h2 className="text-xl font-bold text-t1 mb-2">Password Updated</h2>
+            <p className="text-sm text-t3 mb-6 max-w-[260px]">
               Your password has been changed and all active sessions have been signed out.
             </p>
             <button
               onClick={() => navigate({ to: "/login" })}
-              className="w-full py-3 bg-indigo-400 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors text-sm"
+              className="w-full py-3 bg-accent hover:bg-accent-h text-white rounded-xl font-medium transition-colors text-sm"
             >
               Back to Login
             </button>
@@ -154,7 +154,7 @@ const ResetPasswordPage: React.FC = () => {
         )}
       </div>
 
-      <p className="text-xs text-[var(--text-3)] pb-6">Authorized Personnel Only!</p>
+      <p className="text-xs text-t3 pb-6">Authorized Personnel Only!</p>
     </div>
   );
 };

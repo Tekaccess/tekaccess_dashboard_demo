@@ -46,12 +46,12 @@ const ActionCell = ({ transaction, onSelect }: { transaction: Transaction; onSel
     <div className="relative flex justify-end" ref={dropdownRef}>
       <button
         onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
-        className="text-t3 hover:text-t1 border border-[var(--border)] rounded-lg p-1 inline-flex transition-colors"
+        className="text-t3 hover:text-t1 border border-border rounded-lg p-1 inline-flex transition-colors"
       >
         <DotsThree size={16} weight="bold" />
       </button>
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-40 bg-card rounded-xl shadow-2xl border border-[var(--border)] z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-1 w-40 bg-card rounded-xl shadow-2xl border border-border z-50 overflow-hidden">
           <button
             onClick={(e) => { e.stopPropagation(); setIsOpen(false); onSelect(transaction); }}
             className="block w-full text-left px-4 py-2.5 text-sm text-t2 hover:bg-surface hover:text-t1 transition-colors"
@@ -76,8 +76,8 @@ export default function RecentTransactions() {
   const columns = useMemo(() => [
     columnHelper.display({
       id: 'select',
-      header: () => <input type="checkbox" className="rounded border-[var(--border)] accent-accent" />,
-      cell: () => <input type="checkbox" className="rounded border-[var(--border)] accent-accent" onClick={e => e.stopPropagation()} />,
+      header: () => <input type="checkbox" className="rounded border-border accent-accent" />,
+      cell: () => <input type="checkbox" className="rounded border-border accent-accent" onClick={e => e.stopPropagation()} />,
     }),
     columnHelper.accessor('id', {
       header: 'ID :',
@@ -130,8 +130,8 @@ export default function RecentTransactions() {
 
   return (
     <>
-      <div className="bg-card rounded-xl border border-[var(--border)] flex flex-col">
-        <div className="p-4 border-b border-[var(--border)] flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 bg-surface rounded-t-xl">
+      <div className="bg-card rounded-xl border border-border flex flex-col">
+        <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 bg-surface rounded-t-xl">
           <div className="flex items-center space-x-2">
             <h2 className="text-xs font-bold text-t3 uppercase tracking-wider">Recent Transactions</h2>
             <div className="w-4 h-4 rounded-full bg-surface-hover"></div>
@@ -142,14 +142,14 @@ export default function RecentTransactions() {
               <input
                 type="text"
                 placeholder="Search transactions..."
-                className="block w-full sm:w-48 pl-8 pr-3 py-1.5 border border-[var(--border)] rounded-lg leading-5 bg-card placeholder-[var(--text-3)] text-t1 focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent text-xs transition-colors"
+                className="block w-full sm:w-48 pl-8 pr-3 py-1.5 border border-border rounded-lg leading-5 bg-card placeholder-t3 text-t1 focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent text-xs transition-colors"
               />
             </div>
-            <button className="flex items-center px-3 py-1.5 bg-card border border-[var(--border)] text-t2 text-xs font-medium rounded-lg hover:bg-surface transition-colors">
+            <button className="flex items-center px-3 py-1.5 bg-card border border-border text-t2 text-xs font-medium rounded-lg hover:bg-surface transition-colors">
               <Plus size={13} weight="bold" className="mr-1" />
               Add Transaction
             </button>
-            <button className="p-1.5 bg-card border border-[var(--border)] rounded-lg text-t3 hover:bg-surface transition-colors">
+            <button className="p-1.5 bg-card border border-border rounded-lg text-t3 hover:bg-surface transition-colors">
               <DotsThree size={16} weight="bold" />
             </button>
           </div>
@@ -160,7 +160,7 @@ export default function RecentTransactions() {
           options={{ scrollbars: { autoHide: 'scroll' } }}
           defer
         >
-          <table className="min-w-full divide-y divide-[var(--border)]">
+          <table className="min-w-full divide-y divide-border">
             <thead className="bg-card">
               {table.getHeaderGroups().map(headerGroup => (
                 <tr key={headerGroup.id}>
@@ -176,7 +176,7 @@ export default function RecentTransactions() {
                 </tr>
               ))}
             </thead>
-            <tbody className="bg-card divide-y divide-[var(--border-s)]">
+            <tbody className="bg-card divide-y divide-border-s">
               {table.getRowModel().rows.map(row => (
                 <tr
                   key={row.id}
