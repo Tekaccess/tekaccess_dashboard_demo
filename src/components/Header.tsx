@@ -14,8 +14,7 @@ const SLUG_LABELS: Record<string, string> = {
   transport: 'Transport',
   operations: 'Operations',
   inventory: 'Inventory',
-  procurement_trading: 'Procurement — Trading',
-  procurement_fleet: 'Procurement — Fleet',
+  procurement: 'Procurement',
   data_entry: 'Data Entry',
 };
 
@@ -692,7 +691,7 @@ const ACTION_STYLES: Record<string, string> = {
 const DASHBOARD_LABELS: Record<string, string> = {
   executive: 'Executive', finance: 'Finance', transport: 'Transport',
   operations: 'Operations', inventory: 'Inventory',
-  procurement_trading: 'Procurement', procurement_fleet: 'Fleet',
+  procurement: 'Procurement',
   data_entry: 'Data Entry', system: 'Account',
 };
 
@@ -710,27 +709,27 @@ function ActivityEntry({ log }: { log: import('../lib/api').ActivityLog }) {
 
   return (
     <div className="flex items-start gap-3 px-5 py-4 bg-card border-b border-border transition-colors">
-      <div className="shrink-0 mt-0.5">
+      <div className="shrink-0">
         <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${ACTION_STYLES[log.action] ?? ACTION_STYLES.read}`}>
           {log.action}
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-t1 truncate ">{description}</p>
+        <p className="text-sm font-medium text-t1 truncate ">{description}</p>
         {log.changedFields.length > 0 && (
-          <p className="text-[11px] text-t3 truncate mt-0.5">
+          <p className="text-xs text-t3 truncate mt-0.5">
             Changed: {log.changedFields.join(', ')}
           </p>
         )}
-        {log.note && <p className="text-[11px] text-t3 truncate mt-0.5">{log.note}</p>}
+        {log.note && <p className="text-xs mb-1 text-t3 truncate mt-0.5">{log.note}</p>}
         {log.status === 'failed' && log.errorMessage && (
-          <p className="text-[11px] text-red-500 truncate mt-0.5">{log.errorMessage}</p>
+          <p className="text-xs text-red-500 truncate mt-0.5">{log.errorMessage}</p>
         )}
         <div className="flex items-center gap-2 mt-1">
-          <span className="text-[11px] text-t3">{formatted}</span>
-          <span className="text-t3 text-[11px]">·</span>
-          <span className="text-[11px] text-t3">{DASHBOARD_LABELS[log.dashboard] ?? log.dashboard}</span>
-          <span className={`ml-auto text-[10px] font-semibold ${log.status === 'success' ? 'text-green-500' : 'text-red-500'}`}>
+          <span className="text-xs text-t1 italic">{formatted}</span>
+          <span className="text-sm">·</span>
+          <span className="text-xs italic ">{DASHBOARD_LABELS[log.dashboard] ?? log.dashboard}</span>
+          <span className={`ml-auto text-xs text-t3 font-mono capitalize font-normal`}>
             {log.status}
           </span>
         </div>

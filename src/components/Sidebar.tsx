@@ -20,7 +20,7 @@ const DEPT_ACCESS_SLUGS: Record<string, string[]> = {
   transport:   ["transport"],
   operations:  ["operations"],
   inventory:   ["inventory"],
-  procurement: ["procurement_trading", "procurement_fleet"],
+  procurement: ["procurement"],
   data_team:   ["data_entry"],
 };
 
