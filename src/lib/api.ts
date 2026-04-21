@@ -784,3 +784,146 @@ export async function apiGetInventorySummary() {
     categories: { _id: string; count: number; totalValue: number; totalQty: number }[];
   }>('/inventory/summary');
 }
+
+// ─── Transport ────────────────────────────────────────────────────────────────
+
+export type Truck = {
+  _id: string;
+  plateNumber: string;
+  make: string;
+  model: string;
+  year: number | null;
+  fleetType: string;
+  status: 'operating' | 'idle' | 'maintenance' | 'decommissioned';
+  assignedDriverName: string | null;
+  assignedDriverId: string | null;
+  currentOdometer: number | null;
+  lastServiceDate: string | null;
+  nextServiceDueKm: number | null;
+  insuranceExpiry: string | null;
+  notes: string | null;
+  createdAt: string;
+};
+
+export type Trip = {
+  _id: string;
+  tripRef: string;
+  truckId: string | null;
+  plateNumber: string;
+  driverName: string;
+  contractRef: string | null;
+  clientName: string | null;
+  originSite: string;
+  destinationSite: string;
+  loadDescription: string | null;
+  plannedTons: number | null;
+  actualTons: number | null;
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+  departureDate: string | null;
+  arrivalDate: string | null;
+  distanceKm: number | null;
+  fuelUsedLitres: number | null;
+  notes: string | null;
+  createdAt: string;
+};
+
+export type FuelLog = {
+  _id: string;
+  logRef: string;
+  truckId: string | null;
+  plateNumber: string;
+  driverName: string | null;
+  logDate: string;
+  litresFilled: number;
+  costPerLitre: number;
+  totalCost: number;
+  currency: string;
+  odometerReading: number | null;
+  fuelStation: string | null;
+  isAnomalyFlag: boolean;
+  anomalyReason: string | null;
+  notes: string | null;
+  createdAt: string;
+};
+
+export type MaintenanceRecord = {
+  _id: string;
+  recordRef: string;
+  truckId: string | null;
+  plateNumber: string;
+  maintenanceType: 'preventive' | 'corrective' | 'inspection' | 'emergency';
+  description: string;
+  status: 'open' | 'in_progress' | 'completed' | 'cancelled';
+  scheduledDate: string | null;
+  completedDate: string | null;
+  estimatedCost: number | null;
+  actualCost: number | null;
+  currency: string;
+  mechanicName: string | null;
+  workshopName: string | null;
+  partsUsed: string | null;
+  notes: string | null;
+  createdAt: string;
+};
+
+// Trucks
+export async function apiListTrucks(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams({ limit: '200', ...params }).toString();
+  return request<{ trucks: Truck[]; pagination: { total: number; pages: number } }>(`/transport/trucks?${qs}`);
+}
+
+export async function apiCreateTruck(data: Partial<Truck>) {
+  return request<{ truck: Truck }>('/transport/trucks', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateTruck(id: string, data: Partial<Truck>) {
+  return request<{ truck: Truck }>(`/transport/trucks/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function apiGetTransportSummary() {
+  return request<{
+    summary: { totalTrucks: number; operating: number; idle: number; inMaintenance: number; activeTrips: number; totalFuelCost: number };
+  }>('/transport/summary');
+}
+
+// Trips
+export async function apiListTrips(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams({ limit: '200', ...params }).toString();
+  return request<{ trips: Trip[]; pagination: { total: number; pages: number } }>(`/transport/trips?${qs}`);
+}
+
+export async function apiCreateTrip(data: Partial<Trip>) {
+  return request<{ trip: Trip }>('/transport/trips', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateTrip(id: string, data: Partial<Trip>) {
+  return request<{ trip: Trip }>(`/transport/trips/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+// Fuel Logs
+export async function apiListFuelLogs(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams({ limit: '200', ...params }).toString();
+  return request<{ logs: FuelLog[]; pagination: { total: number; pages: number } }>(`/transport/fuel-logs?${qs}`);
+}
+
+export async function apiCreateFuelLog(data: Partial<FuelLog>) {
+  return request<{ log: FuelLog }>('/transport/fuel-logs', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateFuelLog(id: string, data: Partial<FuelLog>) {
+  return request<{ log: FuelLog }>(`/transport/fuel-logs/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+// Maintenance Records
+export async function apiListMaintenanceRecords(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams({ limit: '200', ...params }).toString();
+  return request<{ records: MaintenanceRecord[]; pagination: { total: number; pages: number } }>(`/transport/maintenance?${qs}`);
+}
+
+export async function apiCreateMaintenanceRecord(data: Partial<MaintenanceRecord>) {
+  return request<{ record: MaintenanceRecord }>('/transport/maintenance', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateMaintenanceRecord(id: string, data: Partial<MaintenanceRecord>) {
+  return request<{ record: MaintenanceRecord }>(`/transport/maintenance/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}

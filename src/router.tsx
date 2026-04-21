@@ -28,6 +28,10 @@ import WarehousesPage from "./pages/inventory/WarehousesPage";
 import MovementsPage from "./pages/inventory/MovementsPage";
 import StockCountsPage from "./pages/inventory/StockCountsPage";
 import ProcurementReportsPage from "./pages/ProcurementReportsPage";
+import FleetPage from "./pages/transport/FleetPage";
+import TripsPage from "./pages/transport/TripsPage";
+import FuelPage from "./pages/transport/FuelPage";
+import MaintenancePage from "./pages/transport/MaintenancePage";
 
 export const rootRoute = createRootRoute({
   component: RootLayout,
@@ -114,6 +118,31 @@ const procurementReportsRoute = createRoute({
   component: ProcurementReportsPage,
 });
 
+// ── Explicit Transport Routes ───────────────────────────────────────────────
+const fleetRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/transport/fleet",
+  component: FleetPage,
+});
+
+const tripsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/transport/trips",
+  component: TripsPage,
+});
+
+const fuelRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/transport/fuel",
+  component: FuelPage,
+});
+
+const maintenanceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/transport/maintenance",
+  component: MaintenancePage,
+});
+
 // ── Explicit Operations Routes ──────────────────────────────────────────────
 const contractsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -189,6 +218,11 @@ const routeTree = rootRoute.addChildren([
     path: "/tasks",
     component: TaskManagement,
   }),
+  // Transport explicit pages
+  fleetRoute,
+  tripsRoute,
+  fuelRoute,
+  maintenanceRoute,
   // Procurement explicit pages
   purchaseOrdersRoute,
   suppliersRoute,

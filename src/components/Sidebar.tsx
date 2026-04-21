@@ -7,6 +7,10 @@ import Logo from "./Logo";
 import { useAuth } from "../contexts/AuthContext";
 
 const EXPLICIT_ROUTES: Record<string, string> = {
+  "transport/fleet": "/transport/fleet",
+  "transport/trips": "/transport/trips",
+  "transport/fuel": "/transport/fuel",
+  "transport/maintenance": "/transport/maintenance",
   "procurement/purchase-orders": "/procurement/purchase-orders",
   "procurement/suppliers": "/procurement/suppliers",
   "procurement/shipments": "/procurement/shipments",
