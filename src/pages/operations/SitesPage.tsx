@@ -28,6 +28,8 @@ function emptyDraft(): DraftSite {
   return { siteCode: '', name: '', siteType: ['loading'], address: '', region: '', country: 'Rwanda', contactName: '', contactPhone: '', truckCapacity: 0, notes: '' };
 }
 
+const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
+
 export default function SitesPage() {
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,36 +92,41 @@ export default function SitesPage() {
   const offloading_sites = sites.filter(s => s.siteType.includes('offloading'));
 
   const formContent = modalMode !== 'view' ? (
-    <div className="space-y-4 p-4">
-      {error && <p className="text-red-400 text-sm">{error}</p>}
+    <div className="space-y-5">
+      {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-2">{error}</p>}
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs text-t3 mb-1">Site Code *</label>
-          <input className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-t1"
-            value={draft.siteCode} onChange={e => setDraft(d => ({ ...d, siteCode: e.target.value.toUpperCase() }))}
-            placeholder="SITE-KGL-001" disabled={modalMode === 'edit'} />
-        </div>
-        <div>
-          <label className="block text-xs text-t3 mb-1">Country</label>
-          <input className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-t1"
-            value={draft.country} onChange={e => setDraft(d => ({ ...d, country: e.target.value }))} />
+      <div>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Site Details</p>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-t3 mb-1.5">Site Code *</label>
+              <input className={inp}
+                value={draft.siteCode} onChange={e => setDraft(d => ({ ...d, siteCode: e.target.value.toUpperCase() }))}
+                placeholder="SITE-KGL-001" disabled={modalMode === 'edit'} />
+            </div>
+            <div>
+              <label className="block text-xs text-t3 mb-1.5">Country</label>
+              <input className={inp}
+                value={draft.country} onChange={e => setDraft(d => ({ ...d, country: e.target.value }))} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs text-t3 mb-1.5">Name *</label>
+            <input className={inp}
+              value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
+              placeholder="e.g. Kigali Loading Depot" />
+          </div>
         </div>
       </div>
 
       <div>
-        <label className="block text-xs text-t3 mb-1">Name *</label>
-        <input className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-t1"
-          value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
-          placeholder="e.g. Kigali Loading Depot" />
-      </div>
-
-      <div>
-        <label className="block text-xs text-t3 mb-2">Site Type * (select all that apply)</label>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Site Type *</p>
         <div className="flex flex-wrap gap-2">
           {SITE_TYPES.map(t => (
             <button key={t} type="button" onClick={() => toggleType(t)}
-              className={`px-3 py-1.5 text-sm border rounded transition-colors ${draft.siteType.includes(t) ? 'border-accent bg-accent/10 text-accent' : 'border-border text-t3 hover:text-t1'}`}>
+              className={`px-3 py-1.5 text-sm border rounded-lg transition-colors ${draft.siteType.includes(t) ? 'border-accent bg-accent/10 text-accent' : 'border-border text-t3 hover:text-t1'}`}>
               {t}
             </button>
           ))}
@@ -127,63 +134,66 @@ export default function SitesPage() {
       </div>
 
       <div>
-        <label className="block text-xs text-t3 mb-1">Address</label>
-        <input className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-t1"
-          value={draft.address} onChange={e => setDraft(d => ({ ...d, address: e.target.value }))} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs text-t3 mb-1">Region / City</label>
-          <input className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-t1"
-            value={draft.region} onChange={e => setDraft(d => ({ ...d, region: e.target.value }))} />
-        </div>
-        <div>
-          <label className="block text-xs text-t3 mb-1">Truck Capacity</label>
-          <input type="number" min={0} className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-t1"
-            value={draft.truckCapacity} onChange={e => setDraft(d => ({ ...d, truckCapacity: Number(e.target.value) }))}
-            placeholder="Max trucks at once" />
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Location</p>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-t3 mb-1.5">Address</label>
+            <input className={inp}
+              value={draft.address} onChange={e => setDraft(d => ({ ...d, address: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-xs text-t3 mb-1.5">Region / City</label>
+            <input className={inp}
+              value={draft.region} onChange={e => setDraft(d => ({ ...d, region: e.target.value }))} />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs text-t3 mb-1">Contact Name</label>
-          <input className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-t1"
-            value={draft.contactName} onChange={e => setDraft(d => ({ ...d, contactName: e.target.value }))} />
-        </div>
-        <div>
-          <label className="block text-xs text-t3 mb-1">Contact Phone</label>
-          <input className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-t1"
-            value={draft.contactPhone} onChange={e => setDraft(d => ({ ...d, contactPhone: e.target.value }))} />
+      <div>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Contact &amp; Capacity</p>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-t3 mb-1.5">Contact Name</label>
+              <input className={inp}
+                value={draft.contactName} onChange={e => setDraft(d => ({ ...d, contactName: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-xs text-t3 mb-1.5">Contact Phone</label>
+              <input className={inp}
+                value={draft.contactPhone} onChange={e => setDraft(d => ({ ...d, contactPhone: e.target.value }))} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-t3 mb-1.5">Truck Capacity</label>
+            <input type="number" min={0} className={inp}
+              value={draft.truckCapacity} onChange={e => setDraft(d => ({ ...d, truckCapacity: Number(e.target.value) }))}
+              placeholder="Max trucks at once" />
+          </div>
         </div>
       </div>
 
-      <div className="flex justify-end gap-2 pt-2 border-t border-border">
-        <button onClick={() => setModalMode(null)}
-          className="px-4 py-2 text-sm text-t2 hover:text-t1 border border-border rounded">Cancel</button>
-        <button onClick={handleSave} disabled={saving}
-          className="px-4 py-2 text-sm bg-accent text-white rounded hover:bg-accent/80 flex items-center gap-2">
-          {saving && <Spinner className="animate-spin" size={14} />}
-          {modalMode === 'new' ? 'Create Site' : 'Save Changes'}
-        </button>
-      </div>
+      <button onClick={handleSave} disabled={saving}
+        className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
+        {saving && <Spinner className="animate-spin" size={14} />}
+        {modalMode === 'new' ? 'Create Site' : 'Save Changes'}
+      </button>
     </div>
   ) : null;
 
   const viewContent = modalMode === 'view' && selected ? (
-    <div className="space-y-5 p-4">
+    <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs text-t3 font-mono">{selected.siteCode}</p>
           <h3 className="text-base font-semibold text-t1 mt-0.5">{selected.name}</h3>
           <div className="flex flex-wrap gap-1 mt-1">
             {selected.siteType.map(t => (
-              <span key={t} className={`text-xs border rounded px-2 py-0.5 ${TYPE_STYLES[t] ?? ''}`}>{t}</span>
+              <span key={t} className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-0.5 font-medium ${TYPE_STYLES[t] ?? ''}`}>{t}</span>
             ))}
           </div>
         </div>
-        <span className={`text-xs font-medium px-2 py-1 rounded border ${selected.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-surface text-t3 border-border'}`}>
+        <span className={`text-xs font-medium px-2 py-1 rounded-full border ${selected.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-surface text-t3 border-border'}`}>
           {selected.isActive ? 'Active' : 'Inactive'}
         </span>
       </div>
@@ -195,7 +205,7 @@ export default function SitesPage() {
             ['Loading', selected.liveStatus.trucksLoading, 'text-blue-400'],
             ['Offloading', selected.liveStatus.trucksOffloading, 'text-emerald-400'],
           ].map(([label, val, color]) => (
-            <div key={label as string} className="bg-surface border border-border rounded p-3 text-center">
+            <div key={label as string} className="bg-surface border border-border rounded-lg p-3 text-center">
               <p className={`text-xl font-bold ${color}`}>{val}</p>
               <p className="text-xs text-t3">{label}</p>
             </div>
@@ -227,11 +237,11 @@ export default function SitesPage() {
 
       <div className="flex gap-2 pt-2 border-t border-border">
         <button onClick={() => openEdit(selected)}
-          className="flex-1 flex items-center justify-center gap-2 py-2 text-sm border border-border rounded hover:bg-surface text-t2">
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm border border-border rounded-xl hover:bg-surface text-t2 transition-colors">
           <PencilSimple size={14} /> Edit
         </button>
         <button onClick={async () => { await apiUpdateSite(selected._id, { isActive: !selected.isActive } as any); load(); setModalMode(null); }}
-          className={`flex-1 py-2 text-sm border rounded ${selected.isActive ? 'border-rose-500/30 text-rose-400 hover:bg-rose-500/10' : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'}`}>
+          className={`flex-1 py-2.5 text-sm border rounded-xl transition-colors ${selected.isActive ? 'border-rose-500/30 text-rose-400 hover:bg-rose-500/10' : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'}`}>
           {selected.isActive ? 'Deactivate' : 'Activate'}
         </button>
       </div>
@@ -239,103 +249,102 @@ export default function SitesPage() {
   ) : null;
 
   return (
-    <div className="flex flex-col h-full bg-bg">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-        <div>
-          <h1 className="text-xl font-semibold text-t1">Sites</h1>
-          <p className="text-sm text-t3 mt-0.5">{loading_sites.length} loading · {offloading_sites.length} offloading</p>
+    <>
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-t1">Sites</h1>
+            <p className="text-sm text-t3 mt-1">{loading_sites.length} loading · {offloading_sites.length} offloading</p>
+          </div>
+          <button onClick={openNew}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-h transition-colors">
+            <Plus size={16} /> New Site
+          </button>
         </div>
-        <button onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2 bg-accent text-white text-sm rounded hover:bg-accent/80">
-          <Plus size={16} /> New Site
-        </button>
-      </div>
 
-      <div className="flex items-center gap-3 px-6 py-3 shrink-0">
-        <div className="relative flex-1 max-w-sm">
-          <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
-          <input className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded text-sm text-t1 placeholder:text-t3"
-            placeholder="Search sites..." value={search} onChange={e => setSearch(e.target.value)} />
+        {/* Search + Filter */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+            <input className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors"
+              placeholder="Search sites..." value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+            className="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-t1 outline-none focus:border-accent transition-colors">
+            <option value="">All Types</option>
+            {SITE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
         </div>
-        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-          className="bg-surface border border-border rounded px-3 py-2 text-sm text-t1">
-          <option value="">All Types</option>
-          {SITE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </div>
 
-      <div className="flex flex-1 min-h-0 px-6 pb-6 gap-4">
-        <div className="flex-1 min-w-0">
-          {loading ? (
-            <div className="flex items-center justify-center h-48">
-              <Spinner size={28} className="animate-spin text-accent" />
-            </div>
-          ) : sites.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-t3">
-              <MapPin size={40} className="mb-2 opacity-40" />
-              <p>No sites found.</p>
-            </div>
-          ) : (
-            <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'scroll' } }} className="h-full">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {sites.map(s => (
-                  <div key={s._id}
-                    className="bg-surface border border-border rounded-lg p-4 flex flex-col gap-3 hover:border-accent/40 cursor-pointer transition-colors"
-                    onClick={() => { setSelected(s); setModalMode('view'); }}>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-xs text-t3 font-mono">{s.siteCode}</p>
-                        <p className="font-medium text-t1 mt-0.5">{s.name}</p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        {s.siteType.map(t => (
-                          <span key={t} className={`text-xs border rounded px-1.5 py-0.5 ${TYPE_STYLES[t] ?? ''}`}>{t}</span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {s.liveStatus && (
-                      <div className="flex gap-3 text-xs">
-                        <span className="flex items-center gap-1 text-t3">
-                          <Truck size={11} className="text-amber-500" />{s.liveStatus.trucksWaiting} waiting
-                        </span>
-                        <span className="flex items-center gap-1 text-t3">
-                          <Truck size={11} className="text-blue-400" />{s.liveStatus.trucksLoading} loading
-                        </span>
-                        <span className="flex items-center gap-1 text-t3">
-                          <Truck size={11} className="text-emerald-400" />{s.liveStatus.trucksOffloading} offloading
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between text-xs text-t3">
-                      <span className="flex items-center gap-1">
-                        <MapPin size={11} />{[s.region, s.country].filter(Boolean).join(', ')}
-                      </span>
-                      <div className="flex gap-1">
-                        <button onClick={e => { e.stopPropagation(); openEdit(s); }}
-                          className="p-1 hover:text-t1 rounded"><PencilSimple size={13} /></button>
-                        <button onClick={e => { e.stopPropagation(); setSelected(s); setModalMode('view'); }}
-                          className="p-1 hover:text-t1 rounded"><Eye size={13} /></button>
-                      </div>
-                    </div>
+        {/* Sites Grid */}
+        {loading ? (
+          <div className="flex items-center justify-center h-48">
+            <Spinner size={28} className="animate-spin text-accent" />
+          </div>
+        ) : sites.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-48 text-t3">
+            <MapPin size={40} className="mb-2 opacity-40" />
+            <p>No sites found.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {sites.map(s => (
+              <div key={s._id}
+                className="bg-card border border-border rounded-xl p-4 flex flex-col gap-3 hover:border-accent/40 cursor-pointer transition-colors"
+                onClick={() => { setSelected(s); setModalMode('view'); }}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs text-t3 font-mono">{s.siteCode}</p>
+                    <p className="font-medium text-t1 mt-0.5">{s.name}</p>
                   </div>
-                ))}
-              </div>
-            </OverlayScrollbarsComponent>
-          )}
-        </div>
+                  <div className="flex flex-col items-end gap-1">
+                    {s.siteType.map(t => (
+                      <span key={t} className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium ${TYPE_STYLES[t] ?? ''}`}>{t}</span>
+                    ))}
+                  </div>
+                </div>
 
-        {modalMode && (
-          <DocumentSidePanel
-            isOpen={true}
-            onClose={() => setModalMode(null)}
-            title={modalMode === 'new' ? 'New Site' : modalMode === 'edit' ? 'Edit Site' : selected?.name ?? ''}
-            formContent={formContent}
-            previewContent={viewContent}
-          />
+                {s.liveStatus && (
+                  <div className="flex gap-3 text-xs">
+                    <span className="flex items-center gap-1 text-t3">
+                      <Truck size={11} className="text-amber-500" />{s.liveStatus.trucksWaiting} waiting
+                    </span>
+                    <span className="flex items-center gap-1 text-t3">
+                      <Truck size={11} className="text-blue-400" />{s.liveStatus.trucksLoading} loading
+                    </span>
+                    <span className="flex items-center gap-1 text-t3">
+                      <Truck size={11} className="text-emerald-400" />{s.liveStatus.trucksOffloading} offloading
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between text-xs text-t3">
+                  <span className="flex items-center gap-1">
+                    <MapPin size={11} />{[s.region, s.country].filter(Boolean).join(', ')}
+                  </span>
+                  <div className="flex gap-1">
+                    <button onClick={e => { e.stopPropagation(); openEdit(s); }}
+                      className="p-1 hover:text-t1 rounded"><PencilSimple size={13} /></button>
+                    <button onClick={e => { e.stopPropagation(); setSelected(s); setModalMode('view'); }}
+                      className="p-1 hover:text-t1 rounded"><Eye size={13} /></button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
-    </div>
+
+      {modalMode && (
+        <DocumentSidePanel
+          isOpen={true}
+          onClose={() => setModalMode(null)}
+          title={modalMode === 'new' ? 'New Site' : modalMode === 'edit' ? 'Edit Site' : selected?.name ?? ''}
+          formContent={formContent}
+          previewContent={viewContent}
+        />
+      )}
+    </>
   );
 }
