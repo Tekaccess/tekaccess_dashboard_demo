@@ -1,101 +1,728 @@
-import React from "react";
-import { CalendarDots, DownloadSimple, Money, ReceiptX, TrendUp, ChartBar, Truck, Timer, CheckCircle, Users, type Icon } from "@phosphor-icons/react";
-import StatCard from "../components/StatCard";
-import SalesTrend from "../components/SalesTrend";
-import RevenueBreakdown from "../components/RevenueBreakdown";
-import RecentTransactions from "../components/RecentTransactions";
-import KPIScoreCard from "../components/KPIScoreCard";
-import RecentPayroll from "../components/RecentPayroll";
-import AttendanceRate from "../components/AttendanceRate";
-import TotalEmployee from "../components/TotalEmployee";
-import AttendanceDetail from "../components/AttendanceDetail";
-import DayoffRequest from "../components/DayoffRequest";
-import { departmentsData } from "../data/navigation";
+import React, { useState, useEffect } from 'react';
+import {
+  Truck, Lightning, Wrench, MapPin, GasPump,
+  ShoppingCart, Handshake, Boat, Gear, Warning,
+  FileText, Checks, Package, Buildings, ArrowUp, ArrowDown,
+  Spinner, ChartBar,
+} from '@phosphor-icons/react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, AreaChart, Area, Legend,
+} from 'recharts';
+import {
+  apiGetTransportSummary, apiListTrips, apiListFuelLogs, apiListMaintenanceRecords,
+  apiGetProcurementSummary, apiGetShipmentsSummary, apiGetSparePartsSummary,
+  apiGetContractsSummary, apiGetDeliveriesSummary,
+  apiGetInventorySummary,
+  Trip, FuelLog, MaintenanceRecord,
+} from '../lib/api';
 
 interface DashboardProps {
   currentDepartmentId: string;
 }
 
-const departmentStats: Record<string, { title: string; value: string; change: string; isPositive: boolean; subtitle: string; icon: Icon }[]> = {
-  finance: [
-    { title: "Total Revenue", value: "20,320 RWF", change: "+12.5%", isPositive: true, subtitle: "All income sources", icon: Money },
-    { title: "Total Expenses", value: "15,400 RWF", change: "-1.2%", isPositive: false, subtitle: "Operational costs", icon: ReceiptX },
-    { title: "Net Profit", value: "4,920 RWF", change: "+8.3%", isPositive: true, subtitle: "After all deductions", icon: TrendUp },
-    { title: "Growth Rate", value: "12%", change: "+2.1%", isPositive: true, subtitle: "Month over month", icon: ChartBar },
-  ],
-  procurement: [
-    { title: "Purchase Orders", value: "1,284", change: "+12.5%", isPositive: true, subtitle: "From all shipments", icon: Truck },
-    { title: "Active Suppliers", value: "482", change: "+4.1%", isPositive: true, subtitle: "Currently on route", icon: Users },
-    { title: "Avg. Delivery Time", value: "4h 12m", change: "-18m", isPositive: true, subtitle: "Faster than avg", icon: Timer },
-    { title: "On-time Rate", value: "98.2%", change: "-0.4%", isPositive: false, subtitle: "Target: 99.0%", icon: CheckCircle },
-  ],
+// ─── Shared Styles ────────────────────────────────────────────────────────────
+
+const tooltipStyle = {
+  background: 'var(--color-card)',
+  border: '1px solid var(--color-border)',
+  borderRadius: 12,
+  fontSize: 12,
+  color: 'var(--color-t1)',
+  boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
 };
 
-const defaultStats: { title: string; value: string; change: string; isPositive: boolean; subtitle: string; icon: Icon }[] = [
-  { title: "Total Revenue", value: "20,320 RWF", change: "+12.5%", isPositive: true, subtitle: "All income sources", icon: Money },
-  { title: "Total Expenses", value: "15,400 RWF", change: "-1.2%", isPositive: false, subtitle: "Operational costs", icon: ReceiptX },
-  { title: "Net Profit", value: "4,920 RWF", change: "+8.3%", isPositive: true, subtitle: "After all deductions", icon: TrendUp },
-  { title: "Growth Rate", value: "12%", change: "+2.1%", isPositive: true, subtitle: "Month over month", icon: ChartBar },
-];
+function SectionSpinner() {
+  return (
+    <div className="flex items-center justify-center h-48">
+      <Spinner size={28} className="animate-spin text-accent" />
+    </div>
+  );
+}
+
+function KpiCard({
+  label, value, Icon, bg, color, sub,
+}: {
+  label: string; value: string | number; Icon: any; bg: string; color: string; sub?: string;
+}) {
+  return (
+    <div className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
+      <div className={`p-2.5 rounded-xl ${bg} shrink-0`}>
+        <Icon size={18} weight="duotone" className={color} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-t3">{label}</p>
+        <p className="text-xl font-bold text-t1 leading-tight">{value}</p>
+        {sub && <p className="text-xs text-t3 mt-0.5">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+function ChartCard({ title, children, className = '' }: { title: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`bg-card rounded-xl border border-border p-5 ${className}`}>
+      <p className="text-sm font-semibold text-t1 mb-4">{title}</p>
+      {children}
+    </div>
+  );
+}
+
+const ROUNDING = [4, 4, 0, 0] as [number, number, number, number];
+
+// ─── Transport Dashboard ───────────────────────────────────────────────────────
+
+function groupFuelByMonth(logs: FuelLog[]) {
+  const map: Record<string, number> = {};
+  logs.forEach(l => {
+    const d = new Date(l.logDate);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    map[key] = (map[key] ?? 0) + l.totalCost;
+  });
+  return Object.entries(map)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-8)
+    .map(([month, cost]) => ({ month: month.slice(5), cost: Math.round(cost) }));
+}
+
+function countByField<T>(arr: T[], key: keyof T): Record<string, number> {
+  const map: Record<string, number> = {};
+  arr.forEach(item => {
+    const v = String(item[key]);
+    map[v] = (map[v] ?? 0) + 1;
+  });
+  return map;
+}
+
+const FLEET_COLORS: Record<string, string> = {
+  operating: '#10b981',
+  idle: '#f59e0b',
+  maintenance: '#f43f5e',
+  decommissioned: '#9ca3af',
+};
+
+const TRIP_COLORS: Record<string, string> = {
+  completed: '#10b981',
+  in_progress: '#3b82f6',
+  scheduled: '#f59e0b',
+  cancelled: '#f43f5e',
+};
+
+function TransportDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<any>(null);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [fuelLogs, setFuelLogs] = useState<FuelLog[]>([]);
+  const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      apiGetTransportSummary(),
+      apiListTrips({ limit: '200' }),
+      apiListFuelLogs({ limit: '200' }),
+      apiListMaintenanceRecords({ limit: '200' }),
+    ]).then(([sumRes, tripRes, fuelRes, maintRes]) => {
+      if (sumRes.success) setSummary(sumRes.data.summary);
+      if (tripRes.success) setTrips(tripRes.data.trips);
+      if (fuelRes.success) setFuelLogs(fuelRes.data.logs);
+      if (maintRes.success) setMaintenanceRecords(maintRes.data.records);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <SectionSpinner />;
+
+  const s = summary ?? {};
+  const maintPct = s.totalTrucks > 0 ? Math.round((s.inMaintenance / s.totalTrucks) * 100) : 0;
+
+  const fleetDonut = [
+    { name: 'Operating', value: s.operating ?? 0 },
+    { name: 'Idle', value: s.idle ?? 0 },
+    { name: 'Maintenance', value: s.inMaintenance ?? 0 },
+    { name: 'Decommissioned', value: s.totalTrucks - (s.operating + s.idle + s.inMaintenance) > 0
+        ? s.totalTrucks - (s.operating + s.idle + s.inMaintenance) : 0 },
+  ].filter(d => d.value > 0);
+
+  const tripStatusMap = countByField(trips, 'status');
+  const tripBars = Object.entries(tripStatusMap).map(([status, count]) => ({
+    status: status.replace(/_/g, ' '),
+    count,
+    fill: TRIP_COLORS[status] ?? '#6366f1',
+  }));
+
+  const fuelTrend = groupFuelByMonth(fuelLogs);
+
+  const maintTypeMap = countByField(maintenanceRecords, 'maintenanceType');
+  const maintBars = Object.entries(maintTypeMap).map(([type, count]) => ({
+    type: type.charAt(0).toUpperCase() + type.slice(1),
+    count,
+    fill: type === 'emergency' ? '#f43f5e' : type === 'corrective' ? '#f59e0b' : '#10b981',
+  }));
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <KpiCard label="Total Fleet" value={s.totalTrucks ?? 0} Icon={Truck} bg="bg-accent-glow" color="text-accent" />
+        <KpiCard label="Operating" value={s.operating ?? 0} Icon={Lightning} bg="bg-emerald-500/10" color="text-emerald-400" />
+        <KpiCard label="In Maintenance" value={s.inMaintenance ?? 0} Icon={Wrench}
+          bg={maintPct > 20 ? 'bg-rose-500/10' : 'bg-amber-500/10'}
+          color={maintPct > 20 ? 'text-rose-400' : 'text-amber-500'}
+          sub={maintPct > 20 ? `${maintPct}% — high!` : `${maintPct}%`}
+        />
+        <KpiCard label="Active Trips" value={s.activeTrips ?? 0} Icon={MapPin} bg="bg-blue-500/10" color="text-blue-400" />
+        <KpiCard label="Total Fuel Cost" value={
+          (s.totalFuelCost ?? 0) >= 1_000_000
+            ? `${((s.totalFuelCost ?? 0) / 1_000_000).toFixed(1)}M`
+            : `${Math.round((s.totalFuelCost ?? 0) / 1000)}K`
+        } Icon={GasPump} bg="bg-purple-500/10" color="text-purple-400" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ChartCard title="Fleet Status">
+          {fleetDonut.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={fleetDonut} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
+                  {fleetDonut.map((entry, i) => (
+                    <Cell key={i} fill={FLEET_COLORS[entry.name.toLowerCase()] ?? '#6366f1'} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: 'var(--color-t2)' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-t3 text-center py-12">No fleet data available</p>
+          )}
+        </ChartCard>
+
+        <ChartCard title="Trip Status Distribution">
+          {tripBars.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={tripBars} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="status" tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
+                <YAxis tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="count" radius={ROUNDING} name="Trips">
+                  {tripBars.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-t3 text-center py-12">No trips data available</p>
+          )}
+        </ChartCard>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ChartCard title="Monthly Fuel Cost Trend">
+          {fuelTrend.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={fuelTrend} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="fuelGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="month" tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
+                <YAxis tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v.toLocaleString()}`, 'Fuel Cost']} />
+                <Area type="monotone" dataKey="cost" stroke="var(--color-accent)" strokeWidth={2} fill="url(#fuelGrad)" name="Cost" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-t3 text-center py-12">No fuel log data available</p>
+          )}
+        </ChartCard>
+
+        <ChartCard title="Maintenance by Type">
+          {maintBars.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={maintBars} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="type" tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
+                <YAxis tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="count" radius={ROUNDING} name="Records">
+                  {maintBars.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-t3 text-center py-12">No maintenance data available</p>
+          )}
+        </ChartCard>
+      </div>
+    </div>
+  );
+}
+
+// ─── Procurement Dashboard ─────────────────────────────────────────────────────
+
+const SHIPMENT_COLORS: Record<string, string> = {
+  'In Transit': '#3b82f6',
+  'At Customs': '#f59e0b',
+  'Received': '#10b981',
+  'Delayed': '#f43f5e',
+  'Overdue': '#dc2626',
+};
+
+function ProcurementDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [procSummary, setProcSummary] = useState<any>(null);
+  const [shipSummary, setShipSummary] = useState<any>(null);
+  const [sparesSummary, setSparesSummary] = useState<any>(null);
+
+  useEffect(() => {
+    Promise.all([
+      apiGetProcurementSummary(),
+      apiGetShipmentsSummary(),
+      apiGetSparePartsSummary(),
+    ]).then(([pRes, sRes, spRes]) => {
+      if (pRes.success) setProcSummary(pRes.data);
+      if (sRes.success) setShipSummary(sRes.data.summary);
+      if (spRes.success) setSparesSummary(spRes.data);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <SectionSpinner />;
+
+  const ps = procSummary?.summary ?? {};
+  const ss = shipSummary ?? {};
+  const sp = sparesSummary?.summary ?? {};
+
+  const poChartData = (procSummary?.poByStatus ?? []).map((d: any) => ({
+    status: d._id.replace(/_/g, ' '),
+    count: d.count,
+    value: Math.round(d.value / 1000),
+  }));
+
+  const shipDonut = [
+    { name: 'In Transit', value: ss.inTransit ?? 0 },
+    { name: 'At Customs', value: ss.atCustoms ?? 0 },
+    { name: 'Received', value: ss.received ?? 0 },
+    { name: 'Delayed', value: ss.delayed ?? 0 },
+    { name: 'Overdue', value: ss.overdue ?? 0 },
+  ].filter(d => d.value > 0);
+
+  const spareCategories = (sparesSummary?.summary?.categories ?? []).map((c: any) => ({
+    category: c._id || 'Unknown',
+    count: c.count,
+    value: Math.round(c.totalValue / 1000),
+  }));
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <KpiCard label="Active POs" value={ps.activePOs ?? 0} Icon={ShoppingCart} bg="bg-accent-glow" color="text-accent" />
+        <KpiCard label="Draft POs" value={ps.draftPOs ?? 0} Icon={ShoppingCart} bg="bg-surface" color="text-t3" />
+        <KpiCard label="Active Suppliers" value={ps.activeSuppliers ?? 0} Icon={Handshake} bg="bg-emerald-500/10" color="text-emerald-400" />
+        <KpiCard label="Spare Part Alerts" value={ps.sparePartAlerts ?? 0} Icon={Warning}
+          bg={(ps.sparePartAlerts ?? 0) > 0 ? 'bg-rose-500/10' : 'bg-emerald-500/10'}
+          color={(ps.sparePartAlerts ?? 0) > 0 ? 'text-rose-400' : 'text-emerald-400'}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ChartCard title="Purchase Orders by Status">
+          {poChartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={poChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="status" tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
+                <YAxis tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="count" fill="var(--color-accent)" radius={ROUNDING} name="PO Count" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-t3 text-center py-12">No PO data available</p>
+          )}
+        </ChartCard>
+
+        <ChartCard title="Shipments Status">
+          {shipDonut.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={shipDonut} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+                  {shipDonut.map((entry, i) => (
+                    <Cell key={i} fill={SHIPMENT_COLORS[entry.name] ?? '#6366f1'} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: 'var(--color-t2)' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-t3 text-center py-12">No shipment data available</p>
+          )}
+        </ChartCard>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ChartCard title="Spare Parts by Category">
+          {spareCategories.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={spareCategories} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
+                <XAxis type="number" tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
+                <YAxis dataKey="category" type="category" tick={{ fill: 'var(--color-t3)', fontSize: 11 }} width={90} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="count" fill="#8b5cf6" radius={[0, 4, 4, 0]} name="Parts" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-t3 text-center py-12">No spare parts data available</p>
+          )}
+        </ChartCard>
+
+        <div className="bg-card rounded-xl border border-border p-5 flex flex-col gap-3">
+          <p className="text-sm font-semibold text-t1">Active PO Value</p>
+          <p className="text-4xl font-bold text-accent mt-2">
+            {(ps.activePoValue ?? 0) >= 1_000_000
+              ? `${((ps.activePoValue ?? 0) / 1_000_000).toFixed(2)}M`
+              : `${Math.round((ps.activePoValue ?? 0) / 1000)}K`}
+          </p>
+          <p className="text-xs text-t3">Across approved, sent &amp; partially received POs</p>
+          <div className="mt-auto pt-4 border-t border-border grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs text-t3">Shipments In Transit</p>
+              <p className="text-lg font-bold text-blue-400">{ss.inTransit ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-xs text-t3">At Customs</p>
+              <p className="text-lg font-bold text-amber-500">{ss.atCustoms ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-xs text-t3">Total Spare Parts</p>
+              <p className="text-lg font-bold text-t1">{sp.totalParts ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-xs text-t3">Low Stock Items</p>
+              <p className={`text-lg font-bold ${(sp.lowStock ?? 0) > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{sp.lowStock ?? 0}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Operations Dashboard ──────────────────────────────────────────────────────
+
+const CONTRACT_COLORS: Record<string, string> = {
+  Active: '#10b981',
+  Draft: '#f59e0b',
+  Completed: '#6366f1',
+  Disputed: '#f43f5e',
+};
+
+function OperationsDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [contractSum, setContractSum] = useState<any>(null);
+  const [delivSum, setDelivSum] = useState<any>(null);
+
+  useEffect(() => {
+    Promise.all([
+      apiGetContractsSummary(),
+      apiGetDeliveriesSummary(),
+    ]).then(([cRes, dRes]) => {
+      if (cRes.success) setContractSum(cRes.data);
+      if (dRes.success) setDelivSum(dRes.data.summary);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <SectionSpinner />;
+
+  const cs = contractSum?.summary ?? {};
+  const ds = delivSum ?? {};
+
+  const contractDonut = [
+    { name: 'Active', value: cs.active ?? 0 },
+    { name: 'Draft', value: cs.draft ?? 0 },
+    { name: 'Completed', value: cs.completed ?? 0 },
+    { name: 'Disputed', value: cs.disputed ?? 0 },
+  ].filter(d => d.value > 0);
+
+  const delivBars = [
+    { status: 'Pending', count: ds.pendingConfirmation ?? 0, fill: '#f59e0b' },
+    { status: 'Confirmed', count: ds.confirmed ?? 0, fill: '#10b981' },
+    { status: 'Disputed', count: ds.disputed ?? 0, fill: '#f43f5e' },
+  ];
+
+  const nearingDeadline = contractSum?.nearingDeadline ?? [];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <KpiCard label="Active Contracts" value={cs.active ?? 0} Icon={FileText} bg="bg-emerald-500/10" color="text-emerald-400" />
+        <KpiCard label="Disputed" value={cs.disputed ?? 0} Icon={Warning}
+          bg={(cs.disputed ?? 0) > 0 ? 'bg-rose-500/10' : 'bg-surface'}
+          color={(cs.disputed ?? 0) > 0 ? 'text-rose-400' : 'text-t3'}
+        />
+        <KpiCard label="Tons Today" value={(ds.tonsToday ?? 0).toLocaleString()} Icon={Package} bg="bg-blue-500/10" color="text-blue-400" />
+        <KpiCard label="Tons This Month" value={(ds.tonsThisMonth ?? 0).toLocaleString()} Icon={ChartBar} bg="bg-purple-500/10" color="text-purple-400" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ChartCard title="Contract Status">
+          {contractDonut.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={contractDonut} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
+                  {contractDonut.map((entry, i) => (
+                    <Cell key={i} fill={CONTRACT_COLORS[entry.name] ?? '#6366f1'} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: 'var(--color-t2)' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-t3 text-center py-12">No contract data available</p>
+          )}
+        </ChartCard>
+
+        <ChartCard title="Deliveries Status">
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={delivBars} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis dataKey="status" tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
+              <YAxis tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Bar dataKey="count" radius={ROUNDING} name="Deliveries">
+                {delivBars.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-card rounded-xl border border-border p-5">
+          <p className="text-sm font-semibold text-t1 mb-4">Active Contract Value</p>
+          <p className="text-4xl font-bold text-accent">
+            {(cs.totalActiveValue ?? 0) >= 1_000_000
+              ? `${((cs.totalActiveValue ?? 0) / 1_000_000).toFixed(2)}M`
+              : `${Math.round((cs.totalActiveValue ?? 0) / 1000)}K`}
+          </p>
+          <p className="text-xs text-t3 mt-2">Active contract revenue</p>
+          <div className="mt-4 pt-4 border-t border-border">
+            <p className="text-xs text-t3 mb-1">Total Active Tons</p>
+            <p className="text-2xl font-bold text-t1">{(cs.totalActiveTons ?? 0).toLocaleString()}</p>
+            <p className="text-xs text-t3 mt-1">Contracted tonnage across active contracts</p>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl border border-border p-5">
+          <p className="text-sm font-semibold text-t1 mb-4">Contracts Nearing Deadline</p>
+          {nearingDeadline.length === 0 ? (
+            <div className="flex items-center gap-2 text-t3 py-6">
+              <Checks size={16} className="opacity-40" />
+              <p className="text-sm">No contracts nearing deadline</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {nearingDeadline.slice(0, 5).map((c: any) => (
+                <div key={c._id} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-t1 truncate">{c.contractRef}</p>
+                    <p className="text-xs text-t3 truncate">{c.clientName}</p>
+                  </div>
+                  <div className="text-right shrink-0 ml-3">
+                    <p className="text-xs font-medium text-amber-500">{new Date(c.endDate).toLocaleDateString()}</p>
+                    <p className="text-xs text-t3">{c.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Inventory Dashboard ───────────────────────────────────────────────────────
+
+function InventoryDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [invSummary, setInvSummary] = useState<any>(null);
+
+  useEffect(() => {
+    apiGetInventorySummary().then(res => {
+      if (res.success) setInvSummary(res.data);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <SectionSpinner />;
+
+  const s = invSummary?.summary ?? {};
+  const categories = (invSummary?.categories ?? []).map((c: any) => ({
+    category: c._id || 'Unknown',
+    count: c.count,
+    value: Math.round(c.totalValue / 1000),
+    qty: Math.round(c.totalQty),
+  }));
+
+  const recentMovements = invSummary?.recentMovements ?? [];
+  const movTypeCounts: Record<string, number> = {};
+  recentMovements.forEach((m: any) => {
+    movTypeCounts[m.movementType] = (movTypeCounts[m.movementType] ?? 0) + 1;
+  });
+  const movBars = Object.entries(movTypeCounts).map(([type, count]) => ({
+    type: type.replace(/_/g, ' '),
+    count,
+    fill: type === 'RECEIPT' ? '#10b981' : type === 'ISSUE' ? '#f43f5e' : type === 'STOCK_COUNT' ? '#6366f1' : '#f59e0b',
+  }));
+
+  const okCount = (s.totalItems ?? 0) - (s.lowStockItems ?? 0);
+  const healthDonut = [
+    { name: 'OK', value: okCount > 0 ? okCount : 0 },
+    { name: 'Low Stock', value: s.lowStockItems ?? 0 },
+  ].filter(d => d.value > 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <KpiCard label="Total Items" value={(s.totalItems ?? 0).toLocaleString()} Icon={Package} bg="bg-accent-glow" color="text-accent" />
+        <KpiCard label="Total Stock Value" value={
+          (s.totalValue ?? 0) >= 1_000_000
+            ? `${((s.totalValue ?? 0) / 1_000_000).toFixed(2)}M`
+            : `${Math.round((s.totalValue ?? 0) / 1000)}K`
+        } Icon={ChartBar} bg="bg-blue-500/10" color="text-blue-400" />
+        <KpiCard label="Low Stock Alerts" value={s.lowStockItems ?? 0} Icon={Warning}
+          bg={(s.lowStockItems ?? 0) > 0 ? 'bg-rose-500/10' : 'bg-emerald-500/10'}
+          color={(s.lowStockItems ?? 0) > 0 ? 'text-rose-400' : 'text-emerald-400'}
+        />
+        <KpiCard label="Warehouses" value={s.warehouseCount ?? 0} Icon={Buildings} bg="bg-purple-500/10" color="text-purple-400" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ChartCard title="Stock by Category (Value × 1K)">
+          {categories.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={categories} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
+                <XAxis type="number" tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
+                <YAxis dataKey="category" type="category" tick={{ fill: 'var(--color-t3)', fontSize: 11 }} width={90} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v}K`, 'Value']} />
+                <Bar dataKey="value" fill="var(--color-accent)" radius={[0, 4, 4, 0]} name="Value (K)" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-t3 text-center py-12">No inventory data available</p>
+          )}
+        </ChartCard>
+
+        <ChartCard title="Stock Health">
+          {healthDonut.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={healthDonut} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
+                  <Cell fill="#10b981" />
+                  <Cell fill="#f43f5e" />
+                </Pie>
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: 'var(--color-t2)' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-t3 text-center py-12">No stock data available</p>
+          )}
+        </ChartCard>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ChartCard title="Recent Movement Types">
+          {movBars.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={movBars} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="type" tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
+                <YAxis tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="count" radius={ROUNDING} name="Count">
+                  {movBars.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-t3 text-center py-12">No movement data available</p>
+          )}
+        </ChartCard>
+
+        <div className="bg-card rounded-xl border border-border p-5">
+          <p className="text-sm font-semibold text-t1 mb-4">Recent Stock Movements</p>
+          {recentMovements.length === 0 ? (
+            <div className="flex items-center gap-2 text-t3 py-6">
+              <Package size={16} className="opacity-40" />
+              <p className="text-sm">No recent movements</p>
+            </div>
+          ) : (
+            <div className="space-y-0">
+              {recentMovements.slice(0, 6).map((m: any) => (
+                <div key={m._id} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-t1 truncate">{m.itemName}</p>
+                    <p className="text-xs text-t3">{m.movementType.replace(/_/g, ' ')} · {m.movementRef}</p>
+                  </div>
+                  <span className={`flex items-center gap-0.5 text-sm font-bold shrink-0 ml-3 ${m.qty >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {m.qty >= 0 ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
+                    {Math.abs(m.qty).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Dashboard ────────────────────────────────────────────────────────────
+
+const DEPT_LABELS: Record<string, string> = {
+  transport: 'Transport',
+  procurement: 'Procurement',
+  operations: 'Operations',
+  inventory: 'Inventory',
+};
 
 export default function Dashboard({ currentDepartmentId }: DashboardProps) {
-  const currentDepartment = departmentsData.find((d) => d.id === currentDepartmentId) || departmentsData[0];
-  const stats = departmentStats[currentDepartmentId] || defaultStats;
+  const label = DEPT_LABELS[currentDepartmentId] ?? currentDepartmentId;
+
+  const renderContent = () => {
+    switch (currentDepartmentId) {
+      case 'transport':    return <TransportDashboard />;
+      case 'procurement':  return <ProcurementDashboard />;
+      case 'operations':   return <OperationsDashboard />;
+      case 'inventory':    return <InventoryDashboard />;
+      default:
+        return (
+          <div className="bg-card rounded-xl border border-border p-10 flex flex-col items-center justify-center gap-3 text-center">
+            <ChartBar size={32} weight="duotone" className="text-t3 opacity-40" />
+            <p className="text-sm text-t3">No dashboard configured for this department yet.</p>
+          </div>
+        );
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-t1">Operations overview</h2>
-          <p className="text-xs text-t3 mt-0.5">
-            Last updated: Today, 14:32 PM
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-lg text-xs font-medium text-t2 hover:bg-surface transition-colors">
-            <CalendarDots size={13} weight="duotone" className="text-t3" />
-            6 Nov 2025
-            <svg className="w-3 h-3 text-t3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-h text-white text-xs font-semibold rounded-lg transition-colors shadow-sm shadow-accent/20">
-            <DownloadSimple size={13} weight="bold" />
-            Export
-          </button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-t1">{label} Overview</h1>
+        <p className="text-sm text-t3 mt-1">Real-time summary and key metrics</p>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, idx) => (
-          <StatCard key={idx} {...stat} />
-        ))}
-      </div>
-
-      {/* HR Dashboard widgets */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <KPIScoreCard />
-        <RecentPayroll />
-        <AttendanceRate />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <TotalEmployee />
-        <div className="lg:col-span-2"><AttendanceDetail /></div>
-      </div>
-
-      {/* Finance charts */}
-      <div className="border-t border-border pt-6">
-        <h3 className="text-sm font-semibold text-t1 mb-4">
-          Finance Overview — <span className="text-t3 font-normal">{currentDepartment.name}</span>
-        </h3>
-
-        <div className="mt-4">
-          <RecentTransactions />
-        </div>
-      </div>
+      {renderContent()}
     </div>
   );
 }
