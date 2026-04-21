@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { CaretUp, CaretDown } from '@phosphor-icons/react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 
@@ -34,8 +35,8 @@ export default function DocumentSidePanel({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex justify-end">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
         onClick={onClose}
@@ -111,6 +112,7 @@ export default function DocumentSidePanel({
           </OverlayScrollbarsComponent>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

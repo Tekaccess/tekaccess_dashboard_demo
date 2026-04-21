@@ -721,14 +721,14 @@ function ActivityEntry({ log }: { log: import('../lib/api').ActivityLog }) {
             Changed: {log.changedFields.join(', ')}
           </p>
         )}
-        {log.note && <p className="text-xs mb-1 text-t3 truncate mt-0.5">{log.note}</p>}
+        {log.note && <p className="text-xs mb-1 text-t2 font-medium truncate mt-1.5">{log.note}</p>}
         {log.status === 'failed' && log.errorMessage && (
           <p className="text-xs text-red-500 truncate mt-0.5">{log.errorMessage}</p>
         )}
         <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs text-t1 italic">{formatted}</span>
+          <span className="text-xs text-t3 italic">{formatted}</span>
           <span className="text-sm">·</span>
-          <span className="text-xs italic ">{DASHBOARD_LABELS[log.dashboard] ?? log.dashboard}</span>
+          <span className="text-xs italic text-t3 ">{DASHBOARD_LABELS[log.dashboard] ?? log.dashboard}</span>
           <span className={`ml-auto text-xs text-t3 font-mono capitalize font-normal`}>
             {log.status}
           </span>
