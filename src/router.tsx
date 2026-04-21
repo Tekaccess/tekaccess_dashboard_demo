@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   createRouter,
   createRoute,
   createRootRoute,
+  useNavigate,
 } from "@tanstack/react-router";
 import RootLayout from "./components/RootLayout";
 import Dashboard from "./pages/Dashboard";
+import { useAuth } from "./contexts/AuthContext";
 import SectionPage from "./pages/SectionPage";
 import Reports from "./pages/Reports";
 import Calendar from "./pages/Calendar";
@@ -63,10 +65,42 @@ export const adminRoute = createRoute({
 });
 
 // ── Shared Routes ──────────────────────────────────────────────────────────
+
+const ALL_DEPT_IDS = ['executive', 'finance', 'transport', 'operations', 'inventory', 'procurement', 'data_team'];
+const DEPT_ACCESS_SLUGS: Record<string, string[]> = {
+  executive:   ['executive'],
+  finance:     ['finance'],
+  transport:   ['transport'],
+  operations:  ['operations'],
+  inventory:   ['inventory'],
+  procurement: ['procurement'],
+  data_team:   ['data_entry'],
+};
+
+function IndexRedirect() {
+  const { user, isInitialising } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isInitialising || !user) return;
+    let firstDept: string;
+    if (user.role === 'super_admin') {
+      firstDept = ALL_DEPT_IDS[0];
+    } else {
+      firstDept = ALL_DEPT_IDS.find(id =>
+        DEPT_ACCESS_SLUGS[id]?.some(slug => user.dashboardAccess?.includes(slug))
+      ) ?? ALL_DEPT_IDS[0];
+    }
+    navigate({ to: `/${firstDept}`, replace: true });
+  }, [user, isInitialising, navigate]);
+
+  return null;
+}
+
 export const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: () => <Dashboard currentDepartmentId="finance" />,
+  component: IndexRedirect,
 });
 
 export const departmentRoute = createRoute({
