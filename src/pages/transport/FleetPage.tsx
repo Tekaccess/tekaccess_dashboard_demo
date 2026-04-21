@@ -8,8 +8,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
-import DocumentSidePanel from '../../components/DocumentSidePanel';
 import { apiListTrucks, apiCreateTruck, apiUpdateTruck, Truck as TruckType } from '../../lib/api';
+import ModernModal from '../../components/ui/ModernModal';
 
 type ViewMode = 'table' | 'bar' | 'pie';
 type ActiveTab = 'All' | 'Operating' | 'Idle' | 'In Maintenance';
@@ -318,6 +318,68 @@ export default function FleetPage() {
     </div>
   );
 
+  const modalSummary = draft ? (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Asset Identity</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-t3">Plate</span>
+            <span className="font-mono font-bold text-accent">{draft.plateNumber || '—'}</span>
+          </div>
+          <div className="flex justify-between text-sm text-[10px]">
+             <span className="text-t3 uppercase">Fleet Class</span>
+             <span className="text-t1 font-bold uppercase tracking-tight">{draft.fleetType}</span>
+          </div>
+        </div>
+      </div>
+
+       <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Maintenance State</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4 space-y-2 text-center">
+           <p className="text-2xl font-black text-t1">{draft.currentOdometer || '0'}<span className="text-xs text-t3 ml-1 font-normal uppercase">KM</span></p>
+           <p className="text-[10px] text-t3 uppercase font-bold tracking-tighter">Current Reading</p>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  const viewModalSummary = viewTruck ? (
+    <div className="space-y-6">
+       <div className="bg-card/50 border border-border rounded-xl p-4 space-y-4">
+        <div>
+          <p className="text-[10px] text-t3 uppercase font-black tracking-widest mb-1">Operational status</p>
+           <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${STATUS_STYLES[viewTruck.status]}`}>
+            {STATUS_LABEL[viewTruck.status]}
+          </span>
+        </div>
+        
+        <div className="pt-3 border-t border-border">
+          <p className="text-[10px] text-t3 uppercase font-black tracking-widest mb-2">Service Lifecycle</p>
+          <div className="space-y-2">
+             <div className="flex justify-between items-center text-xs">
+                <span className="text-t3 uppercase tracking-tighter">Odometer</span>
+                <span className="text-t1 font-bold">{viewTruck.currentOdometer?.toLocaleString()} km</span>
+             </div>
+             <div className="h-1.5 bg-surface rounded-full overflow-hidden">
+                <div className="h-full bg-accent w-2/3 rounded-full shadow-[0_0_8px_rgba(66,133,244,0.5)]" />
+             </div>
+             <div className="flex justify-between items-center text-[10px] text-t3">
+                <span>Last Service</span>
+                <span>Next Service</span>
+             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-border">
+        <button onClick={() => handleEdit(viewTruck)} className="w-full py-2.5 bg-surface border border-border text-t1 rounded-xl text-sm font-bold hover:bg-card transition-all">
+          Edit Fleet Details
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   const previewContent = (() => {
     const truck = viewTruck || (draft ? { plateNumber: draft.plateNumber || '—', make: draft.make, model: draft.model, year: draft.year, fleetType: draft.fleetType, status: draft.status, assignedDriverName: draft.assignedDriverName, currentOdometer: draft.currentOdometer, lastServiceDate: draft.lastServiceDate, insuranceExpiry: draft.insuranceExpiry, notes: draft.notes } : null);
     if (!truck) return null;
@@ -527,18 +589,20 @@ export default function FleetPage() {
         )}
       </div>
 
-      <DocumentSidePanel
+      <ModernModal
         isOpen={!!modal}
         onClose={() => { setModal(null); setSaveError(null); }}
-        title={modal?.mode === 'new' ? 'Add Truck' : modal?.mode === 'edit' ? `Edit — ${(modal as any).truck?.plateNumber}` : `Truck — ${(modal as any)?.truck?.plateNumber}`}
-        currentIndex={modal && modal.mode !== 'new' ? filteredTrucks.findIndex(t => t._id === (modal as any).truck?._id) + 1 : undefined}
-        totalItems={filteredTrucks.length}
-        onPrev={() => { if (!modal || modal.mode === 'new') return; const idx = filteredTrucks.findIndex(t => t._id === (modal as any).truck._id); if (idx > 0) setModal({ mode: 'view', truck: filteredTrucks[idx - 1] }); }}
-        onNext={() => { if (!modal || modal.mode === 'new') return; const idx = filteredTrucks.findIndex(t => t._id === (modal as any).truck._id); if (idx < filteredTrucks.length - 1) setModal({ mode: 'view', truck: filteredTrucks[idx + 1] }); }}
-        footerInfo={modal?.mode === 'new' ? `Draft • ${new Date().toLocaleDateString()}` : `Status: ${STATUS_LABEL[(modal as any)?.truck?.status] || '—'}`}
-        formContent={modal?.mode === 'view' ? viewContent : formContent}
-        previewContent={previewContent}
-      />
+        title={modal?.mode === 'new' ? 'Register New Truck' : modal?.mode === 'edit' ? `Update Asset — ${(modal as any).truck?.plateNumber}` : `Vehicle Specs — ${(modal as any)?.truck?.plateNumber}`}
+        summaryContent={modal?.mode === 'view' ? viewModalSummary : modalSummary}
+        actions={modal?.mode !== 'view' ? (
+          <button onClick={handleSave} disabled={saving} className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
+            {saving && <Spinner size={14} className="animate-spin" />}
+            {modal?.mode === 'new' ? 'Add Truck' : 'Update Truck'}
+          </button>
+        ) : undefined}
+      >
+        {modal?.mode === 'view' ? viewContent : formContent}
+      </ModernModal>
     </div>
   );
 }

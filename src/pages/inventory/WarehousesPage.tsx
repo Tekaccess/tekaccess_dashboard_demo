@@ -8,7 +8,7 @@ import {
   apiListWarehouses, apiCreateWarehouse, apiUpdateWarehouse, apiGetInventorySummary,
   Warehouse,
 } from '../../lib/api';
-import DocumentSidePanel from '../../components/DocumentSidePanel';
+import ModernModal from '../../components/ui/ModernModal';
 
 const TYPE_LABELS: Record<string, string> = {
   commercial: 'Commercial',
@@ -107,11 +107,63 @@ export default function WarehousesPage() {
     setModalMode(null); load();
   }
 
-  const panelTitle = modalMode === 'new' ? 'New Warehouse'
-    : modalMode === 'edit' ? 'Edit Warehouse'
-    : selected?.name ?? '';
+  const modalSummary = (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Warehouse Identity</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-t3">Code</span>
+            <span className="font-mono font-bold text-accent">{draft.warehouseCode || '—'}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-t3">Type</span>
+            <span className="text-t1 font-medium">{TYPE_LABELS[draft.warehouseType] || draft.warehouseType}</span>
+          </div>
+        </div>
+      </div>
 
-  const usedPct = selected?.liveCapacity?.usedPct ?? 0;
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Capacity Tracking</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-t3">Total Cap.</span>
+            <span className="text-t1 font-bold">{draft.totalCapacity || '0'} {draft.capacityUnit}</span>
+          </div>
+          <div className="h-1.5 bg-surface rounded-full overflow-hidden">
+             <div className="h-full bg-accent w-1/4 rounded-full" />
+          </div>
+          <p className="text-[10px] text-t3 italic text-center">New warehouse initialization...</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const viewModalSummary = selected ? (
+    <div className="space-y-6">
+       <div className="bg-card/50 border border-border rounded-xl p-4 space-y-4">
+        <div>
+          <p className="text-[10px] text-t3 uppercase font-black tracking-widest mb-2">Usage Analytics</p>
+          <div className="flex items-center justify-between mb-2">
+             <span className="text-xl font-bold text-t1">{usedPct.toFixed(1)}%</span>
+             <span className="text-xs text-t3">Occupied</span>
+          </div>
+          <div className="h-2 bg-surface rounded-full overflow-hidden">
+             <div className={`h-full rounded-full transition-all ${usedPct > 80 ? 'bg-rose-500' : usedPct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(usedPct, 100)}%` }} />
+          </div>
+          <p className="text-xs text-t3 mt-2">
+            {selected.liveCapacity?.occupiedCapacity.toLocaleString()} / {selected.totalCapacity.toLocaleString()} {selected.capacityUnit}
+          </p>
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-border">
+        <button onClick={() => openEdit(selected)} className="w-full py-2.5 bg-surface border border-border text-t1 rounded-xl text-sm font-bold hover:bg-card transition-all">
+          Edit Warehouse Details
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   const formContent = modalMode !== 'view' ? (
     <div className="space-y-5">
@@ -323,86 +375,88 @@ export default function WarehousesPage() {
           </select>
         </div>
 
-        {/* Warehouses Grid */}
-        {loading ? (
-          <div className="flex items-center justify-center h-48">
-            <Spinner size={28} className="animate-spin text-accent" />
-          </div>
-        ) : warehouses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-t3">
-            <WarehouseIcon size={40} className="mb-2 opacity-40" />
-            <p>No warehouses found.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {warehouses.map(w => {
-              const pct = w.liveCapacity?.usedPct ?? 0;
-              return (
-                <div key={w._id}
-                  className="bg-card border border-border rounded-xl p-4 flex flex-col gap-3 hover:border-accent/40 cursor-pointer transition-colors"
-                  onClick={() => openView(w)}>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs text-t3">{w.warehouseCode}</p>
-                      <p className="font-medium text-t1 text-sm mt-0.5">{w.name}</p>
-                    </div>
-                    <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium ${TYPE_STYLES[w.warehouseType] ?? 'bg-surface text-t3 border-border'}`}>
-                      {TYPE_LABELS[w.warehouseType] ?? w.warehouseType}
-                    </span>
-                  </div>
-
-                  {w.liveCapacity ? (
-                    <div>
-                      <div className="flex justify-between text-xs text-t3 mb-1">
-                        <span>Capacity</span>
-                        <span>{pct.toFixed(1)}%</span>
-                      </div>
-                      <div className="h-1.5 bg-surface rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${pct > 80 ? 'bg-rose-500' : pct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                          style={{ width: `${Math.min(pct, 100)}%` }} />
-                      </div>
-                      <p className="text-xs text-t3 mt-1">
-                        {w.liveCapacity.occupiedCapacity.toLocaleString()} / {w.totalCapacity.toLocaleString()} {w.capacityUnit}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-t3">
-                      Capacity: {w.totalCapacity.toLocaleString()} {w.capacityUnit}
-                    </p>
-                  )}
-
-                  <div className="flex items-center justify-between text-xs text-t3">
-                    <span className="flex items-center gap-1">
-                      <MapPin size={12} />
-                      {[w.region, w.country].filter(Boolean).join(', ')}
-                    </span>
-                    <div className="flex gap-2">
-                      <button onClick={e => { e.stopPropagation(); openEdit(w); }}
-                        className="p-1 hover:text-t1 rounded" title="Edit">
-                        <PencilSimple size={14} />
-                      </button>
-                      <button onClick={e => { e.stopPropagation(); openView(w); }}
-                        className="p-1 hover:text-t1 rounded" title="View">
-                        <Eye size={14} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        {/* Warehouses Table */}
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center h-48">
+              <Spinner size={28} className="animate-spin text-accent" />
+            </div>
+          ) : warehouses.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-t3">
+              <WarehouseIcon size={40} className="mb-2 opacity-40" />
+              <p>No warehouses found.</p>
+            </div>
+          ) : (
+            <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'scroll' } }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-surface/30">
+                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Ref</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Usage</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Manager</th>
+                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {warehouses.map(w => {
+                    const pct = w.liveCapacity?.usedPct ?? 0;
+                    return (
+                      <tr key={w._id} className="hover:bg-surface/50 cursor-pointer transition-colors" onClick={() => openView(w)}>
+                        <td className="px-4 py-3.5 font-mono text-xs text-accent">{w.warehouseCode}</td>
+                        <td className="px-4 py-3.5 font-medium text-t1">{w.name}</td>
+                        <td className="px-4 py-3.5">
+                          <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${TYPE_STYLES[w.warehouseType] ?? 'bg-surface text-t3 border-border'}`}>
+                            {TYPE_LABELS[w.warehouseType] ?? w.warehouseType}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2">
+                             <div className="w-16 h-1.5 bg-surface rounded-full overflow-hidden">
+                               <div className={`h-full rounded-full ${pct > 80 ? 'bg-rose-500' : pct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                             </div>
+                             <span className="text-[11px] font-bold text-t2">{pct.toFixed(0)}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-t2 text-xs">
+                          {w.managerName || '—'}
+                          {w.managerContact && <p className="text-t3">{w.managerContact}</p>}
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          <div className="flex justify-end gap-2 text-t3">
+                            <button onClick={e => { e.stopPropagation(); openEdit(w); }} className="hover:text-t1 p-1"><PencilSimple size={14} /></button>
+                            <button onClick={e => { e.stopPropagation(); openView(w); }} className="hover:text-t1 p-1"><Eye size={14} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </OverlayScrollbarsComponent>
+          )}
+        </div>
       </div>
 
-      {modalMode && (
-        <DocumentSidePanel
-          isOpen={true}
-          onClose={() => setModalMode(null)}
-          title={panelTitle}
-          previewContent={viewContent}
-          formContent={formContent}
-        />
-      )}
+      <ModernModal
+        isOpen={modalMode !== null}
+        onClose={() => setModalMode(null)}
+        title={modalMode === 'new' ? 'Initialize Warehouse' : modalMode === 'edit' ? 'Update Warehouse' : selected?.name ?? ''}
+        summaryContent={modalMode === 'view' ? viewModalSummary : modalSummary}
+        actions={modalMode !== 'view' ? (
+          <button 
+            onClick={handleSave} 
+            disabled={saving} 
+            className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {saving && <Spinner size={14} className="animate-spin" />}
+            {modalMode === 'new' ? 'Create Warehouse' : 'Save Changes'}
+          </button>
+        ) : undefined}
+      >
+        {modalMode === 'view' ? viewContent : formContent}
+      </ModernModal>
     </>
   );
 }

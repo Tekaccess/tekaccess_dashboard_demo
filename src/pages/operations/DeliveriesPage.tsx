@@ -8,7 +8,7 @@ import {
   apiGetDeliveriesSummary, apiListDeliveries, apiConfirmDelivery, apiDisputeDelivery,
   Delivery,
 } from '../../lib/api';
-import DocumentSidePanel from '../../components/DocumentSidePanel';
+import ModernModal from '../../components/ui/ModernModal';
 
 const STATUS_STYLES: Record<string, string> = {
   pending_confirmation: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
@@ -97,106 +97,45 @@ export default function DeliveriesPage() {
   }
 
   const totalPages = Math.ceil(total / PAGE_LIMIT);
-
-  const panelContent = selected && panelMode ? (
-    <div className="space-y-5">
-      {/* Delivery header */}
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="font-mono text-xs text-t3">{selected.deliveryRef}</p>
-          <p className="font-semibold text-t1 mt-0.5">{selected.clientName}</p>
-          <p className="text-sm text-t2">{selected.contractRef} · {selected.offloadingSiteName}</p>
+  const modalSummary = selected ? (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Delivery Context</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-t3">Truck</span>
+            <span className="text-t1 font-bold">{selected.truckPlate}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-t3">Driver</span>
+            <span className="text-t1 font-medium">{selected.driverName}</span>
+          </div>
         </div>
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[selected.status] ?? ''}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[selected.status] ?? 'bg-t3'}`} />
-          {STATUS_LABEL[selected.status] ?? selected.status}
-        </span>
       </div>
 
-      {/* Details grid */}
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        {[
-          ['Delivery Date', fmtDate(selected.deliveryDate)],
-          ['Truck', selected.truckPlate],
-          ['Driver', selected.driverName],
-          ['Site', selected.offloadingSiteName],
-          ['Planned Tons', `${selected.plannedTons.toLocaleString()} t`],
-          ['Confirmed Tons', selected.confirmedTons != null ? `${selected.confirmedTons.toLocaleString()} t` : '—'],
-          ['Variance', selected.tonVariance != null ? `${selected.tonVariance > 0 ? '+' : ''}${selected.tonVariance.toLocaleString()} t` : '—'],
-          ['Confirmed At', fmtDate(selected.confirmedAt)],
-        ].map(([k, v]) => (
-          <div key={k}>
-            <p className="text-xs text-t3">{k}</p>
-            <p className={`font-medium ${k === 'Variance' && selected.tonVariance != null && selected.tonVariance < 0 ? 'text-rose-400' : 'text-t1'}`}>{v}</p>
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Status Tracking</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4 space-y-4">
+           <div>
+            <p className="text-[10px] text-t3 uppercase font-black mb-1">Current</p>
+             <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${STATUS_STYLES[selected.status] ?? ''}`}>
+              {STATUS_LABEL[selected.status] ?? selected.status}
+            </span>
           </div>
-        ))}
+          <div className="pt-3 border-t border-border">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-t3">Planned</span>
+              <span className="text-t1 font-bold">{selected.plannedTons.toLocaleString()} t</span>
+            </div>
+            {selected.confirmedTons != null && (
+               <div className="flex justify-between items-center text-xs mt-1">
+                <span className="text-t3">Confirmed</span>
+                <span className="text-emerald-400 font-bold">{selected.confirmedTons.toLocaleString()} t</span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-
-      {selected.disputeReason && (
-        <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-sm text-rose-400">
-          Dispute: {selected.disputeReason}
-        </div>
-      )}
-
-      {error && <p className="text-red-400 text-sm">{error}</p>}
-
-      {panelMode === 'confirm' && (
-        <div className="space-y-4 pt-2 border-t border-border">
-          <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Confirm Delivery</p>
-          <div>
-            <label className="block text-xs text-t3 mb-1">Confirmed Tons *</label>
-            <input type="number" min={0} step={0.01} className={inp}
-              value={confirmTons} onChange={e => setConfirmTons(e.target.value)}
-              placeholder={String(selected.plannedTons)} />
-          </div>
-          <div>
-            <label className="block text-xs text-t3 mb-1">Notes</label>
-            <textarea rows={2} className={`${inp} resize-none`}
-              value={confirmNotes} onChange={e => setConfirmNotes(e.target.value)} />
-          </div>
-          <button onClick={() => setPanelMode('view')}
-            className="w-full py-2.5 border border-border text-t2 rounded-xl text-sm font-medium hover:bg-surface transition-colors">
-            Back
-          </button>
-          <button onClick={handleConfirm} disabled={saving}
-            className="w-full py-3 bg-emerald-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all disabled:opacity-60 flex items-center justify-center gap-2">
-            {saving && <Spinner size={14} className="animate-spin" />} Confirm Delivery
-          </button>
-        </div>
-      )}
-
-      {panelMode === 'dispute' && (
-        <div className="space-y-4 pt-2 border-t border-border">
-          <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Raise Dispute</p>
-          <div>
-            <label className="block text-xs text-t3 mb-1">Reason *</label>
-            <textarea rows={3} className={`${inp} resize-none`}
-              value={disputeReason} onChange={e => setDisputeReason(e.target.value)}
-              placeholder="Describe the discrepancy or issue..." />
-          </div>
-          <button onClick={() => setPanelMode('view')}
-            className="w-full py-2.5 border border-border text-t2 rounded-xl text-sm font-medium hover:bg-surface transition-colors">
-            Back
-          </button>
-          <button onClick={handleDispute} disabled={saving}
-            className="w-full py-3 bg-rose-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all disabled:opacity-60 flex items-center justify-center gap-2">
-            {saving && <Spinner size={14} className="animate-spin" />} Submit Dispute
-          </button>
-        </div>
-      )}
-
-      {panelMode === 'view' && selected.status === 'pending_confirmation' && (
-        <div className="flex gap-2 pt-2 border-t border-border">
-          <button onClick={() => { setConfirmTons(String(selected.plannedTons)); setConfirmNotes(''); setError(null); setPanelMode('confirm'); }}
-            className="flex-1 py-2.5 text-sm bg-emerald-500 text-white rounded-xl font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2">
-            <CheckCircle size={14} /> Confirm
-          </button>
-          <button onClick={() => { setDisputeReason(''); setError(null); setPanelMode('dispute'); }}
-            className="flex-1 py-2.5 text-sm border border-rose-500/40 text-rose-400 rounded-xl font-semibold hover:bg-rose-500/10 flex items-center justify-center gap-2">
-            <Warning size={14} /> Dispute
-          </button>
-        </div>
-      )}
     </div>
   ) : null;
 
@@ -333,15 +272,76 @@ export default function DeliveriesPage() {
         </div>
       </div>
 
-      {panelMode && selected && (
-        <DocumentSidePanel
-          isOpen={true}
-          onClose={() => setPanelMode(null)}
-          title={selected.deliveryRef}
-          formContent={panelContent}
-          previewContent={null}
-        />
-      )}
+      <ModernModal
+        isOpen={panelMode !== null}
+        onClose={() => setPanelMode(null)}
+        title={selected?.deliveryRef || ''}
+        summaryContent={modalSummary}
+        actions={panelMode === 'confirm' ? (
+          <button onClick={handleConfirm} disabled={saving} className="px-6 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 flex items-center gap-2">
+            {saving && <Spinner size={14} className="animate-spin" />} Confirm Delivery
+          </button>
+        ) : panelMode === 'dispute' ? (
+          <button onClick={handleDispute} disabled={saving} className="px-6 py-2.5 bg-rose-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-rose-500/20 hover:bg-rose-600 flex items-center gap-2">
+            {saving && <Spinner size={14} className="animate-spin" />} Submit Dispute
+          </button>
+        ) : (selected?.status === 'pending_confirmation') ? (
+          <div className="flex gap-2">
+            <button onClick={() => { setDisputeReason(''); setError(null); setPanelMode('dispute'); }} className="px-4 py-2 text-sm border border-rose-500/40 text-rose-400 rounded-lg hover:bg-rose-500/10">Dispute</button>
+            <button onClick={() => { setConfirmTons(String(selected.plannedTons)); setConfirmNotes(''); setError(null); setPanelMode('confirm'); }} className="px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600">Confirm Tonnage</button>
+          </div>
+        ) : undefined}
+      >
+        {selected && (
+          <div className="space-y-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-t3 font-mono">{selected.deliveryRef}</p>
+                <h3 className="text-base font-semibold text-t1">{selected.clientName}</h3>
+                <p className="text-sm text-t2">{selected.contractRef} · {selected.offloadingSiteName}</p>
+              </div>
+            </div>
+
+            {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 p-3 rounded-lg">{error}</p>}
+
+            {panelMode === 'view' ? (
+               <div className="grid grid-cols-2 gap-4 text-sm">
+                {[
+                  ['Delivery Date', fmtDate(selected.deliveryDate)],
+                  ['Site', selected.offloadingSiteName],
+                  ['Planned Tons', `${selected.plannedTons.toLocaleString()} t`],
+                  ['Confirmed Tons', selected.confirmedTons != null ? `${selected.confirmedTons.toLocaleString()} t` : '—'],
+                  ['Variance', selected.tonVariance != null ? `${selected.tonVariance > 0 ? '+' : ''}${selected.tonVariance.toLocaleString()} t` : '—'],
+                  ['Confirmed At', fmtDate(selected.confirmedAt)],
+                ].map(([k, v]) => (
+                  <div key={k} className="p-3 bg-surface/50 border border-border rounded-xl">
+                    <p className="text-[10px] text-t3 uppercase font-black mb-1">{k}</p>
+                    <p className="text-sm font-bold text-t1">{v}</p>
+                  </div>
+                ))}
+              </div>
+            ) : panelMode === 'confirm' ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs text-t3 mb-2 font-bold uppercase tracking-wider">Actual Tons Received *</label>
+                  <input type="number" step={0.01} className={inp} value={confirmTons} onChange={e => setConfirmTons(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-xs text-t3 mb-2 font-bold uppercase tracking-wider">Verification Notes</label>
+                  <textarea rows={3} className={inp} value={confirmNotes} onChange={e => setConfirmNotes(e.target.value)} placeholder="Enter any discrepancy details..." />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs text-t3 mb-2 font-bold uppercase tracking-wider">Dispute Reason *</label>
+                  <textarea rows={4} className={inp} value={disputeReason} onChange={e => setDisputeReason(e.target.value)} placeholder="Provide specific details about why this delivery is being disputed..." />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </ModernModal>
     </>
   );
 }

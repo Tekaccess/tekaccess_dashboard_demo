@@ -5,7 +5,7 @@ import {
   Spinner, Phone, Envelope, Globe, Warning, Star,
 } from '@phosphor-icons/react';
 import { apiListSuppliers, apiCreateSupplier, apiUpdateSupplier, Supplier } from '../lib/api';
-import DocumentSidePanel from '../components/DocumentSidePanel';
+import ModernModal from '../components/ui/ModernModal';
 
 const SUPPLIER_TYPES = ['raw_material', 'fuel', 'spare_parts', 'transport_contractor', 'service_provider', 'utility', 'other'];
 const SUPPLIER_STATUSES = ['active', 'on_hold', 'blacklisted', 'inactive'];
@@ -114,6 +114,99 @@ export default function SuppliersPage() {
   const onHoldCount = suppliers.filter(s => s.status === 'on_hold').length;
   const blacklistedCount = suppliers.filter(s => s.status === 'blacklisted').length;
   const criticalCount = suppliers.filter(s => (s as any).isCritical).length;
+
+  const modalSummary = (
+    <div className="space-y-4">
+      <div className="aspect-video bg-gradient-to-br from-accent/20 to-surface rounded-xl flex items-center justify-center p-6 border border-border">
+        {draft.supplierType[0] && TYPE_STYLES[draft.supplierType[0]] ? (
+          <div className="text-center">
+            <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium mb-3 ${TYPE_STYLES[draft.supplierType[0]]}`}>
+              {draft.supplierType[0]?.replace(/_/g, ' ')}
+            </span>
+            <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-3 text-accent border border-accent/20 shadow-lg shadow-accent/10">
+              <Handshake size={32} weight="duotone" />
+            </div>
+            {draft.name && <p className="font-semibold text-t1 text-sm truncate max-w-[200px]">{draft.name}</p>}
+            {draft.supplierCode && <p className="text-xs text-t3 font-mono mt-1">{draft.supplierCode}</p>}
+          </div>
+        ) : (
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center mx-auto mb-3 text-t3 border border-border border-dashed">
+              <Handshake size={32} />
+            </div>
+            <p className="text-sm text-t3 font-medium">New Supplier Profile</p>
+            <p className="text-xs text-t4 mt-1">Fill in details</p>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-card rounded-xl border border-border p-4 space-y-3 shadow-sm">
+        <div className="flex items-center gap-3 text-sm">
+          <Globe size={16} className="text-t3 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs text-t3">Location</p>
+            <p className="text-t1 font-medium truncate">{draft.country || 'N/A'}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 text-sm">
+          <MagnifyingGlass size={16} className="text-t3 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs text-t3">Tax ID</p>
+            <p className="text-t1 font-medium truncate">{draft.taxId || 'N/A'}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+        <p className="text-xs text-t3 mb-2">Terms</p>
+        <div className="flex items-end gap-2">
+          <p className="text-2xl font-bold text-t1">{draft.creditTermsDays}</p>
+          <p className="text-sm text-t3 mb-0.5">days</p>
+        </div>
+        <p className="text-xs text-t3 mt-1">Currency: {draft.currency}</p>
+      </div>
+    </div>
+  );
+
+  const viewModalSummary = selected ? (
+    <div className="space-y-4">
+      <div className="aspect-video bg-gradient-to-br from-accent/20 to-surface rounded-xl flex flex-col items-center justify-center p-6 border border-border text-center">
+        <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-3 text-accent border border-accent/20 shadow-lg shadow-accent/10">
+          <Handshake size={32} weight="duotone" />
+        </div>
+        <p className="font-semibold text-t1 text-sm truncate max-w-[200px] mb-1">{selected.name}</p>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium border ${STATUS_STYLES[selected.status] ?? ''}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[selected.status] ?? 'bg-t3'}`} />
+          {selected.status.replace(/_/g, ' ')}
+        </span>
+      </div>
+
+      <div className="bg-card rounded-xl border border-border p-4 space-y-3 shadow-sm">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <span className="text-xs text-t3">Code</span>
+          <span className="text-xs font-mono text-accent bg-accent/10 px-2 py-0.5 rounded-md">{selected.supplierCode}</span>
+        </div>
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <span className="text-xs text-t3">Credit</span>
+          <span className="text-xs font-medium text-t1">{selected.creditTermsDays} days</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-t3">Currency</span>
+          <span className="text-xs font-medium text-t1">{selected.currency}</span>
+        </div>
+      </div>
+
+      {(selected as any).isCritical && (
+        <div className="bg-accent-glow rounded-xl border border-accent/20 p-4 shadow-sm flex items-start gap-3">
+          <Star size={18} weight="fill" className="text-accent shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-accent">Critical Supplier</p>
+            <p className="text-xs text-accent/80 mt-0.5">High priority relationship</p>
+          </div>
+        </div>
+      )}
+    </div>
+  ) : null;
 
   const formContent = modalMode !== 'view' ? (
     <div className="space-y-5">
@@ -383,15 +476,20 @@ export default function SuppliersPage() {
         </div>
       </div>
 
-      {modalMode && (
-        <DocumentSidePanel
-          isOpen={true}
-          onClose={() => setModalMode(null)}
-          title={modalMode === 'new' ? 'New Supplier' : modalMode === 'edit' ? 'Edit Supplier' : selected?.name ?? ''}
-          formContent={formContent}
-          previewContent={viewContent}
-        />
-      )}
+      <ModernModal
+        isOpen={modalMode !== null}
+        onClose={() => setModalMode(null)}
+        title={modalMode === 'new' ? 'Initialize Supplier' : modalMode === 'edit' ? 'Update Supplier' : selected?.name ?? ''}
+        summaryContent={modalMode === 'view' ? viewModalSummary : modalSummary}
+        actions={modalMode !== 'view' ? (
+          <button onClick={handleSave} disabled={saving} className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
+            {saving && <Spinner size={14} className="animate-spin" />}
+            {modalMode === 'new' ? 'Create Supplier' : 'Save Changes'}
+          </button>
+        ) : undefined}
+      >
+        {modalMode === 'view' ? viewContent : formContent}
+      </ModernModal>
     </>
   );
 }

@@ -8,8 +8,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Cell,
 } from 'recharts';
-import DocumentSidePanel from '../../components/DocumentSidePanel';
 import { apiListFuelLogs, apiCreateFuelLog, apiUpdateFuelLog, FuelLog } from '../../lib/api';
+import ModernModal from '../../components/ui/ModernModal';
 
 type ViewMode = 'table' | 'bar' | 'trend';
 type ActiveTab = 'All' | 'Fuel Logs' | 'Anomaly Flags';
@@ -238,7 +238,75 @@ export default function FuelPage() {
     </div>
   );
 
+  const modalSummary = draft ? (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Financial Impact</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-t3">Rate</span>
+            <span className="font-bold text-t1">{draft.costPerLitre || '0'} {draft.currency}/L</span>
+          </div>
+          <div className="flex justify-between text-base">
+             <span className="text-t3 font-bold">Total</span>
+             <span className="text-accent font-black">{totalCostPreview.toLocaleString()} {draft.currency}</span>
+          </div>
+        </div>
+      </div>
+
+       <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Efficiency Metrics</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4 space-y-2 text-center">
+           <p className="text-2xl font-black text-t1">{draft.litresFilled || '0'}<span className="text-xs text-t3 ml-1 font-normal uppercase">Liters</span></p>
+           <p className="text-[10px] text-t3 uppercase font-bold tracking-tighter">Consumption Logged</p>
+        </div>
+      </div>
+      
+      {draft.isAnomalyFlag && (
+        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
+           <Warning size={18} weight="fill" className="text-red-500 shrink-0 mt-0.5" />
+           <div>
+              <p className="text-xs font-bold text-red-500 uppercase tracking-tighter">Anomaly Warning</p>
+              <p className="text-[11px] text-red-400 mt-1">{draft.anomalyReason || 'No reason provided'}</p>
+           </div>
+        </div>
+      )}
+    </div>
+  ) : null;
+
   const viewLog = modal && modal.mode === 'view' ? (modal as any).log as FuelLog : null;
+
+  const viewModalSummary = viewLog ? (
+    <div className="space-y-6">
+       <div className="bg-card/50 border border-border rounded-xl p-4 space-y-4">
+        <div>
+          <p className="text-[10px] text-t3 uppercase font-black tracking-widest mb-1">Log Reference</p>
+          <span className="font-mono font-bold text-accent text-lg">{viewLog.logRef}</span>
+        </div>
+        
+        <div className="pt-3 border-t border-border">
+          <p className="text-[10px] text-t3 uppercase font-black tracking-widest mb-2">Cost Breakdown</p>
+          <div className="flex items-center justify-between">
+             <div>
+                <p className="text-sm font-bold text-t1">{viewLog.totalCost.toLocaleString()} {viewLog.currency}</p>
+                <p className="text-[9px] text-t3 uppercase">Total Amount</p>
+             </div>
+             <div className="text-right">
+                <p className="text-sm font-bold text-t1 tracking-tighter">{viewLog.costPerLitre.toLocaleString()} /L</p>
+                <p className="text-[9px] text-t3 uppercase">Unit Price</p>
+             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-border">
+        <button onClick={() => handleEdit(viewLog)} className="w-full py-2.5 bg-surface border border-border text-t1 rounded-xl text-sm font-bold hover:bg-card transition-all">
+          Modify Fuel Record
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   const viewContent = viewLog && (
     <div className="space-y-5 pb-10">
       <section className="space-y-3">
@@ -477,18 +545,20 @@ export default function FuelPage() {
         )}
       </div>
 
-      <DocumentSidePanel
+      <ModernModal
         isOpen={!!modal}
         onClose={() => { setModal(null); setSaveError(null); }}
-        title={modal?.mode === 'new' ? 'Log Fuel' : modal?.mode === 'edit' ? `Edit — ${(modal as any).log?.logRef}` : `Fuel Log — ${(modal as any)?.log?.logRef}`}
-        currentIndex={modal && modal.mode !== 'new' ? filteredLogs.findIndex(l => l._id === (modal as any).log?._id) + 1 : undefined}
-        totalItems={filteredLogs.length}
-        onPrev={() => { if (!modal || modal.mode === 'new') return; const idx = filteredLogs.findIndex(l => l._id === (modal as any).log._id); if (idx > 0) setModal({ mode: 'view', log: filteredLogs[idx - 1] }); }}
-        onNext={() => { if (!modal || modal.mode === 'new') return; const idx = filteredLogs.findIndex(l => l._id === (modal as any).log._id); if (idx < filteredLogs.length - 1) setModal({ mode: 'view', log: filteredLogs[idx + 1] }); }}
-        footerInfo={modal?.mode === 'new' ? `Draft • ${new Date().toLocaleDateString()}` : new Date().toLocaleDateString()}
-        formContent={modal?.mode === 'view' ? viewContent : formContent}
-        previewContent={previewContent}
-      />
+        title={modal?.mode === 'new' ? 'Log Refuelling' : modal?.mode === 'edit' ? `Modify Fuel — ${(modal as any).log?.logRef}` : `Fuel Stats — ${(modal as any)?.log?.logRef}`}
+        summaryContent={modal?.mode === 'view' ? viewModalSummary : modalSummary}
+        actions={modal?.mode !== 'view' ? (
+          <button onClick={handleSave} disabled={saving} className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
+            {saving && <Spinner size={14} className="animate-spin" />}
+            {modal?.mode === 'new' ? 'Record Log' : 'Update Log'}
+          </button>
+        ) : undefined}
+      >
+        {modal?.mode === 'view' ? viewContent : formContent}
+      </ModernModal>
     </div>
   );
 }

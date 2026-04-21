@@ -192,6 +192,8 @@ export type Contract = {
   status: string;
   currency: string;
   totalContractValue: number;
+  contractType: 'employee' | 'driver' | 'client';
+  perks?: string[];
 };
 
 export type POLineItem = {
@@ -470,6 +472,8 @@ export type Client = {
   paymentTermsDays: number;
   creditLimit: number | null;
   isActive: boolean;
+  contractId?: string | null;
+  contractRef?: string | null;
   liveStats?: {
     activeContracts: number;
     totalDeliveries: number;
@@ -492,6 +496,9 @@ export type OperationsContract = {
   _id: string;
   contractRef: string;
   title: string;
+  contractType: 'employee' | 'driver' | 'client';
+  isTemplate?: boolean;
+  perks?: string[];
   clientId: string | null;
   clientName: string;
   contractLines: ContractLine[];
@@ -513,6 +520,37 @@ export type OperationsContract = {
   notes: string | null;
   createdAt: string;
 };
+
+export interface Employee {
+  _id: string;
+  employeeCode: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  department: string;
+  role: string;
+  status: 'active' | 'inactive' | 'on-leave';
+  avatar?: string;
+  personalInfo: {
+    dateOfBirth: string | null;
+    address: string | null;
+    emergencyContact: string | null;
+    emergencyPhone: string | null;
+  };
+  contract: {
+    contractId?: string | OperationsContract;
+    type: 'full-time' | 'part-time' | 'contract';
+    startDate: string | null;
+    endDate: string | null;
+    salary: string | null;
+  };
+  kpis: {
+    metric: string;
+    target: string;
+    actual: string;
+    status: 'on-track' | 'at-risk' | 'behind';
+  }[];
+}
 
 export type Delivery = {
   _id: string;
@@ -614,6 +652,36 @@ export async function apiCreateContract(data: Partial<OperationsContract> & { co
 
 export async function apiUpdateContract(id: string, data: Partial<OperationsContract>) {
   return request<{ contract: OperationsContract }>(`/operations/contracts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function apiInstantiateContract(data: { templateId: string; targetId?: string; targetName: string; startDate: string; endDate: string }) {
+  return request<{ contract: OperationsContract }>('/operations/contracts/instantiate', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// ─── Employees ───────────────────────────────────────────────────────────────
+
+export async function apiListEmployees(params: { department?: string; status?: string; search?: string } = {}) {
+  const qs = new URLSearchParams(params as any).toString();
+  return request<{ employees: Employee[] }>(`/hr${qs ? `?${qs}` : ''}`);
+}
+
+export async function apiGetEmployeeById(id: string) {
+  return request<{ employee: Employee }>(`/hr/${id}`);
+}
+
+export async function apiCreateEmployee(data: Partial<Employee>) {
+  return request<{ employee: Employee }>('/hr', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateEmployee(id: string, data: Partial<Employee>) {
+  return request<{ employee: Employee }>(`/hr/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function apiDeleteEmployee(id: string) {
+  return request(`/hr/${id}`, { method: 'DELETE' });
 }
 
 // Deliveries

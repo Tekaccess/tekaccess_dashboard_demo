@@ -7,8 +7,8 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
-import DocumentSidePanel from '../../components/DocumentSidePanel';
 import { apiListTrips, apiCreateTrip, apiUpdateTrip, Trip } from '../../lib/api';
+import ModernModal from '../../components/ui/ModernModal';
 
 type ViewMode = 'table' | 'bar';
 type ActiveTab = 'All' | 'Active Trips' | 'Trip History' | 'Schedule';
@@ -204,35 +204,32 @@ export default function TripsPage() {
   const labelClass = 'block text-[10px] text-t3 mb-1';
 
   const formContent = draft && (
-    <div className="space-y-5 pb-10">
+    <div className="space-y-6 pb-10">
       <section className="space-y-4">
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Vehicle & Driver</p>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Asset & Driver</p>
         <div className="grid grid-cols-2 gap-3">
           <div><label className={labelClass}>Plate Number *</label><input className={inputClass} value={draft.plateNumber} onChange={e => updateDraft({ plateNumber: e.target.value })} placeholder="e.g. RAB 123A" /></div>
-          <div><label className={labelClass}>Driver Name</label><input className={inputClass} value={draft.driverName} onChange={e => updateDraft({ driverName: e.target.value })} placeholder="Driver name" /></div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div><label className={labelClass}>Contract Ref</label><input className={inputClass} value={draft.contractRef} onChange={e => updateDraft({ contractRef: e.target.value })} placeholder="e.g. CTR-001" /></div>
-          <div><label className={labelClass}>Client</label><input className={inputClass} value={draft.clientName} onChange={e => updateDraft({ clientName: e.target.value })} placeholder="Client name" /></div>
+          <div><label className={labelClass}>Driver Name</label><input className={inputClass} value={draft.driverName} onChange={e => updateDraft({ driverName: e.target.value })} placeholder="Full name" /></div>
         </div>
       </section>
 
       <section className="space-y-4">
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Route</p>
-        <div><label className={labelClass}>Origin Site *</label><input className={inputClass} value={draft.originSite} onChange={e => updateDraft({ originSite: e.target.value })} placeholder="Loading site" /></div>
-        <div><label className={labelClass}>Destination Site *</label><input className={inputClass} value={draft.destinationSite} onChange={e => updateDraft({ destinationSite: e.target.value })} placeholder="Offloading site" /></div>
-        <div><label className={labelClass}>Load Description</label><input className={inputClass} value={draft.loadDescription} onChange={e => updateDraft({ loadDescription: e.target.value })} placeholder="e.g. Clinker" /></div>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Route & Payload</p>
         <div className="grid grid-cols-2 gap-3">
-          <div><label className={labelClass}>Planned Tons</label><input className={inputClass} type="number" step="any" value={draft.plannedTons} onChange={e => updateDraft({ plannedTons: e.target.value })} placeholder="0.00" /></div>
-          <div><label className={labelClass}>Actual Tons</label><input className={inputClass} type="number" step="any" value={draft.actualTons} onChange={e => updateDraft({ actualTons: e.target.value })} placeholder="0.00" /></div>
+          <div><label className={labelClass}>Origin *</label><input className={inputClass} value={draft.originSite} onChange={e => updateDraft({ originSite: e.target.value })} placeholder="Loading site" /></div>
+          <div><label className={labelClass}>Destination *</label><input className={inputClass} value={draft.destinationSite} onChange={e => updateDraft({ destinationSite: e.target.value })} placeholder="Offloading site" /></div>
         </div>
-        <div><label className={labelClass}>Distance (km)</label><input className={inputClass} type="number" step="any" value={draft.distanceKm} onChange={e => updateDraft({ distanceKm: e.target.value })} placeholder="e.g. 250" /></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={labelClass}>Planned Tons</label><input type="number" step="any" className={inputClass} value={draft.plannedTons} onChange={e => updateDraft({ plannedTons: e.target.value })} /></div>
+          <div><label className={labelClass}>Actual Tons</label><input type="number" step="any" className={inputClass} value={draft.actualTons} onChange={e => updateDraft({ actualTons: e.target.value })} /></div>
+        </div>
+        <div><label className={labelClass}>Load Description</label><input className={inputClass} value={draft.loadDescription} onChange={e => updateDraft({ loadDescription: e.target.value })} placeholder="e.g. Copper ore, Aggregate..." /></div>
       </section>
 
       <section className="space-y-4">
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Timing & Status</p>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Scheduling</p>
         <div>
-          <label className={labelClass}>Status</label>
+          <label className={labelClass}>Trip Status</label>
           <select className={inputClass} value={draft.status} onChange={e => updateDraft({ status: e.target.value as Trip['status'] })}>
             <option value="scheduled">Scheduled</option>
             <option value="in_progress">In Progress</option>
@@ -241,27 +238,93 @@ export default function TripsPage() {
           </select>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div><label className={labelClass}>Departure Date</label><input className={inputClass} type="date" value={draft.departureDate} onChange={e => updateDraft({ departureDate: e.target.value })} /></div>
-          <div><label className={labelClass}>Arrival Date</label><input className={inputClass} type="date" value={draft.arrivalDate} onChange={e => updateDraft({ arrivalDate: e.target.value })} /></div>
+          <div><label className={labelClass}>Departure</label><input type="date" className={inputClass} value={draft.departureDate} onChange={e => updateDraft({ departureDate: e.target.value })} /></div>
+          <div><label className={labelClass}>Arrival</label><input type="date" className={inputClass} value={draft.arrivalDate} onChange={e => updateDraft({ arrivalDate: e.target.value })} /></div>
         </div>
-        <div><label className={labelClass}>Fuel Used (L)</label><input className={inputClass} type="number" step="any" value={draft.fuelUsedLitres} onChange={e => updateDraft({ fuelUsedLitres: e.target.value })} placeholder="Litres consumed" /></div>
+      </section>
+
+      <section className="space-y-4">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Client & Performance</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={labelClass}>Client Name</label><input className={inputClass} value={draft.clientName} onChange={e => updateDraft({ clientName: e.target.value })} /></div>
+          <div><label className={labelClass}>Contract Ref</label><input className={inputClass} value={draft.contractRef} onChange={e => updateDraft({ contractRef: e.target.value })} /></div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={labelClass}>Distance (km)</label><input type="number" step="any" className={inputClass} value={draft.distanceKm} onChange={e => updateDraft({ distanceKm: e.target.value })} /></div>
+          <div><label className={labelClass}>Fuel Used (L)</label><input type="number" step="any" className={inputClass} value={draft.fuelUsedLitres} onChange={e => updateDraft({ fuelUsedLitres: e.target.value })} /></div>
+        </div>
       </section>
 
       <section>
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-2">Notes</p>
-        <textarea rows={3} className={`${inputClass} resize-none`} value={draft.notes} onChange={e => updateDraft({ notes: e.target.value })} placeholder="Additional notes..." />
+        <textarea rows={3} className={`${inputClass} resize-none`} value={draft.notes} onChange={e => updateDraft({ notes: e.target.value })} placeholder="Additional trip details..." />
       </section>
 
       {saveError && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-500">{saveError}</div>}
-
-      <button onClick={handleSave} disabled={saving} className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
-        {saving && <Spinner size={15} className="animate-spin" />}
-        {saving ? 'Saving...' : modal?.mode === 'edit' ? 'Update Trip' : 'Log Trip'}
-      </button>
     </div>
   );
 
+  const modalSummary = draft ? (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Trip Identity</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-t3">Vehicle</span>
+            <span className="font-mono font-bold text-accent">{draft.plateNumber || '—'}</span>
+          </div>
+          <div className="flex justify-between text-sm text-[10px]">
+             <span className="text-t3 uppercase">Ref</span>
+             <span className="text-t1 italic font-black">LOGGING...</span>
+          </div>
+        </div>
+      </div>
+
+       <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Load Status</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4 space-y-2 text-center">
+           <p className="text-2xl font-black text-t1">{draft.plannedTons || '0.0'}<span className="text-xs text-t3 ml-1 font-normal uppercase">Tons</span></p>
+           <p className="text-[10px] text-t3 uppercase font-bold tracking-tighter">Planned Payload</p>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   const viewTrip = modal && modal.mode === 'view' ? (modal as any).trip as Trip : null;
+
+  const viewModalSummary = viewTrip ? (
+    <div className="space-y-6">
+       <div className="bg-card/50 border border-border rounded-xl p-4 space-y-4">
+        <div>
+          <p className="text-[10px] text-t3 uppercase font-black tracking-widest mb-1">Trip Status</p>
+           <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${STATUS_STYLES[viewTrip.status]}`}>
+            {STATUS_LABEL[viewTrip.status]}
+          </span>
+        </div>
+        
+        <div className="pt-3 border-t border-border">
+          <p className="text-[10px] text-t3 uppercase font-black tracking-widest mb-2">Distance vs Fuel</p>
+          <div className="flex items-center justify-between">
+             <div>
+                <p className="text-sm font-bold text-t1">{viewTrip.distanceKm || '0'} km</p>
+                <p className="text-[9px] text-t3 uppercase">Traveled</p>
+             </div>
+             <div className="text-right">
+                <p className="text-sm font-bold text-amber-500">{viewTrip.fuelUsedLitres || '0'} L</p>
+                <p className="text-[9px] text-t3 uppercase">Consumed</p>
+             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-border">
+        <button onClick={() => handleEdit(viewTrip)} className="w-full py-2.5 bg-surface border border-border text-t1 rounded-xl text-sm font-bold hover:bg-card transition-all">
+          Edit Trip Logs
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   const viewContent = viewTrip && (
     <div className="space-y-5 pb-10">
       <section className="space-y-3">
@@ -480,18 +543,20 @@ export default function TripsPage() {
         )}
       </div>
 
-      <DocumentSidePanel
+      <ModernModal
         isOpen={!!modal}
         onClose={() => { setModal(null); setSaveError(null); }}
-        title={modal?.mode === 'new' ? 'Log Trip' : modal?.mode === 'edit' ? `Edit — ${(modal as any).trip?.tripRef}` : `Trip — ${(modal as any)?.trip?.tripRef}`}
-        currentIndex={modal && modal.mode !== 'new' ? filteredTrips.findIndex(t => t._id === (modal as any).trip?._id) + 1 : undefined}
-        totalItems={filteredTrips.length}
-        onPrev={() => { if (!modal || modal.mode === 'new') return; const idx = filteredTrips.findIndex(t => t._id === (modal as any).trip._id); if (idx > 0) setModal({ mode: 'view', trip: filteredTrips[idx - 1] }); }}
-        onNext={() => { if (!modal || modal.mode === 'new') return; const idx = filteredTrips.findIndex(t => t._id === (modal as any).trip._id); if (idx < filteredTrips.length - 1) setModal({ mode: 'view', trip: filteredTrips[idx + 1] }); }}
-        footerInfo={modal?.mode === 'new' ? `Draft • ${new Date().toLocaleDateString()}` : `Status: ${STATUS_LABEL[(modal as any)?.trip?.status] || '—'}`}
-        formContent={modal?.mode === 'view' ? viewContent : formContent}
-        previewContent={previewContent}
-      />
+        title={modal?.mode === 'new' ? 'Log New Trip' : modal?.mode === 'edit' ? `Update Log — ${(modal as any).trip?.tripRef}` : `Trip Info — ${(modal as any)?.trip?.tripRef}`}
+        summaryContent={modal?.mode === 'view' ? viewModalSummary : modalSummary}
+        actions={modal?.mode !== 'view' ? (
+          <button onClick={handleSave} disabled={saving} className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
+            {saving && <Spinner size={14} className="animate-spin" />}
+            {modal?.mode === 'new' ? 'Log Trip' : 'Update Trip'}
+          </button>
+        ) : undefined}
+      >
+        {modal?.mode === 'view' ? viewContent : formContent}
+      </ModernModal>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import {
   Spinner, Truck,
 } from '@phosphor-icons/react';
 import { apiListSites, apiCreateSite, apiUpdateSite, Site } from '../../lib/api';
-import DocumentSidePanel from '../../components/DocumentSidePanel';
+import ModernModal from '../../components/ui/ModernModal';
 
 const SITE_TYPES = ['loading', 'offloading', 'depot', 'workshop'];
 
@@ -172,12 +172,70 @@ export default function SitesPage() {
           </div>
         </div>
       </div>
+    </div>
+  ) : null;
 
-      <button onClick={handleSave} disabled={saving}
-        className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
-        {saving && <Spinner className="animate-spin" size={14} />}
-        {modalMode === 'new' ? 'Create Site' : 'Save Changes'}
-      </button>
+  const modalSummary = (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Site Identity</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-t3">Code</span>
+            <span className="font-mono font-bold text-accent">{draft.siteCode || '—'}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-t3">Capacity</span>
+            <span className="text-t1 font-medium">{draft.truckCapacity || '0'} Trucks</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Type Configuration</p>
+        <div className="flex flex-wrap gap-1.5 px-1">
+          {draft.siteType.map(t => (
+            <span key={t} className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${TYPE_STYLES[t] ?? ''}`}>
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const viewModalSummary = selected ? (
+    <div className="space-y-6">
+      <div className="bg-card/50 border border-border rounded-xl p-4 space-y-4">
+        <div>
+          <p className="text-[10px] text-t3 uppercase font-black tracking-widest mb-1">Current Status</p>
+          <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${selected.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-surface text-t3 border-border'}`}>
+            {selected.isActive ? 'Site Operational' : 'Offline'}
+          </span>
+        </div>
+        
+        {selected.liveStatus && (
+          <div className="space-y-3 pt-3 border-t border-border">
+            <p className="text-[10px] text-t3 uppercase font-black tracking-widest">Live Trucks</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-2 bg-surface rounded-lg text-center">
+                <p className="text-sm font-bold text-amber-500">{selected.liveStatus.trucksWaiting}</p>
+                <p className="text-[9px] text-t3 uppercase">Waiting</p>
+              </div>
+              <div className="p-2 bg-surface rounded-lg text-center">
+                <p className="text-sm font-bold text-blue-400">{selected.liveStatus.trucksLoading}</p>
+                <p className="text-[9px] text-t3 uppercase">Loading</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="pt-4 border-t border-border">
+        <button onClick={() => openEdit(selected)} className="w-full py-2.5 bg-surface border border-border text-t1 rounded-xl text-sm font-bold hover:bg-card transition-all">
+          Edit Site Details
+        </button>
+      </div>
     </div>
   ) : null;
 
@@ -277,74 +335,86 @@ export default function SitesPage() {
           </select>
         </div>
 
-        {/* Sites Grid */}
-        {loading ? (
-          <div className="flex items-center justify-center h-48">
-            <Spinner size={28} className="animate-spin text-accent" />
-          </div>
-        ) : sites.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-t3">
-            <MapPin size={40} className="mb-2 opacity-40" />
-            <p>No sites found.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {sites.map(s => (
-              <div key={s._id}
-                className="bg-card border border-border rounded-xl p-4 flex flex-col gap-3 hover:border-accent/40 cursor-pointer transition-colors"
-                onClick={() => { setSelected(s); setModalMode('view'); }}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-t3 font-mono">{s.siteCode}</p>
-                    <p className="font-medium text-t1 mt-0.5">{s.name}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    {s.siteType.map(t => (
-                      <span key={t} className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium ${TYPE_STYLES[t] ?? ''}`}>{t}</span>
-                    ))}
-                  </div>
-                </div>
-
-                {s.liveStatus && (
-                  <div className="flex gap-3 text-xs">
-                    <span className="flex items-center gap-1 text-t3">
-                      <Truck size={11} className="text-amber-500" />{s.liveStatus.trucksWaiting} waiting
-                    </span>
-                    <span className="flex items-center gap-1 text-t3">
-                      <Truck size={11} className="text-blue-400" />{s.liveStatus.trucksLoading} loading
-                    </span>
-                    <span className="flex items-center gap-1 text-t3">
-                      <Truck size={11} className="text-emerald-400" />{s.liveStatus.trucksOffloading} offloading
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between text-xs text-t3">
-                  <span className="flex items-center gap-1">
-                    <MapPin size={11} />{[s.region, s.country].filter(Boolean).join(', ')}
-                  </span>
-                  <div className="flex gap-1">
-                    <button onClick={e => { e.stopPropagation(); openEdit(s); }}
-                      className="p-1 hover:text-t1 rounded"><PencilSimple size={13} /></button>
-                    <button onClick={e => { e.stopPropagation(); setSelected(s); setModalMode('view'); }}
-                      className="p-1 hover:text-t1 rounded"><Eye size={13} /></button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Sites Table */}
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center h-48">
+              <Spinner size={28} className="animate-spin text-accent" />
+            </div>
+          ) : sites.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-t3">
+              <MapPin size={40} className="mb-2 opacity-40" />
+              <p>No sites found.</p>
+            </div>
+          ) : (
+            <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'scroll' } }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-surface/30">
+                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Ref</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Location</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Wait/Load</th>
+                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {sites.map(s => (
+                    <tr key={s._id} className="hover:bg-surface/50 cursor-pointer transition-colors" onClick={() => { setSelected(s); setModalMode('view'); }}>
+                      <td className="px-4 py-3.5 font-mono text-xs text-accent">{s.siteCode}</td>
+                      <td className="px-4 py-3.5 font-medium text-t1">{s.name}</td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex gap-1">
+                          {s.siteType.map(t => (
+                            <span key={t} className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${TYPE_STYLES[t] ?? ''}`}>{t}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-t2 text-xs">
+                        {[s.region, s.country].filter(Boolean).join(', ')}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {s.liveStatus && (
+                          <div className="flex gap-3 text-[11px]">
+                            <span className="flex items-center gap-1 text-amber-500 font-bold">{s.liveStatus.trucksWaiting} W</span>
+                            <span className="flex items-center gap-1 text-blue-400 font-bold">{s.liveStatus.trucksLoading} L</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <div className="flex justify-end gap-2 text-t3">
+                          <button onClick={e => { e.stopPropagation(); openEdit(s); }} className="hover:text-t1 p-1"><PencilSimple size={14} /></button>
+                          <button onClick={e => { e.stopPropagation(); setSelected(s); setModalMode('view'); }} className="hover:text-t1 p-1"><Eye size={14} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </OverlayScrollbarsComponent>
+          )}
+        </div>
       </div>
 
-      {modalMode && (
-        <DocumentSidePanel
-          isOpen={true}
-          onClose={() => setModalMode(null)}
-          title={modalMode === 'new' ? 'New Site' : modalMode === 'edit' ? 'Edit Site' : selected?.name ?? ''}
-          formContent={formContent}
-          previewContent={viewContent}
-        />
-      )}
+      <ModernModal
+        isOpen={modalMode !== null}
+        onClose={() => setModalMode(null)}
+        title={modalMode === 'new' ? 'Initialize New Site' : modalMode === 'edit' ? 'Update Site' : selected?.name ?? ''}
+        summaryContent={modalMode === 'view' ? viewModalSummary : modalSummary}
+        actions={modalMode !== 'view' ? (
+          <button 
+            onClick={handleSave} 
+            disabled={saving} 
+            className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {saving && <Spinner size={14} className="animate-spin" />}
+            {modalMode === 'new' ? 'Create Site' : 'Save Changes'}
+          </button>
+        ) : undefined}
+      >
+        {modalMode === 'view' ? viewContent : formContent}
+      </ModernModal>
     </>
   );
 }

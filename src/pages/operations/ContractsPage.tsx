@@ -9,7 +9,7 @@ import {
   apiListClients,
   OperationsContract, ContractLine, Client,
 } from '../../lib/api';
-import DocumentSidePanel from '../../components/DocumentSidePanel';
+import ModernModal from '../../components/ui/ModernModal';
 import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSelect';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -36,7 +36,9 @@ interface DraftLine {
   lineRef: string; materialDescription: string; unit: string; committedQty: number; unitPrice: number;
 }
 interface DraftContract {
-  contractRef: string; title: string; clientId: string; clientName: string; currency: string;
+  contractRef: string; title: string; contractType: 'employee' | 'driver' | 'client';
+  isTemplate: boolean;
+  perks: string; clientId: string; clientName: string; currency: string;
   pricePerTon: number; startDate: string; endDate: string; accountManagerName: string; notes: string;
   lines: DraftLine[];
 }
@@ -45,7 +47,24 @@ function emptyLine(idx: number): DraftLine {
   return { lineRef: `L${String(idx + 1).padStart(2, '0')}`, materialDescription: '', unit: 'tons', committedQty: 0, unitPrice: 0 };
 }
 function emptyDraft(): DraftContract {
-  return { contractRef: '', title: '', clientId: '', clientName: '', currency: 'USD', pricePerTon: 0, startDate: '', endDate: '', accountManagerName: '', notes: '', lines: [emptyLine(0)] };
+  const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+  const rand = Math.random().toString(16).slice(2, 6).toUpperCase();
+  return { 
+    contractRef: `CON-${dateStr}-${rand}`, 
+    title: '', 
+    contractType: 'client', 
+    isTemplate: false,
+    perks: '', 
+    clientId: '', 
+    clientName: '', 
+    currency: 'USD', 
+    pricePerTon: 0, 
+    startDate: new Date().toISOString().split('T')[0], 
+    endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0], 
+    accountManagerName: '', 
+    notes: '', 
+    lines: [emptyLine(0)] 
+  };
 }
 function fmtDate(d: string | null) {
   if (!d) return '—';
@@ -58,7 +77,7 @@ const label = 'block text-[10px] text-t3 mb-1';
 export default function ContractsPage() {
   const [contracts, setContracts] = useState<OperationsContract[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [summary, setSummary] = useState({ active: 0, draft: 0, completed: 0, disputed: 0, totalActiveValue: 0, totalActiveTons: 0 });
+  const [summary, setSummary] = useState({ active: 0, draft: 0, completed: 0, disputed: 0 });
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -76,7 +95,7 @@ export default function ContractsPage() {
     if (search) params.search = search;
     if (statusFilter) params.status = statusFilter;
     const [cRes, sRes, clRes] = await Promise.all([
-      apiListContracts(params),
+      apiListContracts({ ...params, isTemplate: 'false' }),
       apiGetContractsSummary(),
       apiListClients(),
     ]);
@@ -99,6 +118,9 @@ export default function ContractsPage() {
   function openEdit(c: OperationsContract) {
     setDraft({
       contractRef: c.contractRef, title: c.title,
+      contractType: c.contractType || 'client',
+      isTemplate: !!c.isTemplate,
+      perks: c.perks?.join(', ') || '',
       clientId: typeof c.clientId === 'string' ? c.clientId : '',
       clientName: c.clientName, currency: c.currency, pricePerTon: c.pricePerTon || 0,
       startDate: c.startDate?.slice(0, 10) || '', endDate: c.endDate?.slice(0, 10) || '',
@@ -114,9 +136,14 @@ export default function ContractsPage() {
     setSaving(true); setError(null);
     const payload = {
       contractRef: draft.contractRef.toUpperCase(), title: draft.title,
-      clientId: draft.clientId || undefined, clientName: draft.clientName,
+      contractType: draft.contractType,
+      isTemplate: draft.isTemplate,
+      perks: draft.perks.split(',').map(p => p.trim()).filter(p => p),
+      clientId: (!draft.isTemplate && draft.clientId) ? draft.clientId : undefined, 
+      clientName: draft.isTemplate ? 'Template' : draft.clientName,
       currency: draft.currency, pricePerTon: draft.pricePerTon || undefined,
-      startDate: draft.startDate, endDate: draft.endDate,
+      startDate: draft.isTemplate ? undefined : draft.startDate, 
+      endDate: draft.isTemplate ? undefined : draft.endDate,
       accountManagerName: draft.accountManagerName || undefined,
       notes: draft.notes || undefined, contractLines: draft.lines,
     };
@@ -138,23 +165,52 @@ export default function ContractsPage() {
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Contract Info</p>
         <div className="grid grid-cols-2 gap-3">
           <div><label className={label}>Contract Ref *</label><input className={inp} value={draft.contractRef} onChange={e => setDraft(d => ({ ...d, contractRef: e.target.value.toUpperCase() }))} placeholder="CON-2025-001" disabled={modalMode === 'edit'} /></div>
+          <div>
+            <label className={label}>Configuration</label>
+            <div className="flex items-center h-[38px] px-3 bg-surface border border-border rounded-lg">
+              <input 
+                type="checkbox" 
+                id="isTemplate" 
+                className="w-4 h-4 accent-accent rounded" 
+                checked={draft.isTemplate} 
+                onChange={e => setDraft(d => ({ ...d, isTemplate: e.target.checked }))} 
+              />
+              <label htmlFor="isTemplate" className="ml-2 text-xs text-t2 cursor-pointer font-medium">Save as reusable Template</label>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={label}>Contract Type</label>
+            <select className={inp} value={draft.contractType} onChange={e => setDraft(d => ({ ...d, contractType: e.target.value as any }))}>
+              <option value="client">Client</option>
+              <option value="employee">Employee</option>
+              <option value="driver">Driver</option>
+            </select>
+          </div>
           <div><label className={label}>Currency</label>
             <select className={inp} value={draft.currency} onChange={e => setDraft(d => ({ ...d, currency: e.target.value }))}>
               {CURRENCIES.map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
         </div>
-        <div><label className={label}>Title *</label><input className={inp} value={draft.title} onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} placeholder="e.g. Limestone Supply — Q1 2025" /></div>
-        <div>
-          <label className={label}>Client *</label>
-          <SearchSelect options={clientOptions} value={draft.clientId || null} onChange={v => { const c = clients.find(cl => cl._id === v); setDraft(d => ({ ...d, clientId: v ?? '', clientName: c?.name ?? d.clientName })); }} placeholder="Select client..." />
-          {!draft.clientId && draft.clientName && <input className={`${inp} mt-1`} value={draft.clientName} onChange={e => setDraft(d => ({ ...d, clientName: e.target.value }))} placeholder="Or type client name manually" />}
+        <div><label className={label}>Title *</label><input className={inp} value={draft.title} onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} placeholder="e.g. Employee Agreement — John Doe" /></div>
+        <div><label className={label}>Perks (comma separated)</label><input className={inp} value={draft.perks} onChange={e => setDraft(d => ({ ...d, perks: e.target.value }))} placeholder="Health Insurance, Transport Allowance..." /></div>
+        {!draft.isTemplate && draft.contractType === 'client' && (
+          <div>
+            <label className={label}>Client *</label>
+            <SearchSelect options={clientOptions} value={draft.clientId || null} onChange={v => { const c = clients.find(cl => cl._id === v); setDraft(d => ({ ...d, clientId: v ?? '', clientName: c?.name ?? d.clientName })); }} placeholder="Select client..." />
+            {!draft.clientId && draft.clientName && <input className={`${inp} mt-1`} value={draft.clientName} onChange={e => setDraft(d => ({ ...d, clientName: e.target.value }))} placeholder="Or type client name manually" />}
+          </div>
+        )}
+        {!draft.isTemplate && (
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={label}>Start Date *</label><input type="date" className={inp} value={draft.startDate} onChange={e => setDraft(d => ({ ...d, startDate: e.target.value }))} /></div>
+            <div><label className={label}>End Date *</label><input type="date" className={inp} value={draft.endDate} onChange={e => setDraft(d => ({ ...d, endDate: e.target.value }))} /></div>
+          </div>
+        )}
+        <div className="grid grid-cols-1 gap-3">
+          <div><label className={label}>Account Manager</label><input className={inp} value={draft.accountManagerName} onChange={e => setDraft(d => ({ ...d, accountManagerName: e.target.value }))} /></div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div><label className={label}>Start Date</label><input type="date" className={inp} value={draft.startDate} onChange={e => setDraft(d => ({ ...d, startDate: e.target.value }))} /></div>
-          <div><label className={label}>End Date</label><input type="date" className={inp} value={draft.endDate} onChange={e => setDraft(d => ({ ...d, endDate: e.target.value }))} /></div>
-        </div>
-        <div><label className={label}>Account Manager</label><input className={inp} value={draft.accountManagerName} onChange={e => setDraft(d => ({ ...d, accountManagerName: e.target.value }))} /></div>
       </section>
 
       <section className="space-y-3">
@@ -187,11 +243,83 @@ export default function ContractsPage() {
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-2">Notes</p>
         <textarea rows={2} className={`${inp} resize-none`} value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} />
       </section>
+    </div>
+  ) : null;
 
-      <button onClick={handleSave} disabled={saving} className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
-        {saving && <Spinner size={14} className="animate-spin" />}
-        {saving ? 'Saving...' : modalMode === 'new' ? 'Create Contract' : 'Save Changes'}
-      </button>
+  const modalSummary = (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Financial Summary</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-t3">Total Value</span>
+            <span className="font-bold text-t1">{grandTotal.toLocaleString()} {draft.currency}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-t3">Total Tonnage</span>
+            <span className="font-bold text-t1">{draft.lines.reduce((s, l) => s + l.committedQty, 0).toLocaleString()} tons</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Perks & Benefits</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4">
+          {draft.perks.trim() ? (
+            <ul className="space-y-2">
+              {draft.perks.split(',').map((p, i) => (
+                <li key={i} className="flex items-center gap-2 text-xs text-t2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-accent" />
+                  {p.trim()}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-t3 italic text-center py-2">No perks added yet</p>
+          )}
+        </div>
+      </div>
+
+      {modalMode === 'edit' && selected && (
+        <div className="space-y-1">
+          <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Current Status</p>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${STATUS_STYLES[selected.status] ?? STATUS_STYLES.draft}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[selected.status] ?? STATUS_DOT.draft}`} />
+              {selected.status.replace('_', ' ')}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const viewModalSummary = selected ? (
+    <div className="space-y-6 text-sm">
+      <div className="bg-card/50 border border-border rounded-xl p-4 space-y-4">
+        <div>
+          <p className="text-[10px] text-t3 uppercase font-black tracking-widest mb-1">Contract Total</p>
+          <p className="text-2xl font-black text-accent">{selected.totalContractValue.toLocaleString()} {selected.currency}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-t3 uppercase font-black tracking-widest mb-1">Total Tonnage</p>
+          <p className="text-lg font-bold text-t1">{selected.totalCommittedTons.toLocaleString()} tons</p>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest font-mono">Quick Actions</p>
+        <select className={inp} value={selected.status}
+          onChange={async e => { await apiUpdateContract(selected._id, { status: e.target.value }); load(); }}>
+          {CONTRACT_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+        </select>
+      </div>
+
+      <div className="pt-4 border-t border-border">
+        <button onClick={() => openEdit(selected)} className="w-full py-2.5 bg-surface border border-border text-t1 rounded-xl text-sm font-bold hover:bg-card transition-all">
+          Edit Original
+        </button>
+      </div>
     </div>
   ) : null;
 
@@ -206,9 +334,9 @@ export default function ContractsPage() {
           </span>
         </div>
         {[
-          ['Ref', selected.contractRef], ['Title', selected.title], ['Client', selected.clientName],
-          ['Value', `${selected.totalContractValue.toLocaleString()} ${selected.currency}`],
-          ['Committed Tons', selected.totalCommittedTons.toLocaleString()],
+          ['Ref', selected.contractRef], ['Title', selected.title], ['Type', selected.contractType],
+          ['Client', selected.clientName],
+          ['Perks', selected.perks?.join(', ') || '—'],
           ['Start', fmtDate(selected.startDate)], ['End', fmtDate(selected.endDate)],
           ['Manager', selected.accountManagerName || '—'],
         ].map(([k, v]) => (
@@ -216,18 +344,6 @@ export default function ContractsPage() {
         ))}
       </section>
 
-      {selected.deliveryProgress && (
-        <section className="space-y-2">
-          <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Delivery Progress</p>
-          <div className="h-2 bg-surface rounded-full overflow-hidden">
-            <div className="h-full bg-accent rounded-full" style={{ width: `${Math.min(selected.deliveryProgress.pctComplete, 100)}%` }} />
-          </div>
-          <div className="flex justify-between text-xs text-t3">
-            <span>{selected.deliveryProgress.deliveredTons?.toLocaleString()} delivered</span>
-            <span>{selected.deliveryProgress.pctComplete?.toFixed(1)}%</span>
-          </div>
-        </section>
-      )}
 
       <section className="space-y-2">
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Contract Lines</p>
@@ -267,37 +383,28 @@ export default function ContractsPage() {
       <h1 className="text-2xl font-medium text-[#4285f4] mb-6">Contract <span className="font-bold text-gray-800">#{selected.contractRef}</span></h1>
       <div className="grid grid-cols-2 gap-4 border-y border-gray-100 py-6 mb-6 text-sm">
         {[
-          ['Client', selected.clientName], ['Currency', selected.currency],
+          ['Client', selected.clientName], ['Type', selected.contractType],
           ['Start Date', fmtDate(selected.startDate)], ['End Date', fmtDate(selected.endDate)],
-          ['Total Value', `${selected.totalContractValue.toLocaleString()} ${selected.currency}`],
-          ['Committed Tons', selected.totalCommittedTons.toLocaleString()],
+          ['Perks', selected.perks?.join(', ') || '—'],
           ['Manager', selected.accountManagerName || '—'], ['Status', selected.status.replace('_', ' ')],
         ].map(([l, v]) => (
           <div key={l}><p className="text-[10px] font-black text-gray-400 uppercase mb-0.5">{l}</p><p className="font-semibold text-gray-800">{v}</p></div>
         ))}
       </div>
-      <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Contract Lines</p>
+      <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Contract Items/Lines</p>
       <table className="w-full border-collapse border border-gray-800 text-[11px] mb-6">
         <thead><tr className="border-b border-gray-800 bg-gray-50">
           <th className="py-2 px-3 text-left font-black uppercase">Line</th>
-          <th className="py-2 px-3 text-left font-black uppercase">Material</th>
+          <th className="py-2 px-3 text-left font-black uppercase">Description</th>
           <th className="py-2 px-3 text-center font-black uppercase">Qty</th>
-          <th className="py-2 px-3 text-right font-black uppercase">Unit Price</th>
-          <th className="py-2 px-3 text-right font-black uppercase">Value</th>
         </tr></thead>
         <tbody>{selected.contractLines.map((l, i) => (
           <tr key={i} className="border-b border-gray-200">
             <td className="py-2 px-3">{l.lineRef}</td>
             <td className="py-2 px-3 font-semibold">{l.materialDescription}</td>
             <td className="py-2 px-3 text-center">{l.committedQty.toLocaleString()} {l.unit}</td>
-            <td className="py-2 px-3 text-right">{l.unitPrice.toLocaleString()}</td>
-            <td className="py-2 px-3 text-right font-bold">{l.lineValue.toLocaleString()}</td>
           </tr>
         ))}</tbody>
-        <tfoot><tr className="bg-[#851C1C] text-white">
-          <td colSpan={4} className="py-3 px-3 font-black uppercase text-right">Total Value</td>
-          <td className="py-3 px-3 font-black text-right">{selected.totalContractValue.toLocaleString()} {selected.currency}</td>
-        </tr></tfoot>
       </table>
     </div>
   ) : (
@@ -354,7 +461,7 @@ export default function ContractsPage() {
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-surface">
               <tr>
-                {['Ref', 'Title', 'Client', 'Status', 'Value', 'Progress', 'End Date', ''].map(h => (
+                {['Ref', 'Title', 'Type', 'Target/Client', 'Status', 'End Date', ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -368,25 +475,20 @@ export default function ContractsPage() {
                 </td></tr>
               ) : contracts.map(c => (
                 <tr key={c._id} className="hover:bg-surface transition-colors cursor-pointer" onClick={() => { setSelected(c); setModalMode('view'); }}>
-                  <td className="px-4 py-3.5 text-sm font-semibold text-accent">{c.contractRef}</td>
+                  <td className="px-4 py-3.5 text-sm font-semibold text-accent">
+                    {c.contractRef}
+                    {c.isTemplate && <span className="ml-2 px-1.5 py-0.5 bg-accent/10 text-[9px] font-black text-accent border border-accent/20 rounded uppercase">Template</span>}
+                  </td>
                   <td className="px-4 py-3.5 text-sm font-medium text-t1 max-w-[180px] truncate">{c.title}</td>
-                  <td className="px-4 py-3.5 text-sm text-t2">{c.clientName}</td>
+                  <td className="px-4 py-3.5 text-sm text-t2 capitalize">{c.contractType}</td>
+                  <td className="px-4 py-3.5 text-sm text-t2">{c.isTemplate ? '—' : (c.clientName || '—')}</td>
                   <td className="px-4 py-3.5">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[c.status] ?? STATUS_STYLES.draft}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[c.status] ?? STATUS_DOT.draft}`} />
                       {c.status.replace('_', ' ')}
                     </span>
                   </td>
-                  <td className="px-4 py-3.5 text-sm font-bold text-t1 whitespace-nowrap text-right">{c.totalContractValue.toLocaleString()} <span className="text-t3 text-xs font-normal">{c.currency}</span></td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-2 min-w-[80px]">
-                      <div className="flex-1 h-1.5 bg-surface rounded-full overflow-hidden">
-                        <div className="h-full bg-accent rounded-full" style={{ width: `${Math.min(c.deliveryProgress?.pctComplete ?? 0, 100)}%` }} />
-                      </div>
-                      <span className="text-xs text-t3 w-8 shrink-0">{(c.deliveryProgress?.pctComplete ?? 0).toFixed(0)}%</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">{fmtDate(c.endDate)}</td>
+                  <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">{c.isTemplate ? '—' : fmtDate(c.endDate)}</td>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={e => { e.stopPropagation(); setSelected(c); setModalMode('view'); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"><Eye size={14} weight="duotone" /></button>
@@ -410,18 +512,24 @@ export default function ContractsPage() {
         )}
       </div>
 
-      <DocumentSidePanel
+      <ModernModal
         isOpen={modalMode !== null}
         onClose={() => { setModalMode(null); setSelected(null); setError(null); }}
-        title={modalMode === 'new' ? 'New Contract' : modalMode === 'edit' ? 'Edit Contract' : selected?.title ?? ''}
-        currentIndex={modalMode === 'view' && selected ? contracts.findIndex(c => c._id === selected._id) + 1 : undefined}
-        totalItems={contracts.length}
-        onPrev={() => { if (!selected) return; const idx = contracts.findIndex(c => c._id === selected._id); if (idx > 0) setSelected(contracts[idx - 1]); }}
-        onNext={() => { if (!selected) return; const idx = contracts.findIndex(c => c._id === selected._id); if (idx < contracts.length - 1) setSelected(contracts[idx + 1]); }}
-        footerInfo={selected ? `${selected.contractRef} · ${selected.currency}` : 'New contract'}
-        formContent={modalMode === 'view' ? viewContent : formContent}
-        previewContent={previewContent}
-      />
+        title={modalMode === 'new' ? 'Create Shipping Contract' : modalMode === 'edit' ? 'Edit Contract' : selected?.title ?? ''}
+        summaryContent={modalMode === 'view' ? viewModalSummary : modalSummary}
+        actions={modalMode !== 'view' ? (
+          <button 
+            onClick={handleSave} 
+            disabled={saving} 
+            className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {saving && <Spinner size={14} className="animate-spin" />}
+            {modalMode === 'new' ? 'Post Contract' : 'Update Details'}
+          </button>
+        ) : undefined}
+      >
+        {modalMode === 'view' ? viewContent : formContent}
+      </ModernModal>
     </div>
   );
 }

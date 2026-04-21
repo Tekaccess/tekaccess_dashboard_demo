@@ -1,30 +1,82 @@
-import React, { useState } from "react";
-import { X, Plus, MagnifyingGlass, Users, Buildings } from "@phosphor-icons/react";
+import React, { useState, useEffect, useCallback } from "react";
+import { X, Plus, MagnifyingGlass, Users, Buildings, Spinner, Phone, Envelope } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
-import { employeesData, departmentsOverview } from "../data/employees";
+import { departmentsOverview } from "../data/employees";
 import EmployeeCard from "../components/EmployeeCard";
-import DocumentSidePanel from "../components/DocumentSidePanel";
-import EmployeeDetail from "../components/EmployeeDetail";
-import DepartmentCard from "../components/DepartmentCard";
+import ModernModal from "../components/ui/ModernModal";
+import { apiListEmployees, apiCreateEmployee, apiUpdateEmployee, apiListContracts, apiInstantiateContract, Employee, OperationsContract } from "../lib/api";
 
 export default function EmployeesPage() {
-  const navigate = useNavigate();
-  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("All Employees");
+  const [contracts, setContracts] = useState<OperationsContract[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const [modalMode, setModalMode] = useState<'new' | 'edit' | 'view' | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [draft, setDraft] = useState({
+    fullName: '', email: '', phone: '', role: '', department: 'Operations',
+    contractId: '', startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+  });
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const [eRes, cRes, tRes] = await Promise.all([
+      apiListEmployees({ search: searchQuery || undefined }),
+      apiListContracts({ contractType: 'employee', status: 'active', isTemplate: 'false', limit: '200' }),
+      apiListContracts({ contractType: 'employee', isTemplate: 'true', limit: '200' }),
+    ]);
+    if (eRes.success) setEmployees(eRes.data.employees);
+    if (cRes.success && tRes.success) setContracts([...tRes.data.contracts, ...cRes.data.contracts]);
+    setLoading(false);
+  }, [searchQuery]);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const displayTabs = ["All Employees", "Departments"];
 
-  const currentEmployee = selectedEmployee ? employeesData.find(e => e.id === selectedEmployee) : null;
+  const currentEmployee = employees.find(e => e._id === selectedEmployeeId) || null;
 
-  const filteredEmployees = employeesData.filter(
-    (emp) =>
-      emp.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.role.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  async function handleSave() {
+    if (!draft.fullName || !draft.email) { setError('Name and email are required.'); return; }
+    setSaving(true); setError(null);
+
+    let finalContractId = draft.contractId;
+    const selectedContract = contracts.find(c => c._id === draft.contractId);
+
+    if (selectedContract?.isTemplate) {
+      const instRes = await apiInstantiateContract({
+        templateId: selectedContract._id,
+        targetName: draft.fullName,
+        startDate: draft.startDate,
+        endDate: draft.endDate,
+      });
+      if (!instRes.success) { setError(`Contract error: ${instRes.message}`); setSaving(false); return; }
+      finalContractId = instRes.data.contract._id;
+    }
+
+    const payload = { ...draft, contractId: finalContractId };
+    const res = modalMode === 'new'
+      ? await apiCreateEmployee(payload as any)
+      : await apiUpdateEmployee(selectedEmployeeId!, payload as any);
+
+    setSaving(false);
+    if (!res.success) { setError((res as any).message || 'Save failed.'); return; }
+    setModalMode(null); loadData();
+  }
+
+  function openEdit(e: Employee) {
+    setDraft({
+      fullName: e.fullName, email: e.email, phone: e.phone || '',
+      role: e.role, department: e.department, contractId: e.contractId || '',
+      startDate: '', endDate: '',
+    });
+    setSelectedEmployeeId(e._id); setModalMode('edit');
+  }
 
   const filteredDepartments = departmentsOverview.filter(
     (dept) =>
@@ -41,7 +93,7 @@ export default function EmployeesPage() {
           <p className="text-sm text-t3 mt-1">Manage human resources and departmental structures</p>
         </div>
         <button
-          onClick={() => setShowAddEmployeeModal(true)}
+          onClick={() => { setDraft({ fullName: '', email: '', phone: '', role: '', department: 'Operations', contractId: '', startDate: new Date().toISOString().split('T')[0], endDate: new Date(new Date().setFullYear(new Date().getFullYear()+1)).toISOString().split('T')[0] }); setModalMode('new'); }}
           className="flex items-center px-4 py-2 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent-h shadow-lg shadow-accent/20 transition-all"
         >
           <Plus size={15} weight="bold" className="mr-2" />
@@ -83,10 +135,12 @@ export default function EmployeesPage() {
 
         {activeTab === "All Employees" && (
           <>
-            {filteredEmployees.length > 0 ? (
+            {loading ? (
+              <div className="flex justify-center py-20"><Spinner size={32} className="animate-spin text-accent" /></div>
+            ) : employees.length > 0 ? (
               <div className="space-y-3">
-                {filteredEmployees.map((employee) => (
-                  <EmployeeCard key={employee.id} employee={employee} onClick={() => setSelectedEmployee(employee.id)} />
+                {employees.map((employee) => (
+                  <EmployeeCard key={employee._id} employee={employee as any} onClick={() => { setSelectedEmployeeId(employee._id); setModalMode('view'); }} />
                 ))}
               </div>
             ) : (
@@ -127,175 +181,121 @@ export default function EmployeesPage() {
         )}
       </div>
 
-      {/* Employee detail panel */}
-      <DocumentSidePanel
-        isOpen={!!currentEmployee}
-        onClose={() => setSelectedEmployee(null)}
-        title="Employee File"
-        currentIndex={currentEmployee ? filteredEmployees.findIndex(e => e.id === currentEmployee.id) + 1 : undefined}
-        totalItems={filteredEmployees.length}
-        onPrev={() => {
-          const idx = filteredEmployees.findIndex(e => e.id === currentEmployee?.id);
-          if (idx > 0) setSelectedEmployee(filteredEmployees[idx - 1].id);
-        }}
-        onNext={() => {
-          const idx = filteredEmployees.findIndex(e => e.id === currentEmployee?.id);
-          if (idx < filteredEmployees.length - 1) setSelectedEmployee(filteredEmployees[idx + 1].id);
-        }}
-        footerInfo="Employment record last updated on Mar 20, 2026"
-        formContent={
-          currentEmployee && (
-            <div className="space-y-6">
-              <div>
-                <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Employment Bio</label>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-[10px] text-t3 mb-1">Full Name</label>
-                    <input type="text" defaultValue={currentEmployee.fullName} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-t1 outline-none focus:border-accent transition-colors" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] text-t3 mb-1">Role</label>
-                      <input type="text" defaultValue={currentEmployee.role} className="w-full px-3 py-1.5 border border-border rounded-xl text-xs text-t1 bg-surface outline-none focus:border-accent transition-colors" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-t3 mb-1">Department</label>
-                      <select defaultValue={currentEmployee.department} className="w-full px-3 py-1.5 border border-border rounded-xl text-xs text-t1 bg-surface outline-none focus:border-accent transition-colors">
-                        <option>Executive</option>
-                        <option>Finance</option>
-                        <option>Transport</option>
-                        <option>Operations</option>
-                        <option>Procurement</option>
-                      </select>
-                    </div>
-                  </div>
+      <ModernModal
+        isOpen={modalMode !== null}
+        onClose={() => setModalMode(null)}
+        title={modalMode === 'new' ? 'Onboard New Employee' : modalMode === 'edit' ? 'Update Employee' : currentEmployee?.fullName ?? ''}
+        summaryContent={
+          <div className="space-y-6">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Departmental Context</p>
+              <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-t3">Division</span>
+                  <span className="font-bold text-t1">{modalMode === 'view' ? currentEmployee?.department : draft.department}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-t3">Tier</span>
+                  <span className="text-t1 font-medium">{modalMode === 'view' ? currentEmployee?.role : draft.role || '—'}</span>
                 </div>
               </div>
-              <div>
-                <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Contact & Access</label>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-[10px] text-t3 mb-1">Professional Email</label>
-                    <input type="email" defaultValue={currentEmployee.email} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs text-t1 outline-none focus:border-accent transition-colors" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-t3 mb-1">Mobile Phone</label>
-                    <input type="tel" defaultValue={currentEmployee.phone} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs text-t1 outline-none focus:border-accent transition-colors" />
-                  </div>
-                </div>
-              </div>
-              <div className="pt-6">
-                <button className="w-full py-2.5 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent-h shadow-lg shadow-accent/20 transition-all">
-                  Save Record Changes
+            </div>
+            {modalMode === 'view' && currentEmployee && (
+              <div className="pt-4 border-t border-border">
+                <button onClick={() => openEdit(currentEmployee)} className="w-full py-2.5 bg-surface border border-border text-t1 rounded-xl text-sm font-bold hover:bg-card transition-all">
+                  Edit Personal File
                 </button>
               </div>
-            </div>
-          )
+            )}
+          </div>
         }
-        previewContent={
-          currentEmployee && (
-            <div className="relative font-sans text-gray-900">
-              <div className="flex flex-col items-center text-center mb-16 border-b border-dashed border-gray-200 pb-12">
-                <div className="w-32 h-32 rounded-full ring-8 ring-gray-50 bg-accent flex items-center justify-center text-white text-5xl font-black mb-6 shadow-2xl relative">
+        actions={modalMode !== 'view' && (
+          <button onClick={handleSave} disabled={saving} className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h flex items-center gap-2">
+            {saving && <Spinner size={14} className="animate-spin" />}
+            {modalMode === 'new' ? 'Initialize Onboarding' : 'Save Changes'}
+          </button>
+        )}
+      >
+        {modalMode === 'view' && currentEmployee ? (
+          <div className="space-y-6">
+             <div className="flex flex-col items-center text-center p-6 bg-surface/30 rounded-2xl border border-border">
+                <div className="w-24 h-24 rounded-full bg-accent flex items-center justify-center text-white text-3xl font-black mb-4 shadow-xl">
                   {currentEmployee.fullName.split(' ').map(n => n[0]).join('')}
-                  <div className="absolute right-0 bottom-1 w-6 h-6 bg-green-500 border-4 border-white rounded-full" />
                 </div>
-                <h1 className="text-3xl font-black tracking-tight text-gray-900 uppercase">{currentEmployee.fullName}</h1>
-                <p className="text-sm font-bold text-[#4285f4] mt-1">{currentEmployee.role.toUpperCase()}</p>
-                <p className="text-[10px] font-black text-gray-400 mt-2 tracking-[0.3em] uppercase">{currentEmployee.department} DIVISION</p>
-              </div>
-              <div className="grid grid-cols-2 gap-x-12 gap-y-10 mb-16">
-                <div>
-                  <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-3">Personal Data</label>
-                  <div className="space-y-4">
-                    <div className="flex justify-between border-b border-gray-50 pb-2">
-                      <span className="text-xs text-gray-400">Date of Birth</span>
-                      <span className="text-sm font-bold">{new Date(currentEmployee.personalInfo.dateOfBirth).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-gray-50 pb-2">
-                      <span className="text-xs text-gray-400">Citizenship</span>
-                      <span className="text-sm font-bold">Rwanda</span>
-                    </div>
-                  </div>
+                <h1 className="text-xl font-bold text-t1">{currentEmployee.fullName}</h1>
+                <p className="text-sm font-medium text-accent">{currentEmployee.role}</p>
+                <div className="flex items-center gap-4 mt-4 text-t2">
+                  <span className="flex items-center gap-1"><Envelope size={14}/> {currentEmployee.email}</span>
+                  <span className="flex items-center gap-1"><Phone size={14}/> {currentEmployee.phone || '—'}</span>
                 </div>
-                <div>
-                  <label className="block text-[10px] text-gray-400 font-black uppercase tracking-widest mb-3">Contract Info</label>
-                  <div className="space-y-4">
-                    <div className="flex justify-between border-b border-gray-50 pb-2">
-                      <span className="text-xs text-gray-400">Employment Type</span>
-                      <span className="text-sm font-bold capitalize">{currentEmployee.contract.type}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-gray-50 pb-2">
-                      <span className="text-xs text-gray-400">Join Date</span>
-                      <span className="text-sm font-bold">{new Date(currentEmployee.contract.startDate).toLocaleDateString()}</span>
-                    </div>
-                  </div>
+             </div>
+             <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-card border border-border rounded-xl">
+                  <p className="text-[10px] text-t3 font-black uppercase mb-2">Contract Details</p>
+                  <p className="text-sm font-bold text-t1">{currentEmployee.contractRef || 'No contract linked'}</p>
+                  <p className="text-xs text-t3 mt-1">Status: <span className="text-emerald-400">Active</span></p>
                 </div>
-              </div>
-              <div className="p-6 bg-[#4285f4]/5 rounded-2xl border border-[#4285f4]/10">
-                <label className="block text-[10px] text-[#4285f4] font-black uppercase tracking-widest mb-4">Emergency Contact Protocol</label>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{currentEmployee.personalInfo.emergencyContact}</p>
-                    <p className="text-xs text-gray-500">Legal Guardian / Primary Contact</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-black text-[#4285f4]">{currentEmployee.personalInfo.emergencyPhone}</p>
-                  </div>
+                <div className="p-4 bg-card border border-border rounded-xl">
+                  <p className="text-[10px] text-t3 font-black uppercase mb-2">Internal KPI</p>
+                  <p className="text-sm font-bold text-t1">Performance Score: —</p>
                 </div>
-              </div>
-            </div>
-          )
-        }
-      />
-
-      {/* Add Employee panel */}
-      <DocumentSidePanel
-        isOpen={showAddEmployeeModal}
-        onClose={() => setShowAddEmployeeModal(false)}
-        title="Onboarding New Employee"
-        formContent={
-          <div className="p-2 space-y-6">
+             </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {error && <p className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-lg">{error}</p>}
             <div className="space-y-4">
               <div>
                 <label className="block text-[11px] font-black text-t3 uppercase mb-2">Full Identity</label>
-                <input type="text" placeholder="First and last names" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors" />
+                <input type="text" value={draft.fullName} onChange={e => setDraft(d => ({ ...d, fullName: e.target.value }))} placeholder="First and last names" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-t1" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-black text-t3 uppercase mb-2">Division</label>
-                  <select className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs text-t1 outline-none focus:border-accent transition-colors">
-                    <option>Operations</option>
-                    <option>Finance</option>
+                  <select className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs text-t1" value={draft.department} onChange={e => setDraft(d => ({ ...d, department: e.target.value }))}>
+                    {['Operations', 'Finance', 'Executive', 'Procurement', 'Transport'].map(d => <option key={d}>{d}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[11px] font-black text-t3 uppercase mb-2">Role Tier</label>
-                  <input type="text" placeholder="Job Title" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs text-t1 placeholder-t3 outline-none focus:border-accent transition-colors" />
+                  <input type="text" value={draft.role} onChange={e => setDraft(d => ({ ...d, role: e.target.value }))} placeholder="Job Title" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs text-t1" />
                 </div>
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+               <div>
+                <label className="block text-[11px] font-black text-t3 uppercase mb-2">Professional Email</label>
+                <input type="email" value={draft.email} onChange={e => setDraft(d => ({ ...d, email: e.target.value }))} placeholder="email@tekaccess.rw" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-t1" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-black text-t3 uppercase mb-2">Mobile Phone</label>
+                <input type="tel" value={draft.phone} onChange={e => setDraft(d => ({ ...d, phone: e.target.value }))} placeholder="+250..." className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-t1" />
+              </div>
+            </div>
             <div>
-              <label className="block text-[11px] font-black text-t3 uppercase mb-2">Professional Email</label>
-              <input type="email" placeholder="email@tekaccess.rw" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors" />
+              <label className="block text-[11px] font-black text-t3 uppercase mb-2">Employment Contract / Template</label>
+              <select className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs text-t1" value={draft.contractId} onChange={e => setDraft(d => ({ ...d, contractId: e.target.value }))}>
+                <option value="">No contract selected</option>
+                {contracts.map(con => (
+                  <option key={con._id} value={con._id}>{con.isTemplate ? '[TEMPLATE] ' : ''}{con.contractRef} — {con.title}</option>
+                ))}
+              </select>
             </div>
-            <div className="pt-6">
-              <button className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all">
-                Initialize Onboarding
-              </button>
-            </div>
+            {contracts.find(c => c._id === draft.contractId)?.isTemplate && (
+               <div className="grid grid-cols-2 gap-3 p-3 bg-accent/5 border border-accent/20 rounded-lg">
+                <div>
+                  <label className="block text-[10px] font-bold text-accent uppercase mb-1">Join Date</label>
+                  <input type="date" className="w-full px-3 py-1.5 border border-accent/20 rounded-lg text-xs bg-surface" value={draft.startDate} onChange={e => setDraft(d => ({ ...d, startDate: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-accent uppercase mb-1">Contract End</label>
+                  <input type="date" className="w-full px-3 py-1.5 border border-accent/20 rounded-lg text-xs bg-surface" value={draft.endDate} onChange={e => setDraft(d => ({ ...d, endDate: e.target.value }))} />
+                </div>
+              </div>
+            )}
           </div>
-        }
-        previewContent={
-          <div className="flex flex-col items-center justify-center h-full text-center py-20">
-            <div className="w-40 h-40 bg-gray-50 rounded-full flex items-center justify-center mb-8 border-4 border-dashed border-gray-200">
-              <Users size={56} weight="duotone" className="text-gray-200" />
-            </div>
-            <h3 className="text-xl font-black text-gray-900 mb-2">Drafting New Employee File</h3>
-            <p className="text-sm text-gray-400 max-w-[300px]">Complete the form on the left to generate the digital onboarding manifest.</p>
-          </div>
-        }
-      />
+        )}
+      </ModernModal>
     </div>
   );
 }

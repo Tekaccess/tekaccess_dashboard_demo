@@ -7,10 +7,10 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie,
 } from 'recharts';
-import DocumentSidePanel from '../../components/DocumentSidePanel';
 import {
   apiListMaintenanceRecords, apiCreateMaintenanceRecord, apiUpdateMaintenanceRecord, MaintenanceRecord,
 } from '../../lib/api';
+import ModernModal from '../../components/ui/ModernModal';
 
 type ViewMode = 'table' | 'bar' | 'pie';
 type ActiveTab = 'All' | 'Open Records' | 'Scheduled Services' | 'Maintenance History';
@@ -280,15 +280,73 @@ export default function MaintenancePage() {
       </section>
 
       {saveError && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-500">{saveError}</div>}
-
-      <button onClick={handleSave} disabled={saving} className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
-        {saving && <Spinner size={15} className="animate-spin" />}
-        {saving ? 'Saving...' : modal?.mode === 'edit' ? 'Update Record' : 'Create Record'}
-      </button>
     </div>
   );
 
+  const modalSummary = draft ? (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Job Economics</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-t3 text-[10px] uppercase">Estimated</span>
+            <span className="font-bold text-t2">{draft.estimatedCost || '0'} {draft.currency}</span>
+          </div>
+          <div className="flex justify-between text-base">
+             <span className="text-t3 font-bold">Actual</span>
+             <span className="text-accent font-black">{draft.actualCost || '0'} {draft.currency}</span>
+          </div>
+        </div>
+      </div>
+
+       <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Phase progress</p>
+        <div className="bg-card/50 border border-border rounded-xl p-4 space-y-2">
+           <div className="flex justify-between items-center mb-1">
+              <span className="text-[10px] font-bold text-t1 uppercase tracking-tight">{STATUS_LABEL[draft.status]}</span>
+              <span className="text-[10px] text-t3 font-mono">{(draft.status === 'completed' ? '100%' : draft.status === 'in_progress' ? '50%' : '0%')}</span>
+           </div>
+           <div className="h-1 bg-surface rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all duration-500 ${draft.status === 'completed' ? 'bg-emerald-500 w-full' : draft.status === 'in_progress' ? 'bg-amber-500 w-1/2' : 'bg-red-500 w-[10%]'}`} />
+           </div>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   const viewRecord = modal && modal.mode === 'view' ? (modal as any).record as MaintenanceRecord : null;
+
+  const viewModalSummary = viewRecord ? (
+    <div className="space-y-6">
+       <div className="bg-card/50 border border-border rounded-xl p-4 space-y-4">
+        <div>
+          <p className="text-[10px] text-t3 uppercase font-black tracking-widest mb-1">Asset link</p>
+          <span className="font-mono font-bold text-accent text-lg">{viewRecord.plateNumber}</span>
+          <p className="text-[10px] text-t3 mt-0.5 uppercase tracking-tighter">Reference #{viewRecord.recordRef}</p>
+        </div>
+        
+        <div className="pt-3 border-t border-border">
+          <p className="text-[10px] text-t3 uppercase font-black tracking-widest mb-2">Service Identity</p>
+          <div className="flex items-center gap-3">
+             <div className={`p-2 rounded-lg border ${TYPE_STYLES[viewRecord.maintenanceType]}`}>
+                <Wrench size={16} weight="duotone" />
+             </div>
+             <div>
+                <p className="text-sm font-bold text-t1">{TYPE_LABEL[viewRecord.maintenanceType]}</p>
+                <p className="text-[9px] text-t3 uppercase">Maintenance Category</p>
+             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-border">
+        <button onClick={() => handleEdit(viewRecord)} className="w-full py-2.5 bg-surface border border-border text-t1 rounded-xl text-sm font-bold hover:bg-card transition-all">
+          Modify Record
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   const viewContent = viewRecord && (
     <div className="space-y-5 pb-10">
       <section className="space-y-3">
@@ -542,18 +600,20 @@ export default function MaintenancePage() {
         )}
       </div>
 
-      <DocumentSidePanel
+      <ModernModal
         isOpen={!!modal}
         onClose={() => { setModal(null); setSaveError(null); }}
-        title={modal?.mode === 'new' ? 'New Maintenance Record' : modal?.mode === 'edit' ? `Edit — ${(modal as any).record?.recordRef}` : `Record — ${(modal as any)?.record?.recordRef}`}
-        currentIndex={modal && modal.mode !== 'new' ? filteredRecords.findIndex(r => r._id === (modal as any).record?._id) + 1 : undefined}
-        totalItems={filteredRecords.length}
-        onPrev={() => { if (!modal || modal.mode === 'new') return; const idx = filteredRecords.findIndex(r => r._id === (modal as any).record._id); if (idx > 0) setModal({ mode: 'view', record: filteredRecords[idx - 1] }); }}
-        onNext={() => { if (!modal || modal.mode === 'new') return; const idx = filteredRecords.findIndex(r => r._id === (modal as any).record._id); if (idx < filteredRecords.length - 1) setModal({ mode: 'view', record: filteredRecords[idx + 1] }); }}
-        footerInfo={modal?.mode === 'new' ? `Draft • ${new Date().toLocaleDateString()}` : `Status: ${STATUS_LABEL[(modal as any)?.record?.status] || '—'}`}
-        formContent={modal?.mode === 'view' ? viewContent : formContent}
-        previewContent={previewContent}
-      />
+        title={modal?.mode === 'new' ? 'New Service Record' : modal?.mode === 'edit' ? `Update Log — ${(modal as any).record?.recordRef}` : `Maintenance Details — ${(modal as any)?.record?.recordRef}`}
+        summaryContent={modal?.mode === 'view' ? viewModalSummary : modalSummary}
+        actions={modal?.mode !== 'view' ? (
+          <button onClick={handleSave} disabled={saving} className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
+            {saving && <Spinner size={14} className="animate-spin" />}
+            {modal?.mode === 'new' ? 'Create Record' : 'Update Record'}
+          </button>
+        ) : undefined}
+      >
+        {modal?.mode === 'view' ? viewContent : formContent}
+      </ModernModal>
     </div>
   );
 }
