@@ -11,6 +11,10 @@ const EXPLICIT_ROUTES: Record<string, string> = {
   "procurement/suppliers": "/procurement/suppliers",
   "procurement/shipments": "/procurement/shipments",
   "procurement/spare-parts": "/procurement/spare-parts",
+  "inventory/stock": "/inventory/stock",
+  "inventory/warehouses": "/inventory/warehouses",
+  "inventory/movements": "/inventory/movements",
+  "inventory/stock-counts": "/inventory/stock-counts",
 };
 
 // Maps each frontend department id to the backend dashboardAccess slugs that grant access.

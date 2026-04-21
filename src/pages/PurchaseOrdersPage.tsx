@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
-  Plus, MagnifyingGlass, DownloadSimple, Funnel, DotsThree,
+  Plus, MagnifyingGlass, DownloadSimple, Funnel,
   ListDashes, ChartBar, TrendUp, CaretDown,
-  CheckCircle, Warning, FileText, Eye, PencilSimple, X, Trash,
-  Spinner, Package
+  CheckCircle, Warning, FileText, Eye, PencilSimple, X,
+  Spinner, Package, UserPlus
 } from '@phosphor-icons/react';
+import QuickAddClient from '../components/QuickAddClient';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line
@@ -170,6 +171,7 @@ export default function PurchaseOrdersPage() {
   const [modal, setModal] = useState<ModalState>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showAddClient, setShowAddClient] = useState(false);
 
   // Data from API
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
@@ -216,8 +218,9 @@ export default function PurchaseOrdersPage() {
     [contracts]
   );
 
+  // Currency shows abbreviation only — clean and compact
   const currencyOptions = useMemo<SearchSelectOption[]>(() =>
-    currencies.map(c => ({ value: c.code, label: `${c.code} — ${c.name}`, sublabel: c.symbol })),
+    currencies.map(c => ({ value: c.code, label: c.code, meta: c.symbol })),
     [currencies]
   );
 
@@ -237,7 +240,7 @@ export default function PurchaseOrdersPage() {
   );
 
   const stockOptions = useMemo<SearchSelectOption[]>(() =>
-    stockItems.map(s => ({ value: s._id, label: s.name, sublabel: s.itemCode, meta: `${s.availableQty} ${s.unit}` })),
+    stockItems.map(s => ({ value: s._id, label: s.name, sublabel: s.itemCode, meta: `${s.availableQty} ${s.stockUnit}` })),
     [stockItems]
   );
 
@@ -519,18 +522,29 @@ export default function PurchaseOrdersPage() {
           />
         </div>
 
-        <SearchSelect
-          label="Deliver To (Client)"
-          options={clientOptions}
-          value={draft.deliverToClientId || null}
-          onChange={(val, opt) => {
-            updateDraft({
-              deliverToClientId: val || '',
-              deliverToClientName: opt?.label || '',
-            });
-          }}
-          placeholder="Search client..."
-        />
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-[10px] text-t3">Deliver To (Client)</label>
+            <button
+              type="button"
+              onClick={() => setShowAddClient(true)}
+              className="flex items-center gap-1 text-[10px] font-bold text-accent hover:underline"
+            >
+              <UserPlus size={11} weight="bold" /> New Client
+            </button>
+          </div>
+          <SearchSelect
+            options={clientOptions}
+            value={draft.deliverToClientId || null}
+            onChange={(val, opt) => {
+              updateDraft({
+                deliverToClientId: val || '',
+                deliverToClientName: opt?.label || '',
+              });
+            }}
+            placeholder="Search client..."
+          />
+        </div>
       </section>
 
       {/* Line Items */}
@@ -565,10 +579,11 @@ export default function PurchaseOrdersPage() {
                 onChange={(val, opt) => {
                   const si = stockItems.find(s => s._id === val);
                   updateLineItem(item._key, {
-                    stockItemId: val,
+                    stockItemId: val || null,
                     itemCode: si?.itemCode || null,
                     description: opt?.label || item.description,
-                    unit: (si?.unit as any) || item.unit,
+                    unit: (si?.stockUnit as any) || item.unit,
+                    unitPrice: si?.weightedAvgCost || item.unitPrice,
                   });
                 }}
                 placeholder="Select from inventory..."
@@ -1188,7 +1203,7 @@ export default function PurchaseOrdersPage() {
                   <Pie data={categoryData} cx="50%" cy="50%" outerRadius={110} dataKey="value" label={false} labelLine={false}>
                     {categoryData.map((_, idx) => <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number) => [`${v}%`, 'Share']} />
+                  <Tooltip contentStyle={chartTooltipStyle} formatter={(v) => [`${Number(v ?? 0)}%`, 'Share']} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -1241,6 +1256,17 @@ export default function PurchaseOrdersPage() {
         formContent={modal?.mode === 'view' ? viewFormContent : formContent}
         previewContent={previewContent}
       />
+
+      {showAddClient && (
+        <QuickAddClient
+          onClose={() => setShowAddClient(false)}
+          onCreated={(newClient) => {
+            setClients(prev => [...prev, newClient]);
+            updateDraft({ deliverToClientId: newClient._id, deliverToClientName: newClient.name });
+            setShowAddClient(false);
+          }}
+        />
+      )}
     </div>
   );
 }

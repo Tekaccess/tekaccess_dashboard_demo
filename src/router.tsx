@@ -19,6 +19,10 @@ import PurchaseOrdersPage from "./pages/PurchaseOrdersPage";
 import SuppliersPage from "./pages/SuppliersPage";
 import ShipmentsPage from "./pages/ShipmentsPage";
 import SparePartsPage from "./pages/SparePartsPage";
+import StockItemsPage from "./pages/inventory/StockItemsPage";
+import WarehousesPage from "./pages/inventory/WarehousesPage";
+import MovementsPage from "./pages/inventory/MovementsPage";
+import StockCountsPage from "./pages/inventory/StockCountsPage";
 
 export const rootRoute = createRootRoute({
   component: RootLayout,
@@ -99,6 +103,31 @@ const sparePartsRoute = createRoute({
   component: SparePartsPage,
 });
 
+// ── Explicit Inventory Routes ───────────────────────────────────────────────
+const stockItemsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/stock",
+  component: StockItemsPage,
+});
+
+const warehousesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/warehouses",
+  component: WarehousesPage,
+});
+
+const movementsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/movements",
+  component: MovementsPage,
+});
+
+const stockCountsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/stock-counts",
+  component: StockCountsPage,
+});
+
 // ── Route Tree ──────────────────────────────────────────────────────────────
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -129,6 +158,11 @@ const routeTree = rootRoute.addChildren([
   suppliersRoute,
   shipmentsRoute,
   sparePartsRoute,
+  // Inventory explicit pages
+  stockItemsRoute,
+  warehousesRoute,
+  movementsRoute,
+  stockCountsRoute,
 ]);
 
 export const router = createRouter({ routeTree });

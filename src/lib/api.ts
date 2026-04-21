@@ -402,15 +402,119 @@ export type StockItem = {
   name: string;
   description: string | null;
   category: string;
-  unit: string;
+  stockUnit: string;
   onHandQty: number;
   availableQty: number;
-  weightedAvgCost: number | null;
+  weightedAvgCost: number;
+  currency: string;
+  warehouseId: string;
   warehouseName: string;
 };
 
-export async function apiListStockItems(search?: string) {
-  const params = new URLSearchParams();
-  if (search) params.set('search', search);
-  return request<{ items: StockItem[]; pagination: { total: number } }>(`/inventory/stock-items?${params}&limit=200`);
+export async function apiListStockItems(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams({ limit: '200', ...params }).toString();
+  return request<{ items: StockItem[]; pagination: { total: number } }>(`/inventory/stock-items?${qs}`);
+}
+
+export async function apiGetStockItemById(id: string) {
+  return request<{ item: StockItem }>(`/inventory/stock-items/${id}`);
+}
+
+export async function apiCreateStockItem(data: Partial<StockItem> & { warehouseId: string }) {
+  return request<{ item: StockItem }>('/inventory/stock-items', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateStockItem(id: string, data: Partial<StockItem>) {
+  return request<{ item: StockItem }>(`/inventory/stock-items/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+// ─── Warehouses ───────────────────────────────────────────────────────────────
+
+export type Warehouse = {
+  _id: string;
+  warehouseCode: string;
+  name: string;
+  warehouseType: 'commercial' | 'workshop_store' | 'fuel_tank' | 'transit' | 'bonded';
+  address: string | null;
+  region: string | null;
+  country: string;
+  capacityUnit: string;
+  totalCapacity: number;
+  managerName: string | null;
+  managerContact: string | null;
+  isActive: boolean;
+  liveCapacity?: { occupiedCapacity: number; usedPct: number; nearCapacityAlert: boolean };
+};
+
+export async function apiListWarehouses(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ warehouses: Warehouse[] }>(`/inventory/warehouses${qs ? `?${qs}` : ''}`);
+}
+
+export async function apiCreateWarehouse(data: Partial<Warehouse>) {
+  return request<{ warehouse: Warehouse }>('/inventory/warehouses', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateWarehouse(id: string, data: Partial<Warehouse>) {
+  return request<{ warehouse: Warehouse }>(`/inventory/warehouses/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+// ─── Stock Movements ──────────────────────────────────────────────────────────
+
+export type StockMovement = {
+  _id: string;
+  movementRef: string;
+  movementType: 'INBOUND' | 'OUTBOUND' | 'TRANSFER_OUT' | 'TRANSFER_IN' | 'ADJUSTMENT' | 'STOCK_COUNT' | 'RETURN';
+  stockItemId: string;
+  itemCode: string;
+  itemName: string;
+  warehouseId: string;
+  warehouseName: string;
+  qty: number;
+  qtyBefore: number;
+  qtyAfter: number;
+  unitCost: number;
+  totalCost: number;
+  sourceType: string;
+  sourceRef: string;
+  reason: string | null;
+  notes: string | null;
+  postedBy: { _id: string; fullName: string } | null;
+  postedAt: string;
+};
+
+export async function apiListMovements(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams({ limit: '100', ...params }).toString();
+  return request<{ movements: StockMovement[]; pagination: { total: number; pages: number } }>(`/inventory/movements?${qs}`);
+}
+
+export async function apiCreateMovement(data: {
+  movementType: string;
+  stockItemId: string;
+  qty: number;
+  unitCost?: number;
+  sourceType?: string;
+  sourceRef?: string;
+  reason?: string;
+  notes?: string;
+  countedQty?: number;
+}) {
+  return request<{ movement: StockMovement }>('/inventory/movements', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiCreateTransfer(data: {
+  stockItemId: string;
+  qty: number;
+  destinationWarehouseId: string;
+  notes?: string;
+}) {
+  return request<{ transfer: any }>('/inventory/movements/transfer', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiGetInventorySummary() {
+  return request<{
+    summary: { totalItems: number; totalValue: number; lowStockItems: number; warehouseCount: number };
+    recentMovements: StockMovement[];
+    categories: { _id: string; count: number; totalValue: number; totalQty: number }[];
+  }>('/inventory/summary');
 }
