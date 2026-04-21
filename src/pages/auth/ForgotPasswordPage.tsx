@@ -56,19 +56,28 @@ const ForgotPasswordPage: React.FC = () => {
             <>
               <h1 className="text-2xl font-bold text-t1 mb-1">Reset Password</h1>
               <p className="text-sm text-t3 mb-6">
-                Enter your email and we'll send you reset instructions.
+                Enter your username to receive reset instructions.
               </p>
               <form onSubmit={handleSubmit} className="space-y-3">
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  autoFocus
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm"
-                  placeholder="Enter Email address"
-                />
+                <div className="relative group">
+                  <input
+                    type="text"
+                    name="email"
+                    required
+                    autoFocus
+                    value={email.includes("@") ? email.split("@")[0] : email}
+                    onChange={(e) => {
+                      const val = e.target.value.split("@")[0].trim();
+                      setEmail(val ? `${val}@tekaccess.rw` : "");
+                      setSubmitError("");
+                    }}
+                    className="w-full pl-4 pr-[110px] py-3 rounded-xl border border-border bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm"
+                    placeholder="Enter Username"
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-t3 text-sm font-medium pointer-events-none group-focus-within:text-accent transition-colors">
+                    @tekaccess.rw
+                  </div>
+                </div>
                 {submitError && <p className="text-xs text-red-500">{submitError}</p>}
                 <button
                   type="submit"

@@ -18,8 +18,8 @@ const LoginPage: React.FC = () => {
 
   const handleEmailContinue = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.toLowerCase().endsWith("@tekaccess.rw")) {
-      setEmailError("Only @tekaccess.rw email addresses are allowed.");
+    if (!email || email === "@tekaccess.rw") {
+      setEmailError("Please enter your work email.");
       return;
     }
     setEmailError("");
@@ -71,19 +71,26 @@ const LoginPage: React.FC = () => {
                 onSubmit={handleEmailContinue}
                 className="space-y-3"
               >
-                <div>
+                <div className="relative group">
                   <input
-                    type="email"
+                    type="text"
                     name="email"
                     required
                     autoFocus
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm"
-                    placeholder="Enter Email address"
+                    value={email.includes("@") ? email.split("@")[0] : email}
+                    onChange={(e) => {
+                      const val = e.target.value.split("@")[0].trim();
+                      setEmail(val ? `${val}@tekaccess.rw` : "");
+                      setEmailError("");
+                    }}
+                    className="w-full pl-4 pr-[110px] py-3 rounded-xl border border-border bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm"
+                    placeholder="Enter Work email"
                   />
-                  {emailError && <p className="text-xs text-red-500 mt-1.5">{emailError}</p>}
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-t3 text-sm font-medium pointer-events-none group-focus-within:text-accent transition-colors">
+                    @tekaccess.rw
+                  </div>
                 </div>
+                {emailError && <p className="text-xs text-red-500 mt-1.5">{emailError}</p>}
                 <button
                   type="submit"
                   className="w-full py-3 bg-accent hover:bg-accent-h text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 text-sm"
@@ -102,11 +109,11 @@ const LoginPage: React.FC = () => {
                 className="space-y-3"
               >
                 <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-surface text-sm">
-                  <span className="text-t2 truncate text-sm">{email}</span>
+                  <span className="text-t2 truncate text-sm font-medium">{email}</span>
                   <button
                     type="button"
                     onClick={() => { setStep("email"); setPassword(""); }}
-                    className="text-accent hover:text-accent-h font-medium ml-3 shrink-0 text-sm"
+                    className="text-accent hover:text-accent-h font-semibold ml-3 shrink-0 text-sm"
                   >
                     Edit
                   </button>
