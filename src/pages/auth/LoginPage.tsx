@@ -84,7 +84,7 @@ const LoginPage: React.FC = () => {
                       setEmailError("");
                     }}
                     className="w-full pl-4 pr-[110px] py-3 rounded-xl border border-border bg-surface text-t1 placeholder-t3 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm"
-                    placeholder="Enter Work email"
+                    placeholder="Enter work email"
                   />
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 text-t3 text-sm font-medium pointer-events-none group-focus-within:text-accent transition-colors">
                     @tekaccess.rw
