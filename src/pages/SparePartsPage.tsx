@@ -1,518 +1,364 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
-  Plus, MagnifyingGlass, DownloadSimple, Funnel, DotsThree,
-  ListDashes, ChartBar, Eye, CaretDown,
-  Warning, Package, TrendUp
+  Plus, MagnifyingGlass, Gear, Warning, CheckCircle,
+  PencilSimple, Eye, Spinner,
 } from '@phosphor-icons/react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
-} from 'recharts';
-import { spareParts, partsStockByCategory, SparePart, StockLevel } from '../data/procurement';
+import { apiGetSparePartsSummary, apiListSpareParts, apiCreateSparePart, apiUpdateSparePart, SparePart } from '../lib/api';
 import DocumentSidePanel from '../components/DocumentSidePanel';
 
-type ViewMode = 'table' | 'cards' | 'bar';
-type ActiveTab = 'Parts Inventory' | 'Low Stock / Reorder Alerts';
+const CATEGORIES = ['engine', 'transmission', 'brakes', 'suspension', 'electrical', 'tyres_wheels', 'body_panel', 'filters', 'belts_hoses', 'fluids_lubricants', 'other'];
+const UNITS = ['units', 'litres', 'kg', 'metres', 'boxes'];
+const CURRENCIES = ['USD', 'RWF', 'EUR'];
 
-const STOCK_LEVEL_CONFIG: Record<StockLevel, { style: string; bg: string }> = {
-  Critical: { style: 'bg-red-50 text-red-700 border-red-200', bg: 'bg-red-500' },
-  Low: { style: 'bg-amber-50 text-amber-700 border-amber-200', bg: 'bg-amber-500' },
-  Normal: { style: 'bg-green-50 text-green-700 border-green-200', bg: 'bg-green-500' },
-  Overstocked: { style: 'bg-accent-glow text-accent border-blue-200', bg: 'bg-accent-glow0' },
+const CAT_STYLES: Record<string, string> = {
+  engine:           'bg-rose-500/10 text-rose-400 border-rose-500/20',
+  transmission:     'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  brakes:           'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  suspension:       'bg-teal-500/10 text-teal-400 border-teal-500/20',
+  electrical:       'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+  tyres_wheels:     'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  filters:          'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  fluids_lubricants:'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  other:            'bg-surface text-t3 border-border',
 };
 
-function formatRWF(v: number): string {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M RWF`;
-  return `${(v / 1_000).toFixed(0)}K RWF`;
+type ModalMode = 'new' | 'edit' | 'view' | null;
+
+interface DraftPart {
+  partCode: string; name: string; description: string; category: string;
+  unit: string; onHandQty: number; reorderPoint: number; reorderQty: number;
+  weightedAvgCost: number; currency: string;
+  compatibleTruckModels: string; notes: string;
 }
 
-function StockBar({ part }: { part: SparePart }) {
-  const pct = Math.min((part.stockQuantity / part.maxStock) * 100, 100);
-  const cfg = STOCK_LEVEL_CONFIG[part.stockLevel];
-  return (
-    <div className="flex items-center gap-2 w-full">
-      <div className="flex-1 bg-surface rounded-full h-2">
-        <div className={`h-2 rounded-full ${cfg.bg}`} style={{ width: `${pct}%` }} />
-      </div>
-      <span className="text-xs text-t2 w-8 text-right shrink-0">{part.stockQuantity}</span>
-    </div>
-  );
+function emptyDraft(): DraftPart {
+  return {
+    partCode: '', name: '', description: '', category: 'engine',
+    unit: 'units', onHandQty: 0, reorderPoint: 5, reorderQty: 10,
+    weightedAvgCost: 0, currency: 'USD',
+    compatibleTruckModels: '', notes: '',
+  };
 }
 
 export default function SparePartsPage() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('Parts Inventory');
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [search, setMagnifyingGlass] = useState('');
+  const [parts, setParts] = useState<SparePart[]>([]);
+  const [summary, setSummary] = useState({ totalParts: 0, totalValue: 0, lowStock: 0, categories: [] as any[] });
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [alertOnly, setAlertOnly] = useState(false);
   const [selected, setSelected] = useState<SparePart | null>(null);
+  const [modalMode, setModalMode] = useState<ModalMode>(null);
+  const [draft, setDraft] = useState<DraftPart>(emptyDraft());
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const tabs: ActiveTab[] = ['Parts Inventory', 'Low Stock / Reorder Alerts'];
+  const load = useCallback(async () => {
+    setLoading(true);
+    const params: Record<string, string> = { limit: '200' };
+    if (search) params.search = search;
+    if (categoryFilter) params.category = categoryFilter;
+    if (alertOnly) params.alertOnly = 'true';
+    const [pRes, sRes] = await Promise.all([
+      apiListSpareParts(params),
+      apiGetSparePartsSummary(),
+    ]);
+    if (pRes.success) { setParts(pRes.data.parts); setTotal(pRes.data.pagination.total); }
+    if (sRes.success) setSummary(sRes.data.summary);
+    setLoading(false);
+  }, [search, categoryFilter, alertOnly]);
 
-  const filtered = useMemo(() => {
-    const list = activeTab === 'Low Stock / Reorder Alerts'
-      ? spareParts.filter(p => p.stockLevel === 'Critical' || p.stockLevel === 'Low')
-      : spareParts;
-    const q = search.toLowerCase();
-    return list.filter(p =>
-      !search ||
-      p.name.toLowerCase().includes(q) ||
-      p.partNumber.toLowerCase().includes(q) ||
-      p.category.toLowerCase().includes(q) ||
-      p.supplier.toLowerCase().includes(q)
-    );
-  }, [activeTab, search]);
+  useEffect(() => { load(); }, [load]);
 
-  const summary = useMemo(() => ({
-    total: spareParts.length,
-    critical: spareParts.filter(p => p.stockLevel === 'Critical').length,
-    low: spareParts.filter(p => p.stockLevel === 'Low').length,
-    totalValue: spareParts.reduce((sum, p) => sum + p.unitPrice * p.stockQuantity, 0),
-  }), []);
+  function openNew() { setDraft(emptyDraft()); setSelected(null); setError(null); setModalMode('new'); }
 
-  return (
-    <div className="max-w-7xl mx-auto space-y-6">
+  function openEdit(p: SparePart) {
+    setDraft({
+      partCode: p.partCode, name: p.name, description: p.description || '',
+      category: p.category, unit: p.unit, onHandQty: p.onHandQty,
+      reorderPoint: p.reorderPoint, reorderQty: p.reorderQty,
+      weightedAvgCost: p.weightedAvgCost, currency: p.currency,
+      compatibleTruckModels: (p.compatibleTruckModels || []).join(', '), notes: '',
+    });
+    setSelected(p); setError(null); setModalMode('edit');
+  }
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  async function handleSave() {
+    if (!draft.partCode || !draft.name) { setError('Part code and name are required.'); return; }
+    setSaving(true); setError(null);
+    const payload = {
+      ...draft,
+      onHandQty: Number(draft.onHandQty),
+      reorderPoint: Number(draft.reorderPoint),
+      reorderQty: Number(draft.reorderQty),
+      weightedAvgCost: Number(draft.weightedAvgCost),
+      compatibleTruckModels: draft.compatibleTruckModels
+        ? draft.compatibleTruckModels.split(',').map(s => s.trim()).filter(Boolean)
+        : [],
+    };
+    const res = modalMode === 'new'
+      ? await apiCreateSparePart(payload as any)
+      : await apiUpdateSparePart(selected!._id, payload as any);
+    setSaving(false);
+    if (!res.success) { setError((res as any).message || 'Save failed.'); return; }
+    setModalMode(null); load();
+  }
+
+  const inp = 'w-full bg-surface border border-border rounded px-3 py-2 text-sm text-t1';
+
+  const formContent = modalMode !== 'view' ? (
+    <div className="space-y-4 p-4 pb-10">
+      {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 p-2 rounded">{error}</p>}
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-t1">Spare Parts</h1>
-          <p className="text-sm text-t2 mt-0.5">Inventory and reorder management for all spare parts</p>
+          <label className="block text-xs text-t3 mb-1">Part Code *</label>
+          <input className={inp} value={draft.partCode}
+            onChange={e => setDraft(d => ({ ...d, partCode: e.target.value.toUpperCase() }))}
+            placeholder="SPR-ENG-001" disabled={modalMode === 'edit'} />
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent-h transition-colors">
-          <Plus className="w-4 h-4" /> Add Part
+        <div>
+          <label className="block text-xs text-t3 mb-1">Category</label>
+          <select className={inp} value={draft.category} onChange={e => setDraft(d => ({ ...d, category: e.target.value }))}>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c.replace('_', ' ')}</option>)}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs text-t3 mb-1">Name *</label>
+        <input className={inp} value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="Part name" />
+      </div>
+      <div>
+        <label className="block text-xs text-t3 mb-1">Description</label>
+        <textarea rows={2} className={`${inp} resize-none`} value={draft.description}
+          onChange={e => setDraft(d => ({ ...d, description: e.target.value }))} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-t3 mb-1">Unit</label>
+          <select className={inp} value={draft.unit} onChange={e => setDraft(d => ({ ...d, unit: e.target.value }))}>
+            {UNITS.map(u => <option key={u}>{u}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-t3 mb-1">Currency</label>
+          <select className={inp} value={draft.currency} onChange={e => setDraft(d => ({ ...d, currency: e.target.value }))}>
+            {CURRENCIES.map(c => <option key={c}>{c}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="block text-xs text-t3 mb-1">On Hand Qty</label>
+          <input type="number" min={0} className={inp} value={draft.onHandQty}
+            onChange={e => setDraft(d => ({ ...d, onHandQty: Number(e.target.value) }))} />
+        </div>
+        <div>
+          <label className="block text-xs text-t3 mb-1">Reorder Point</label>
+          <input type="number" min={0} className={inp} value={draft.reorderPoint}
+            onChange={e => setDraft(d => ({ ...d, reorderPoint: Number(e.target.value) }))} />
+        </div>
+        <div>
+          <label className="block text-xs text-t3 mb-1">Reorder Qty</label>
+          <input type="number" min={0} className={inp} value={draft.reorderQty}
+            onChange={e => setDraft(d => ({ ...d, reorderQty: Number(e.target.value) }))} />
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs text-t3 mb-1">Unit Cost</label>
+        <input type="number" min={0} className={inp} value={draft.weightedAvgCost}
+          onChange={e => setDraft(d => ({ ...d, weightedAvgCost: Number(e.target.value) }))} />
+      </div>
+      <div>
+        <label className="block text-xs text-t3 mb-1">Compatible Truck Models (comma-separated)</label>
+        <input className={inp} value={draft.compatibleTruckModels}
+          onChange={e => setDraft(d => ({ ...d, compatibleTruckModels: e.target.value }))}
+          placeholder="e.g. Volvo FH16, Mercedes Actros" />
+      </div>
+      <div className="flex justify-end gap-2 pt-2 border-t border-border">
+        <button onClick={() => setModalMode(null)} className="px-4 py-2 text-sm text-t2 hover:text-t1 border border-border rounded">Cancel</button>
+        <button onClick={handleSave} disabled={saving}
+          className="px-4 py-2 text-sm bg-accent text-white rounded hover:bg-accent/80 flex items-center gap-2">
+          {saving && <Spinner className="animate-spin" size={14} />}
+          {modalMode === 'new' ? 'Create Part' : 'Save Changes'}
         </button>
       </div>
+    </div>
+  ) : null;
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+  const viewContent = modalMode === 'view' && selected ? (
+    <div className="space-y-5 p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="font-mono text-xs text-t3">{selected.partCode}</p>
+          <h3 className="text-base font-semibold text-t1 mt-0.5">{selected.name}</h3>
+          <span className={`inline-block text-xs border rounded px-2 py-0.5 mt-1 ${CAT_STYLES[selected.category] ?? ''}`}>
+            {selected.category.replace('_', ' ')}
+          </span>
+        </div>
+        {selected.belowReorderPoint ? (
+          <span className="flex items-center gap-1 text-xs text-rose-400 border border-rose-500/20 bg-rose-500/10 rounded px-2 py-0.5">
+            <Warning size={11} /> Low Stock
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-xs text-emerald-400 border border-emerald-500/20 bg-emerald-500/10 rounded px-2 py-0.5">
+            <CheckCircle size={11} /> OK
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-sm">
         {[
-          { label: 'Total Parts', value: summary.total, icon: Package, color: 'text-accent', bg: 'bg-accent-glow' },
-          { label: 'Critical Stock', value: summary.critical, icon: Warning, color: 'text-red-600', bg: 'bg-red-50' },
-          { label: 'Low Stock', value: summary.low, icon: Warning, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Stock Value', value: formatRWF(summary.totalValue), icon: TrendUp, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-        ].map(card => (
-          <div key={card.label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
-            <div className={`p-2.5 rounded-xl ${card.bg}`}>
-              <card.icon className={`w-5 h-5 ${card.color}`} />
-            </div>
-            <div>
-              <p className="text-xs text-t2 font-medium uppercase tracking-wide">{card.label}</p>
-              <p className="text-xl font-bold text-t1 mt-0.5">{card.value}</p>
-            </div>
+          ['On Hand', `${selected.onHandQty.toLocaleString()} ${selected.unit}`],
+          ['Available', `${selected.availableQty.toLocaleString()} ${selected.unit}`],
+          ['Reorder Point', `${selected.reorderPoint.toLocaleString()} ${selected.unit}`],
+          ['Reorder Qty', `${selected.reorderQty.toLocaleString()} ${selected.unit}`],
+          ['Unit Cost', `${selected.weightedAvgCost.toLocaleString()} ${selected.currency}`],
+          ['Total Value', `${selected.totalStockValue.toLocaleString()} ${selected.currency}`],
+        ].map(([k, v]) => (
+          <div key={k}>
+            <p className="text-xs text-t3">{k}</p>
+            <p className="font-medium text-t1">{v}</p>
           </div>
         ))}
       </div>
 
-      {/* Alert Banner */}
-      {summary.critical > 0 && (
-        <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-          <Warning className="w-5 h-5 text-red-500 shrink-0" />
-          <p className="text-sm text-red-700">
-            <strong>{summary.critical} part{summary.critical > 1 ? 's' : ''} reached critical stock levels</strong> — immediate reorder required.
-          </p>
-          <button className="ml-auto text-xs font-semibold text-red-700 underline hover:no-underline shrink-0">
-            View Alerts
-          </button>
+      {selected.compatibleTruckModels.length > 0 && (
+        <div>
+          <p className="text-xs text-t3 mb-1">Compatible Models</p>
+          <div className="flex flex-wrap gap-1">
+            {selected.compatibleTruckModels.map(m => (
+              <span key={m} className="text-xs bg-surface border border-border rounded px-2 py-0.5 text-t2">{m}</span>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Main Panel */}
-      <div className="bg-card rounded-xl border border-border">
-        {/* Tabs */}
-        <div className="flex items-center justify-between border-b border-border px-4">
-          <nav className="-mb-px flex gap-0 overflow-x-auto scrollbar-hide">
-            {tabs.map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`whitespace-nowrap py-3.5 px-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab
-                    ? 'border-accent text-accent'
-                    : 'border-transparent text-t2 hover:text-t2'
-                }`}
-              >
-                {tab}
-                {tab === 'Low Stock / Reorder Alerts' && (summary.critical + summary.low) > 0 && (
-                  <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-xs font-bold">
-                    {summary.critical + summary.low}
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
+      <div className="flex gap-2 pt-2 border-t border-border">
+        <button onClick={() => openEdit(selected)}
+          className="flex-1 flex items-center justify-center gap-2 py-2 text-sm border border-border rounded hover:bg-surface text-t2">
+          <PencilSimple size={14} /> Edit
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  return (
+    <div className="flex flex-col h-full bg-bg">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+        <div>
+          <h1 className="text-xl font-semibold text-t1">Spare Parts</h1>
+          <p className="text-sm text-t3 mt-0.5">{total} parts · {summary.lowStock} low stock alerts</p>
         </div>
+        <button onClick={openNew}
+          className="flex items-center gap-2 px-4 py-2 bg-accent text-white text-sm rounded hover:bg-accent/80">
+          <Plus size={16} /> New Part
+        </button>
+      </div>
 
-        {/* Funnel row */}
-        <div className="flex flex-wrap items-center gap-3 p-4">
-          <div className="relative flex-1 min-w-[180px]">
-            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-t3" />
-            <input
-              type="text"
-              placeholder="MagnifyingGlass parts..."
-              value={search}
-              onChange={e => setMagnifyingGlass(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-border rounded-xl text-sm outline-none focus:border-accent focus:ring-1 focus:ring-[#1e3a8a]"
-            />
+      {/* KPI */}
+      <div className="grid grid-cols-2 gap-3 px-6 py-4 shrink-0 sm:grid-cols-4">
+        {[
+          { label: 'Total Parts', value: summary.totalParts, color: 'text-accent' },
+          { label: 'Total Value', value: `${(summary.totalValue / 1000).toFixed(0)}K ${parts[0]?.currency ?? 'USD'}`, color: 'text-emerald-400' },
+          { label: 'Low Stock', value: summary.lowStock, color: 'text-rose-400' },
+          { label: 'Categories', value: summary.categories.length, color: 'text-purple-400' },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="bg-surface border border-border rounded-lg p-4">
+            <p className="text-xs text-t3">{label}</p>
+            <p className={`text-2xl font-bold ${color}`}>{value}</p>
           </div>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-sm text-t2 hover:bg-surface">
-            <Funnel className="w-4 h-4" /> Funnel <CaretDown className="w-3.5 h-3.5" />
-          </button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-sm text-t2 hover:bg-surface">
-            <DownloadSimple className="w-4 h-4" /> Export
-          </button>
+        ))}
+      </div>
 
-          {/* View toggle */}
-          <div className="flex border border-border rounded-xl overflow-hidden ml-auto">
-            {([
-              { mode: 'table', icon: ListDashes, label: 'Table' },
-              { mode: 'cards', icon: Package, label: 'Cards' },
-              { mode: 'bar', icon: ChartBar, label: 'By Category' },
-            ] as { mode: ViewMode; icon: React.ElementType; label: string }[]).map(v => (
-              <button
-                key={v.mode}
-                onClick={() => setViewMode(v.mode)}
-                title={v.label}
-                className={`px-3 py-2 flex items-center gap-1.5 text-xs font-medium transition-colors ${
-                  viewMode === v.mode
-                    ? 'bg-accent text-white'
-                    : 'bg-card text-t2 hover:bg-surface'
-                }`}
-              >
-                <v.icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{v.label}</span>
-              </button>
-            ))}
-          </div>
+      <div className="flex items-center gap-3 px-6 pb-3 shrink-0">
+        <div className="relative flex-1 max-w-sm">
+          <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+          <input className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded text-sm text-t1 placeholder:text-t3"
+            placeholder="Search parts..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
+        <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
+          className="bg-surface border border-border rounded px-3 py-2 text-sm text-t1">
+          <option value="">All Categories</option>
+          {CATEGORIES.map(c => <option key={c} value={c}>{c.replace('_', ' ')}</option>)}
+        </select>
+        <label className="flex items-center gap-2 text-sm text-t2 cursor-pointer">
+          <input type="checkbox" checked={alertOnly} onChange={e => setAlertOnly(e.target.checked)} />
+          Low stock only
+        </label>
+      </div>
 
-        {/* ── TABLE VIEW ─────────────────────────── */}
-        {viewMode === 'table' && (
-          <OverlayScrollbarsComponent
-            options={{ scrollbars: { autoHide: 'scroll' } }}
-            defer
-          >
-            <table className="min-w-full divide-y divide-border-s">
-              <thead className="bg-surface">
-                <tr>
-                  {['Part #', 'Name', 'Category', 'Supplier', 'Unit Price', 'Stock Level', 'In Stock', 'Min', 'Location', 'Condition', ''].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-card divide-y divide-border-s">
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={11} className="px-4 py-16 text-center text-t3 text-sm">
-                      No parts found
-                    </td>
+      <div className="flex flex-1 min-h-0 px-6 pb-6 gap-4">
+        <div className="flex-1 min-w-0">
+          {loading ? (
+            <div className="flex items-center justify-center h-48"><Spinner size={28} className="animate-spin text-accent" /></div>
+          ) : parts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-t3">
+              <Gear size={40} className="mb-2 opacity-40" /><p>No spare parts found.</p>
+            </div>
+          ) : (
+            <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'scroll' } }} className="h-full">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-t3">
+                    {['Code', 'Name', 'Category', 'On Hand', 'Reorder Point', 'Unit Cost', 'Total Value', 'Status', ''].map(h => (
+                      <th key={h} className="text-left py-2 pr-3 font-medium">{h}</th>
+                    ))}
                   </tr>
-                ) : (
-                  filtered.map(p => (
-                    <tr key={p.id} className="hover:bg-surface transition-colors cursor-pointer" onClick={() => setSelected(p)}>
-                      <td className="px-4 py-3.5 text-sm font-mono text-accent whitespace-nowrap">{p.partNumber}</td>
-                      <td className="px-4 py-3.5">
-                        <p className="text-sm font-semibold text-t1">{p.name}</p>
-                        <p className="text-xs text-t3 mt-0.5 line-clamp-1">{p.description}</p>
-                      </td>
-                      <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">{p.category}</td>
-                      <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">{p.supplier}</td>
-                      <td className="px-4 py-3.5 text-sm font-semibold text-t1 whitespace-nowrap">{formatRWF(p.unitPrice)}</td>
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STOCK_LEVEL_CONFIG[p.stockLevel].style}`}>
-                          {p.stockLevel}
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {parts.map(p => (
+                    <tr key={p._id} className="hover:bg-surface/50 cursor-pointer"
+                      onClick={() => { setSelected(p); setModalMode('view'); }}>
+                      <td className="py-3 pr-3 font-mono text-xs text-accent">{p.partCode}</td>
+                      <td className="py-3 pr-3 font-medium text-t1">{p.name}</td>
+                      <td className="py-3 pr-3">
+                        <span className={`text-xs border rounded px-1.5 py-0.5 ${CAT_STYLES[p.category] ?? ''}`}>
+                          {p.category.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 min-w-[120px]">
-                        <StockBar part={p} />
+                      <td className="py-3 pr-3 text-t1 font-medium">{p.onHandQty.toLocaleString()} <span className="text-xs text-t3">{p.unit}</span></td>
+                      <td className="py-3 pr-3 text-t2">{p.reorderPoint.toLocaleString()} {p.unit}</td>
+                      <td className="py-3 pr-3 text-t2">{p.weightedAvgCost.toLocaleString()} <span className="text-xs text-t3">{p.currency}</span></td>
+                      <td className="py-3 pr-3 font-bold text-t1">{p.totalStockValue.toLocaleString()}</td>
+                      <td className="py-3 pr-3">
+                        {p.belowReorderPoint ? (
+                          <span className="flex items-center gap-1 text-xs text-rose-400 border border-rose-500/20 bg-rose-500/10 rounded px-2 py-0.5">
+                            <Warning size={10} /> Low
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-xs text-emerald-400 border border-emerald-500/20 bg-emerald-500/10 rounded px-2 py-0.5">
+                            <CheckCircle size={10} /> OK
+                          </span>
+                        )}
                       </td>
-                      <td className="px-4 py-3.5 text-sm text-t2">{p.minStock}</td>
-                      <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">{p.location}</td>
-                      <td className="px-4 py-3.5 text-sm text-t2">{p.condition}</td>
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1">
-                          <button onClick={e => { e.stopPropagation(); setSelected(p); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded transition-colors">
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button onClick={e => e.stopPropagation()} className="p-1.5 text-t3 hover:text-t2 hover:bg-surface rounded transition-colors">
-                            <DotsThree className="w-4 h-4" />
-                          </button>
+                      <td className="py-3">
+                        <div className="flex gap-1">
+                          <button onClick={e => { e.stopPropagation(); setSelected(p); setModalMode('view'); }}
+                            className="p-1 hover:text-t1 text-t3"><Eye size={14} /></button>
+                          <button onClick={e => { e.stopPropagation(); openEdit(p); }}
+                            className="p-1 hover:text-t1 text-t3"><PencilSimple size={14} /></button>
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </OverlayScrollbarsComponent>
-        )}
+                  ))}
+                </tbody>
+              </table>
+            </OverlayScrollbarsComponent>
+          )}
+        </div>
 
-        {/* ── CARDS VIEW ─────────────────────────── */}
-        {viewMode === 'cards' && (
-          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map(p => (
-              <div key={p.id} onClick={() => setSelected(p)}
-                className="border border-border rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer">
-                <div className="flex items-start justify-between mb-2">
-                  <p className="text-xs font-mono text-accent font-semibold">{p.partNumber}</p>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${STOCK_LEVEL_CONFIG[p.stockLevel].style}`}>
-                    {p.stockLevel}
-                  </span>
-                </div>
-                <h3 className="font-semibold text-t1 leading-tight">{p.name}</h3>
-                <p className="text-xs text-t3 mt-0.5">{p.category}</p>
-                <p className="text-xs text-t2 mt-2 line-clamp-2">{p.description}</p>
-
-                <div className="mt-4 space-y-1">
-                  <div className="flex justify-between text-xs text-t2">
-                    <span>Stock level</span>
-                    <span className={`font-semibold ${p.stockLevel === 'Critical' ? 'text-red-600' : p.stockLevel === 'Low' ? 'text-amber-600' : 'text-green-600'}`}>
-                      {p.stockQuantity} / {p.maxStock}
-                    </span>
-                  </div>
-                  <StockBar part={p} />
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-border-s flex justify-between text-xs">
-                  <div>
-                    <p className="text-t3">Unit Price</p>
-                    <p className="font-bold text-t1">{formatRWF(p.unitPrice)}</p>
-                  </div>
-                  <div>
-                    <p className="text-t3">Location</p>
-                    <p className="font-bold text-t1">{p.location}</p>
-                  </div>
-                  <div>
-                    <p className="text-t3">Supplier</p>
-                    <p className="font-bold text-t1 truncate max-w-[80px]">{p.supplier.split(' ')[0]}</p>
-                  </div>
-                </div>
-
-                {(p.stockLevel === 'Critical' || p.stockLevel === 'Low') && (
-                  <button className="mt-3 w-full py-1.5 bg-accent text-white text-xs font-medium rounded-xl hover:bg-accent-h transition-colors">
-                    Reorder Now
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ── BAR CHART VIEW ─────────────────────── */}
-        {viewMode === 'bar' && (
-          <div className="p-6">
-            <h3 className="text-sm font-semibold text-t2 mb-1">Stock by Category</h3>
-            <p className="text-xs text-t3 mb-6">Parts count and low stock alerts per category</p>
-            <ResponsiveContainer width="100%" height={360}>
-              <BarChart data={partsStockByCategory} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis dataKey="category" tick={{ fontSize: 11, fill: '#6b7280' }} angle={-20} textAnchor="end" />
-                <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} tickFormatter={v => `${(v / 1_000_000).toFixed(1)}M`} />
-                <Tooltip
-                  formatter={(value: number, name: string) =>
-                    name === 'value' ? [`${(value / 1_000_000).toFixed(2)}M RWF`, 'Stock Value'] : [value, name === 'parts' ? 'Total Parts' : 'Low Stock']
-                  }
-                />
-                <Legend />
-                <Bar yAxisId="left" dataKey="parts" name="Total Parts" fill="#1e3a8a" radius={[4, 4, 0, 0]} />
-                <Bar yAxisId="left" dataKey="lowStock" name="Low Stock" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                <Bar yAxisId="right" dataKey="value" name="value" fill="#93c5fd" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+        {modalMode && (
+          <DocumentSidePanel
+            isOpen={true}
+            onClose={() => setModalMode(null)}
+            title={modalMode === 'new' ? 'New Spare Part' : modalMode === 'edit' ? 'Edit Part' : selected?.name ?? ''}
+            formContent={formContent}
+            previewContent={viewContent}
+          />
         )}
       </div>
-
-      {/* ── Standardized Side Panel ─────────────────────────────────────────── */}
-      <DocumentSidePanel
-        isOpen={!!selected}
-        onClose={() => setSelected(null)}
-        title="Part Specification"
-        currentIndex={selected ? filtered.findIndex(p => p.id === selected.id) + 1 : undefined}
-        totalItems={filtered.length}
-        onPrev={() => {
-          const idx = filtered.findIndex(p => p.id === selected?.id);
-          if (idx > 0) setSelected(filtered[idx - 1]);
-        }}
-        onNext={() => {
-          const idx = filtered.findIndex(p => p.id === selected?.id);
-          if (idx < filtered.length - 1) setSelected(filtered[idx + 1]);
-        }}
-        footerInfo={`Technical sheet last verified on ${selected?.lastRestocked}`}
-        formContent={
-          selected && (
-            <div className="space-y-6 text-t1">
-               <div>
-                <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Inventory Adjustment</label>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-[10px] text-t2 mb-1">Current Stock Quantity</label>
-                    <div className="flex items-center gap-3">
-                      <input type="number" defaultValue={selected.stockQuantity} className="flex-1 px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none focus:border-accent" />
-                      <span className="text-xs text-t3 font-medium">Units</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] text-t2 mb-1">Minimum Level</label>
-                      <input type="number" defaultValue={selected.minStock} className="w-full px-3 py-1.5 border border-border rounded-xl text-xs outline-none focus:border-accent" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-t2 mb-1">Maximum Level</label>
-                      <input type="number" defaultValue={selected.maxStock} className="w-full px-3 py-1.5 border border-border rounded-xl text-xs outline-none focus:border-accent" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-               <div>
-                <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Sourcing & Value</label>
-                <div className="space-y-3">
-                   <div className="relative">
-                    <label className="block text-[10px] text-t2 mb-1">Preferred Supplier</label>
-                    <select defaultValue={selected.supplier} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
-                      <option>{selected.supplier}</option>
-                      <option>Alternative Supplier A</option>
-                      <option>Alternative Supplier B</option>
-                    </select>
-                    <CaretDown className="absolute right-3 bottom-2.5 w-3 h-3 text-t3 pointer-events-none" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-t2 mb-1">Unit Price (RWF)</label>
-                    <input type="number" defaultValue={selected.unitPrice} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs outline-none focus:border-accent" />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Warehouse Placement</label>
-                <div className="flex items-center gap-3 p-3 bg-accent-glow/50 rounded-xl border border-blue-100/50">
-                  <div className="p-2 bg-card rounded-xl shadow-sm"><Package className="w-4 h-4 text-accent" /></div>
-                  <div className="flex-1">
-                    <p className="text-[10px] text-t3 uppercase font-black">Storage Location</p>
-                    <input type="text" defaultValue={selected.location} className="w-full bg-transparent border-none p-0 text-sm font-bold text-t1 outline-none" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-6">
-                 <button className="w-full py-2.5 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent-h shadow-lg shadow-[#1e3a8a]/20 transition-all active:scale-[0.98]">
-                  Update Inventory Record
-                </button>
-              </div>
-            </div>
-          )
-        }
-        previewContent={
-          selected && (
-            <div className="relative font-sans text-t1">
-               {/* Header Header */}
-               <div className="flex justify-between items-start mb-12 border-b-2 border-gray-900 pb-8">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                       <span className="text-2xl font-black text-accent">TEK</span>
-                       <span className="text-2xl font-light text-t1">PARTS</span>
-                    </div>
-                    <p className="text-[10px] text-t3 font-bold uppercase tracking-[0.2em]">Maintenance & Technical Services</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black uppercase text-t3 mb-1">Stock Category</p>
-                    <p className="text-sm font-black text-t1">{selected.category.toUpperCase()}</p>
-                  </div>
-               </div>
-
-               {/* Main Title Section */}
-               <div className="mb-12">
-                   <div className="flex items-baseline gap-4 mb-4">
-                      <h1 className="text-4xl font-black tracking-tighter text-t1 uppercase">{selected.name}</h1>
-                      <span className="text-lg font-mono text-t3">/ {selected.partNumber}</span>
-                   </div>
-                   <div className="flex flex-wrap gap-2">
-                      <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 ${STOCK_LEVEL_CONFIG[selected.stockLevel].style}`}>
-                         Stock level: {selected.stockLevel}
-                      </span>
-                      <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 border-border-s text-t2 bg-surface">
-                         Condition: {selected.condition}
-                      </span>
-                   </div>
-               </div>
-
-               {/* Description Box */}
-               <div className="mb-12 p-8 bg-surface rounded-2xl border border-border-s">
-                  <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-4">Technical Description:</label>
-                  <p className="text-lg font-medium leading-relaxed text-t1">
-                    {selected.description}. Optimized for high-durability environments and industrial usage.
-                  </p>
-               </div>
-
-               {/* Technical Specs Grid */}
-               <div className="grid grid-cols-2 gap-16 mb-12 px-2">
-                  <div>
-                    <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-6 border-l-4 border-accent pl-3">Inventory Dynamics</label>
-                    <div className="space-y-6">
-                       <div className="flex justify-between items-end border-b border-border-s pb-2">
-                          <span className="text-xs font-bold text-t2">Current Balance</span>
-                          <span className="text-xl font-black text-t1">{selected.stockQuantity} Units</span>
-                       </div>
-                       <div className="flex justify-between items-end border-b border-border-s pb-2">
-                          <span className="text-xs font-bold text-t2">Unit Acquisition Cost</span>
-                          <span className="text-sm font-bold text-t1">{formatRWF(selected.unitPrice)}</span>
-                       </div>
-                       <div className="flex justify-between items-end border-b border-border-s pb-2">
-                          <span className="text-xs font-bold text-t2">Total Asset Value</span>
-                          <span className="text-sm font-bold text-accent">{formatRWF(selected.unitPrice * selected.stockQuantity)}</span>
-                       </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-6 border-l-4 border-gray-900 pl-3">Sourcing Profile</label>
-                    <div className="space-y-6">
-                       <div className="flex justify-between items-end border-b border-border-s pb-2">
-                          <span className="text-xs font-bold text-t2">Primary Supplier</span>
-                          <span className="text-sm font-bold text-t1 truncate max-w-[120px]">{selected.supplier}</span>
-                       </div>
-                       <div className="flex justify-between items-end border-b border-border-s pb-2">
-                          <span className="text-xs font-bold text-t2">Shelving Zone</span>
-                          <span className="text-sm font-bold text-t1">{selected.location}</span>
-                       </div>
-                       <div className="flex justify-between items-end border-b border-border-s pb-2">
-                          <span className="text-xs font-bold text-t2">Safety Stock Min.</span>
-                          <span className="text-sm font-bold text-red-500">{selected.minStock} Units</span>
-                       </div>
-                    </div>
-                  </div>
-               </div>
-
-               {/* Compatibility Checklist */}
-               <div className="mb-12">
-                  <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-6 border-l-4 border-amber-500 pl-3">Equipment Compatibility Matrix</label>
-                  <div className="grid grid-cols-2 gap-4">
-                     {selected.compatible.map((item, i) => (
-                       <div key={i} className="flex items-center gap-3 p-3 bg-amber-50/30 rounded-xl border border-amber-100/50">
-                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                          <span className="text-xs font-bold text-amber-900 uppercase tracking-tight">{item}</span>
-                       </div>
-                     ))}
-                  </div>
-               </div>
-
-               {/* Footer / Auth */}
-               <div className="mt-20 flex justify-between items-end py-8 border-t border-border-s">
-                  <div className="flex items-center gap-2">
-                     <Warning className="w-4 h-4 text-t3" />
-                     <span className="text-[10px] text-t3 font-medium">Auto-generated technical manifest ID TP-{Math.floor(Math.random()*9000)+1000}</span>
-                  </div>
-                  <div className="text-right">
-                     <p className="text-[10px] font-black uppercase text-t3 mb-2">Technical Approval</p>
-                     <div className="h-0.5 w-32 bg-gray-900 ml-auto" />
-                  </div>
-               </div>
-            </div>
-          )
-        }
-      />
     </div>
   );
 }

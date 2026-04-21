@@ -19,10 +19,15 @@ import PurchaseOrdersPage from "./pages/PurchaseOrdersPage";
 import SuppliersPage from "./pages/SuppliersPage";
 import ShipmentsPage from "./pages/ShipmentsPage";
 import SparePartsPage from "./pages/SparePartsPage";
+import ContractsPage from "./pages/operations/ContractsPage";
+import DeliveriesPage from "./pages/operations/DeliveriesPage";
+import SitesPage from "./pages/operations/SitesPage";
+import ClientsPage from "./pages/operations/ClientsPage";
 import StockItemsPage from "./pages/inventory/StockItemsPage";
 import WarehousesPage from "./pages/inventory/WarehousesPage";
 import MovementsPage from "./pages/inventory/MovementsPage";
 import StockCountsPage from "./pages/inventory/StockCountsPage";
+import ProcurementReportsPage from "./pages/ProcurementReportsPage";
 
 export const rootRoute = createRootRoute({
   component: RootLayout,
@@ -103,6 +108,37 @@ const sparePartsRoute = createRoute({
   component: SparePartsPage,
 });
 
+const procurementReportsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/procurement/reports",
+  component: ProcurementReportsPage,
+});
+
+// ── Explicit Operations Routes ──────────────────────────────────────────────
+const contractsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/operations/contracts",
+  component: ContractsPage,
+});
+
+const deliveriesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/operations/deliveries",
+  component: DeliveriesPage,
+});
+
+const sitesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/operations/sites",
+  component: SitesPage,
+});
+
+const opClientsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/operations/clients",
+  component: ClientsPage,
+});
+
 // ── Explicit Inventory Routes ───────────────────────────────────────────────
 const stockItemsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -158,6 +194,12 @@ const routeTree = rootRoute.addChildren([
   suppliersRoute,
   shipmentsRoute,
   sparePartsRoute,
+  procurementReportsRoute,
+  // Operations explicit pages
+  contractsRoute,
+  deliveriesRoute,
+  sitesRoute,
+  opClientsRoute,
   // Inventory explicit pages
   stockItemsRoute,
   warehousesRoute,

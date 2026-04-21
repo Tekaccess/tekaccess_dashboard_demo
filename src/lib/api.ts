@@ -293,6 +293,105 @@ export async function apiDeletePurchaseOrder(id: string) {
   return request(`/procurement/purchase-orders/${id}`, { method: 'DELETE' });
 }
 
+export async function apiGetProcurementSummary() {
+  return request<{
+    summary: { activePOs: number; draftPOs: number; activePoValue: number; activeSuppliers: number; shipmentsInTransit: number; shipmentsAtCustoms: number; sparePartAlerts: number };
+    poByStatus: { _id: string; count: number; value: number }[];
+  }>('/procurement/summary');
+}
+
+export async function apiUpdateSupplier(id: string, data: Partial<Supplier>) {
+  return request<{ supplier: Supplier }>(`/procurement/suppliers/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+// Shipments
+export type Shipment = {
+  _id: string;
+  shipmentRef: string;
+  poId: string;
+  poRef: string;
+  supplierId: string;
+  supplierName: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  estimatedValue: number | null;
+  currency: string;
+  mode: 'road' | 'sea' | 'air' | 'rail' | 'multimodal';
+  carrierName: string | null;
+  carrierRef: string | null;
+  originLocation: string;
+  destinationLocation: string;
+  destinationSiteName: string | null;
+  dispatchedAt: string;
+  estimatedArrivalDate: string;
+  actualArrivalDate: string | null;
+  status: 'in_transit' | 'at_customs' | 'out_for_delivery' | 'received' | 'delayed' | 'lost' | 'cancelled';
+  notes: string | null;
+};
+
+export async function apiGetShipmentsSummary() {
+  return request<{ summary: { inTransit: number; atCustoms: number; received: number; delayed: number; overdue: number } }>(
+    '/procurement/shipments/summary'
+  );
+}
+
+export async function apiListShipments(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ shipments: Shipment[]; pagination: { total: number; pages: number; page: number; limit: number } }>(
+    `/procurement/shipments${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function apiCreateShipment(data: Partial<Shipment>) {
+  return request<{ shipment: Shipment }>('/procurement/shipments', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateShipment(id: string, data: Partial<Shipment>) {
+  return request<{ shipment: Shipment }>(`/procurement/shipments/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+// Spare Parts
+export type SparePart = {
+  _id: string;
+  partCode: string;
+  name: string;
+  description: string | null;
+  category: string;
+  unit: string;
+  onHandQty: number;
+  availableQty: number;
+  reorderPoint: number;
+  reorderQty: number;
+  weightedAvgCost: number;
+  currency: string;
+  totalStockValue: number;
+  belowReorderPoint: boolean;
+  compatibleTruckModels: string[];
+  isActive: boolean;
+};
+
+export async function apiGetSparePartsSummary() {
+  return request<{ summary: { totalParts: number; totalValue: number; lowStock: number; categories: { _id: string; count: number; totalValue: number }[] } }>(
+    '/procurement/spare-parts/summary'
+  );
+}
+
+export async function apiListSpareParts(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ parts: SparePart[]; pagination: { total: number; pages: number } }>(
+    `/procurement/spare-parts${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function apiCreateSparePart(data: Partial<SparePart>) {
+  return request<{ part: SparePart }>('/procurement/spare-parts', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateSparePart(id: string, data: Partial<SparePart>) {
+  return request<{ part: SparePart }>(`/procurement/spare-parts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
 // ─── Finance ──────────────────────────────────────────────────────────────────
 
 export type TaxRate = {
@@ -349,7 +448,10 @@ export type Project = {
   status: string;
   budget: number | null;
   currency: string;
+  startDate: string | null;
+  endDate: string | null;
   managerName: string | null;
+  notes: string | null;
 };
 
 export type Client = {
@@ -365,9 +467,99 @@ export type Client = {
   region: string | null;
   country: string;
   currency: string;
+  paymentTermsDays: number;
+  creditLimit: number | null;
   isActive: boolean;
+  liveStats?: {
+    activeContracts: number;
+    totalDeliveries: number;
+    avgSatisfactionRating: number | null;
+  };
 };
 
+export type ContractLine = {
+  lineRef: string;
+  materialDescription: string;
+  unit: string;
+  committedQty: number;
+  deliveredQty: number;
+  unitPrice: number;
+  lineValue: number;
+  deliveryDestination: string | null;
+};
+
+export type OperationsContract = {
+  _id: string;
+  contractRef: string;
+  title: string;
+  clientId: string | null;
+  clientName: string;
+  contractLines: ContractLine[];
+  totalCommittedTons: number;
+  totalContractValue: number;
+  currency: string;
+  pricePerTon: number | null;
+  startDate: string;
+  endDate: string;
+  status: string;
+  deliveryProgress: {
+    deliveredTons: number;
+    remainingTons: number | null;
+    pctComplete: number;
+    lastDeliveryAt: string | null;
+    tripCount: number;
+  };
+  accountManagerName: string | null;
+  notes: string | null;
+  createdAt: string;
+};
+
+export type Delivery = {
+  _id: string;
+  deliveryRef: string;
+  tripRef: string;
+  contractRef: string;
+  contractId: string;
+  truckPlate: string;
+  driverName: string;
+  clientName: string;
+  offloadingSiteName: string;
+  plannedTons: number;
+  reportedTons: number | null;
+  confirmedTons: number | null;
+  tonVariance: number | null;
+  deliveryDate: string;
+  confirmedAt: string | null;
+  status: 'pending_confirmation' | 'confirmed' | 'disputed' | 'rejected';
+  disputeReason: string | null;
+  clientSatisfaction: { rating: number | null; comment: string | null } | null;
+  confirmedBy: { _id: string; fullName: string } | null;
+  notes: string | null;
+};
+
+export type Site = {
+  _id: string;
+  siteCode: string;
+  name: string;
+  siteType: ('loading' | 'offloading' | 'depot' | 'workshop')[];
+  address: string | null;
+  region: string | null;
+  country: string;
+  contactName: string | null;
+  contactPhone: string | null;
+  truckCapacity: number | null;
+  isActive: boolean;
+  liveStatus: {
+    isActive: boolean;
+    trucksWaiting: number;
+    trucksLoading: number;
+    trucksOffloading: number;
+    loadsProcessedToday: number;
+    lastActivityAt: string | null;
+  };
+};
+
+// Projects
 export async function apiListProjects(search?: string) {
   const params = new URLSearchParams();
   if (search) params.set('search', search);
@@ -375,12 +567,14 @@ export async function apiListProjects(search?: string) {
 }
 
 export async function apiCreateProject(data: Partial<Project>) {
-  return request<{ project: Project }>('/operations/projects', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  return request<{ project: Project }>('/operations/projects', { method: 'POST', body: JSON.stringify(data) });
 }
 
+export async function apiUpdateProject(id: string, data: Partial<Project>) {
+  return request<{ project: Project }>(`/operations/projects/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+// Clients
 export async function apiListClients(search?: string) {
   const params = new URLSearchParams();
   if (search) params.set('search', search);
@@ -388,10 +582,82 @@ export async function apiListClients(search?: string) {
 }
 
 export async function apiCreateClient(data: Partial<Client>) {
-  return request<{ client: Client }>('/operations/clients', {
-    method: 'POST',
-    body: JSON.stringify(data),
+  return request<{ client: Client }>('/operations/clients', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateClient(id: string, data: Partial<Client>) {
+  return request<{ client: Client }>(`/operations/clients/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+// Contracts
+export async function apiGetContractsSummary() {
+  return request<{
+    summary: { active: number; draft: number; completed: number; disputed: number; totalActiveValue: number; totalActiveTons: number };
+    nearingDeadline: OperationsContract[];
+  }>('/operations/contracts/summary');
+}
+
+export async function apiListContracts(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ contracts: OperationsContract[]; pagination: { total: number; pages: number; page: number; limit: number } }>(
+    `/operations/contracts${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function apiGetContractById(id: string) {
+  return request<{ contract: OperationsContract }>(`/operations/contracts/${id}`);
+}
+
+export async function apiCreateContract(data: Partial<OperationsContract> & { contractLines: Partial<ContractLine>[] }) {
+  return request<{ contract: OperationsContract }>('/operations/contracts', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateContract(id: string, data: Partial<OperationsContract>) {
+  return request<{ contract: OperationsContract }>(`/operations/contracts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+// Deliveries
+export async function apiGetDeliveriesSummary() {
+  return request<{ summary: { pendingConfirmation: number; confirmed: number; disputed: number; tonsToday: number; tonsThisMonth: number } }>(
+    '/operations/deliveries/summary'
+  );
+}
+
+export async function apiListDeliveries(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ deliveries: Delivery[]; pagination: { total: number; pages: number; page: number; limit: number } }>(
+    `/operations/deliveries${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function apiCreateDelivery(data: Partial<Delivery>) {
+  return request<{ delivery: Delivery }>('/operations/deliveries', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiConfirmDelivery(id: string, confirmedTons: number, notes?: string) {
+  return request<{ delivery: Delivery }>(`/operations/deliveries/${id}/confirm`, {
+    method: 'PATCH', body: JSON.stringify({ confirmedTons, notes }),
   });
+}
+
+export async function apiDisputeDelivery(id: string, disputeReason: string) {
+  return request<{ delivery: Delivery }>(`/operations/deliveries/${id}/dispute`, {
+    method: 'PATCH', body: JSON.stringify({ disputeReason }),
+  });
+}
+
+// Sites
+export async function apiListSites(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ sites: Site[] }>(`/operations/sites${qs ? `?${qs}` : ''}`);
+}
+
+export async function apiCreateSite(data: Partial<Site>) {
+  return request<{ site: Site }>('/operations/sites', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateSite(id: string, data: Partial<Site>) {
+  return request<{ site: Site }>(`/operations/sites/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
 // ─── Inventory ────────────────────────────────────────────────────────────────

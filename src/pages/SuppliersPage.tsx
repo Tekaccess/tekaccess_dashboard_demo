@@ -1,544 +1,332 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
-  Plus, MagnifyingGlass, DownloadSimple, Funnel, DotsThree,
-  ListDashes, ChartBar, TrendUp, CaretDown,
-  Star, Eye, MapPin, Phone, Envelope, Trophy
+  Plus, MagnifyingGlass, Handshake, PencilSimple, Eye,
+  Spinner, Phone, Envelope, Globe,
 } from '@phosphor-icons/react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis
-} from 'recharts';
-import { suppliers, supplierPerformance, Supplier, SupplierStatus } from '../data/procurement';
+import { apiListSuppliers, apiCreateSupplier, apiUpdateSupplier, Supplier } from '../lib/api';
 import DocumentSidePanel from '../components/DocumentSidePanel';
 
-type ViewMode = 'table' | 'cards' | 'bar' | 'radar';
-type ActiveTab = 'All Suppliers' | 'Performance & Ranking' | 'Payment Status';
+const SUPPLIER_TYPES = ['raw_material', 'fuel', 'spare_parts', 'transport_contractor', 'service_provider', 'utility', 'other'];
+const SUPPLIER_STATUSES = ['active', 'on_hold', 'blacklisted', 'inactive'];
+const CURRENCIES = ['USD', 'RWF', 'EUR', 'KES', 'UGX', 'TZS'];
 
-const STATUS_STYLES: Record<SupplierStatus, string> = {
-  Active: 'bg-green-50 text-green-700 border-green-200',
-  Inactive: 'bg-surface text-t2 border-border',
-  'On Hold': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  Blacklisted: 'bg-red-50 text-red-700 border-red-200',
+const STATUS_STYLES: Record<string, string> = {
+  active:      'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  on_hold:     'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  blacklisted: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+  inactive:    'bg-surface text-t3 border-border',
 };
 
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map(i => (
-        <Star
-          key={i}
-          className={`w-3.5 h-3.5 ${i <= rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'}`}
-        />
-      ))}
-    </div>
-  );
+const TYPE_STYLES: Record<string, string> = {
+  raw_material:         'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  fuel:                 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  spare_parts:          'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  transport_contractor: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
+  service_provider:     'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  utility:              'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  other:                'bg-surface text-t3 border-border',
+};
+
+type ModalMode = 'new' | 'edit' | 'view' | null;
+
+interface DraftSupplier {
+  supplierCode: string; name: string; supplierType: string[];
+  contactName: string; contactEmail: string; contactPhone: string;
+  address: string; country: string; currency: string;
+  creditTermsDays: number; taxId: string; isCritical: boolean; notes: string;
 }
 
-function formatRWF(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M RWF`;
-  return `${(value / 1_000).toFixed(0)}K RWF`;
+function emptyDraft(): DraftSupplier {
+  return {
+    supplierCode: '', name: '', supplierType: ['raw_material'],
+    contactName: '', contactEmail: '', contactPhone: '',
+    address: '', country: 'Rwanda', currency: 'USD',
+    creditTermsDays: 30, taxId: '', isCritical: false, notes: '',
+  };
 }
 
 export default function SuppliersPage() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('All Suppliers');
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [search, setMagnifyingGlass] = useState('');
-  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('active');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [selected, setSelected] = useState<Supplier | null>(null);
+  const [modalMode, setModalMode] = useState<ModalMode>(null);
+  const [draft, setDraft] = useState<DraftSupplier>(emptyDraft());
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const tabs: ActiveTab[] = ['All Suppliers', 'Performance & Ranking', 'Payment Status'];
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await apiListSuppliers(search || undefined, statusFilter || 'all');
+    if (res.success) {
+      setSuppliers(typeFilter ? res.data.suppliers.filter(s => s.supplierType.includes(typeFilter)) : res.data.suppliers);
+    }
+    setLoading(false);
+  }, [search, statusFilter, typeFilter]);
 
-  const filteredSuppliers = useMemo(() => suppliers.filter(s => {
-    const matchesMagnifyingGlass = !search ||
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.contactPerson.toLowerCase().includes(search.toLowerCase()) ||
-      s.category.toLowerCase().includes(search.toLowerCase()) ||
-      s.country.toLowerCase().includes(search.toLowerCase());
-    return matchesMagnifyingGlass;
-  }), [search]);
+  useEffect(() => { load(); }, [load]);
 
-  const summaryStats = useMemo(() => ({
-    total: suppliers.length,
-    active: suppliers.filter(s => s.status === 'Active').length,
-    avgRating: (suppliers.reduce((sum, s) => sum + s.rating, 0) / suppliers.length).toFixed(1),
-    totalSpend: suppliers.reduce((sum, s) => sum + s.totalSpend, 0),
-  }), []);
+  function toggleType(t: string) {
+    setDraft(d => {
+      const types = d.supplierType.includes(t) ? d.supplierType.filter(x => x !== t) : [...d.supplierType, t];
+      return { ...d, supplierType: types.length === 0 ? [t] : types };
+    });
+  }
 
-  // Payment status grouping
-  const paymentStats = useMemo(() => [
-    { terms: 'Net 7', count: suppliers.filter(s => s.paymentTerms === 'Net 7').length, color: '#22c55e' },
-    { terms: 'Net 15', count: suppliers.filter(s => s.paymentTerms === 'Net 15').length, color: '#3b82f6' },
-    { terms: 'Net 30', count: suppliers.filter(s => s.paymentTerms === 'Net 30').length, color: '#1e3a8a' },
-    { terms: 'Net 45', count: suppliers.filter(s => s.paymentTerms === 'Net 45').length, color: '#f59e0b' },
-    { terms: 'Net 60', count: suppliers.filter(s => s.paymentTerms === 'Net 60').length, color: '#ef4444' },
-    { terms: 'Prepayment', count: suppliers.filter(s => s.paymentTerms === 'Prepayment').length, color: '#6b7280' },
-  ], []);
+  function openNew() { setDraft(emptyDraft()); setSelected(null); setError(null); setModalMode('new'); }
+
+  function openEdit(s: Supplier) {
+    setDraft({
+      supplierCode: s.supplierCode, name: s.name, supplierType: [...s.supplierType],
+      contactName: s.contactName || '', contactEmail: s.contactEmail || '',
+      contactPhone: s.contactPhone || '', address: (s as any).address || '',
+      country: s.country, currency: s.currency, creditTermsDays: s.creditTermsDays,
+      taxId: (s as any).taxId || '', isCritical: (s as any).isCritical || false, notes: (s as any).notes || '',
+    });
+    setSelected(s); setError(null); setModalMode('edit');
+  }
+
+  async function handleSave() {
+    if (!draft.supplierCode || !draft.name || draft.supplierType.length === 0) {
+      setError('Code, name and at least one type are required.'); return;
+    }
+    setSaving(true); setError(null);
+    const res = modalMode === 'new'
+      ? await apiCreateSupplier(draft as any)
+      : await apiUpdateSupplier(selected!._id, draft as any);
+    setSaving(false);
+    if (!res.success) { setError((res as any).message || 'Save failed.'); return; }
+    setModalMode(null); load();
+  }
+
+  const inp = 'w-full bg-surface border border-border rounded px-3 py-2 text-sm text-t1';
+
+  const formContent = modalMode !== 'view' ? (
+    <div className="space-y-4 p-4 pb-10">
+      {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 p-2 rounded">{error}</p>}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-t3 mb-1">Supplier Code *</label>
+          <input className={inp} value={draft.supplierCode}
+            onChange={e => setDraft(d => ({ ...d, supplierCode: e.target.value.toUpperCase() }))}
+            placeholder="SUP-001" disabled={modalMode === 'edit'} />
+        </div>
+        <div>
+          <label className="block text-xs text-t3 mb-1">Currency</label>
+          <select className={inp} value={draft.currency} onChange={e => setDraft(d => ({ ...d, currency: e.target.value }))}>
+            {CURRENCIES.map(c => <option key={c}>{c}</option>)}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs text-t3 mb-1">Name *</label>
+        <input className={inp} value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="Company name" />
+      </div>
+      <div>
+        <label className="block text-xs text-t3 mb-2">Supplier Type * (select all that apply)</label>
+        <div className="flex flex-wrap gap-2">
+          {SUPPLIER_TYPES.map(t => (
+            <button key={t} type="button" onClick={() => toggleType(t)}
+              className={`px-3 py-1.5 text-xs border rounded transition-colors ${draft.supplierType.includes(t) ? 'border-accent bg-accent/10 text-accent' : 'border-border text-t3 hover:text-t1'}`}>
+              {t.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-t3 mb-1">Contact Name</label>
+          <input className={inp} value={draft.contactName} onChange={e => setDraft(d => ({ ...d, contactName: e.target.value }))} />
+        </div>
+        <div>
+          <label className="block text-xs text-t3 mb-1">Contact Phone</label>
+          <input className={inp} value={draft.contactPhone} onChange={e => setDraft(d => ({ ...d, contactPhone: e.target.value }))} />
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs text-t3 mb-1">Contact Email</label>
+        <input type="email" className={inp} value={draft.contactEmail} onChange={e => setDraft(d => ({ ...d, contactEmail: e.target.value }))} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-t3 mb-1">Country</label>
+          <input className={inp} value={draft.country} onChange={e => setDraft(d => ({ ...d, country: e.target.value }))} />
+        </div>
+        <div>
+          <label className="block text-xs text-t3 mb-1">Credit Terms (days)</label>
+          <input type="number" min={0} className={inp} value={draft.creditTermsDays}
+            onChange={e => setDraft(d => ({ ...d, creditTermsDays: Number(e.target.value) }))} />
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs text-t3 mb-1">Tax ID / VAT Number</label>
+        <input className={inp} value={draft.taxId} onChange={e => setDraft(d => ({ ...d, taxId: e.target.value }))} />
+      </div>
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input type="checkbox" checked={draft.isCritical} onChange={e => setDraft(d => ({ ...d, isCritical: e.target.checked }))} />
+        <span className="text-sm text-t2">Mark as critical supplier</span>
+      </label>
+      <div>
+        <label className="block text-xs text-t3 mb-1">Notes</label>
+        <textarea rows={2} className={`${inp} resize-none`} value={draft.notes}
+          onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} />
+      </div>
+      <div className="flex justify-end gap-2 pt-2 border-t border-border">
+        <button onClick={() => setModalMode(null)} className="px-4 py-2 text-sm text-t2 hover:text-t1 border border-border rounded">Cancel</button>
+        <button onClick={handleSave} disabled={saving}
+          className="px-4 py-2 text-sm bg-accent text-white rounded hover:bg-accent/80 flex items-center gap-2">
+          {saving && <Spinner className="animate-spin" size={14} />}
+          {modalMode === 'new' ? 'Create Supplier' : 'Save Changes'}
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  const viewContent = modalMode === 'view' && selected ? (
+    <div className="space-y-5 p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-xs text-t3 font-mono">{selected.supplierCode}</p>
+          <h3 className="text-base font-semibold text-t1 mt-0.5">{selected.name}</h3>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {selected.supplierType.map(t => (
+              <span key={t} className={`text-xs border rounded px-2 py-0.5 ${TYPE_STYLES[t] ?? ''}`}>{t.replace('_', ' ')}</span>
+            ))}
+          </div>
+        </div>
+        <span className={`text-xs border rounded px-2 py-0.5 ${STATUS_STYLES[selected.status] ?? ''}`}>
+          {selected.status.replace('_', ' ')}
+        </span>
+      </div>
+      <div className="space-y-2 text-sm">
+        {selected.contactName && <p className="text-t2 flex items-center gap-2"><Handshake size={13} className="text-t3 shrink-0" />{selected.contactName}</p>}
+        {selected.contactPhone && <p className="text-t2 flex items-center gap-2"><Phone size={13} className="text-t3 shrink-0" />{selected.contactPhone}</p>}
+        {selected.contactEmail && <p className="text-t2 flex items-center gap-2"><Envelope size={13} className="text-t3 shrink-0" />{selected.contactEmail}</p>}
+        {selected.country && <p className="text-t2 flex items-center gap-2"><Globe size={13} className="text-t3 shrink-0" />{selected.country}</p>}
+      </div>
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div><p className="text-xs text-t3">Currency</p><p className="font-medium text-t1">{selected.currency}</p></div>
+        <div><p className="text-xs text-t3">Credit Terms</p><p className="font-medium text-t1">{selected.creditTermsDays} days</p></div>
+      </div>
+      <div className="flex gap-2 pt-2 border-t border-border">
+        <button onClick={() => openEdit(selected)}
+          className="flex-1 flex items-center justify-center gap-2 py-2 text-sm border border-border rounded hover:bg-surface text-t2">
+          <PencilSimple size={14} /> Edit
+        </button>
+        <div className="flex-1">
+          <select className="w-full bg-surface border border-border rounded px-2 py-2 text-sm text-t2"
+            value={selected.status}
+            onChange={async e => { await apiUpdateSupplier(selected._id, { status: e.target.value } as any); load(); }}>
+            {SUPPLIER_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+          </select>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="flex flex-col h-full bg-bg">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-t1">Suppliers</h1>
-          <p className="text-sm text-t2 mt-0.5">Manage supplier relationships and performance</p>
+          <h1 className="text-xl font-semibold text-t1">Suppliers</h1>
+          <p className="text-sm text-t3 mt-0.5">{suppliers.length} suppliers</p>
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent-h transition-colors">
-          <Plus className="w-4 h-4" /> Add Supplier
+        <button onClick={openNew}
+          className="flex items-center gap-2 px-4 py-2 bg-accent text-white text-sm rounded hover:bg-accent/80">
+          <Plus size={16} /> New Supplier
         </button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Suppliers', value: summaryStats.total, icon: Trophy, color: 'text-accent', bg: 'bg-accent-glow' },
-          { label: 'Active Suppliers', value: summaryStats.active, icon: Trophy, color: 'text-green-600', bg: 'bg-green-50' },
-          { label: 'Avg. Rating', value: `${summaryStats.avgRating}/5`, icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Total Spend', value: formatRWF(summaryStats.totalSpend), icon: TrendUp, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-        ].map(card => (
-          <div key={card.label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
-            <div className={`p-2.5 rounded-xl ${card.bg}`}>
-              <card.icon className={`w-5 h-5 ${card.color}`} />
-            </div>
-            <div>
-              <p className="text-xs text-t2 font-medium uppercase tracking-wide">{card.label}</p>
-              <p className="text-xl font-bold text-t1 mt-0.5">{card.value}</p>
-            </div>
-          </div>
-        ))}
+      <div className="flex items-center gap-3 px-6 py-3 shrink-0 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+          <input className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded text-sm text-t1 placeholder:text-t3"
+            placeholder="Search suppliers..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+          className="bg-surface border border-border rounded px-3 py-2 text-sm text-t1">
+          <option value="all">All Statuses</option>
+          {SUPPLIER_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+        </select>
+        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+          className="bg-surface border border-border rounded px-3 py-2 text-sm text-t1">
+          <option value="">All Types</option>
+          {SUPPLIER_TYPES.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+        </select>
       </div>
 
-      {/* Main Panel */}
-      <div className="bg-card rounded-xl border border-border">
-        {/* Tabs */}
-        <div className="flex items-center justify-between border-b border-border px-4">
-          <nav className="-mb-px flex gap-0 overflow-x-auto scrollbar-hide">
-            {tabs.map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`whitespace-nowrap py-3.5 px-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab
-                    ? 'border-accent text-accent'
-                    : 'border-transparent text-t2 hover:text-t2'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Funnel row */}
-        <div className="flex flex-wrap items-center gap-3 p-4">
-          <div className="relative flex-1 min-w-[180px]">
-            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-t3" />
-            <input
-              type="text"
-              placeholder="MagnifyingGlass suppliers..."
-              value={search}
-              onChange={e => setMagnifyingGlass(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-border rounded-xl text-sm outline-none focus:border-accent focus:ring-1 focus:ring-[#1e3a8a]"
-            />
-          </div>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-sm text-t2 hover:bg-surface">
-            <Funnel className="w-4 h-4" /> Funnel <CaretDown className="w-3.5 h-3.5" />
-          </button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-sm text-t2 hover:bg-surface">
-            <DownloadSimple className="w-4 h-4" /> Export
-          </button>
-
-          {/* View toggle */}
-          <div className="flex border border-border rounded-xl overflow-hidden ml-auto">
-            {([
-              { mode: 'table', icon: ListDashes, label: 'Table' },
-              { mode: 'cards', icon: Trophy, label: 'Cards' },
-              { mode: 'bar', icon: ChartBar, label: 'Performance' },
-              { mode: 'radar', icon: TrendUp, label: 'Radar' },
-            ] as { mode: ViewMode; icon: React.ElementType; label: string }[]).map(v => (
-              <button
-                key={v.mode}
-                onClick={() => setViewMode(v.mode)}
-                title={v.label}
-                className={`px-3 py-2 flex items-center gap-1.5 text-xs font-medium transition-colors ${
-                  viewMode === v.mode
-                    ? 'bg-accent text-white'
-                    : 'bg-card text-t2 hover:bg-surface'
-                }`}
-              >
-                <v.icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{v.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── TABLE VIEW ─────────────────────────────────────── */}
-        {viewMode === 'table' && (
-          <OverlayScrollbarsComponent
-            options={{ scrollbars: { autoHide: 'scroll' } }}
-            defer
-          >
-            <table className="min-w-full divide-y divide-border-s">
-              <thead className="bg-surface">
-                <tr>
-                  {['Supplier Name', 'Contact', 'Country', 'Category', 'Rating', 'On-Time %', 'Total Orders', 'Total Spend', 'Status', ''].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-card divide-y divide-border-s">
-                {filteredSuppliers.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="px-4 py-16 text-center text-t3 text-sm">
-                      No suppliers found
-                    </td>
+      <div className="flex flex-1 min-h-0 px-6 pb-6 gap-4">
+        <div className="flex-1 min-w-0">
+          {loading ? (
+            <div className="flex items-center justify-center h-48"><Spinner size={28} className="animate-spin text-accent" /></div>
+          ) : suppliers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-t3">
+              <Handshake size={40} className="mb-2 opacity-40" /><p>No suppliers found.</p>
+            </div>
+          ) : (
+            <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'scroll' } }} className="h-full">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-t3">
+                    {['Code', 'Name', 'Type', 'Contact', 'Country', 'Currency', 'Status', ''].map(h => (
+                      <th key={h} className="text-left py-2 pr-3 font-medium">{h}</th>
+                    ))}
                   </tr>
-                ) : (
-                  filteredSuppliers.map(s => (
-                    <tr key={s.id} className="hover:bg-surface transition-colors cursor-pointer" onClick={() => setSelectedSupplier(s)}>
-                      <td className="px-4 py-3.5">
-                        <div>
-                          <p className="text-sm font-semibold text-t1">{s.name}</p>
-                          <p className="text-xs text-t3 mt-0.5">{s.paymentTerms}</p>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {suppliers.map(s => (
+                    <tr key={s._id} className="hover:bg-surface/50 cursor-pointer"
+                      onClick={() => { setSelected(s); setModalMode('view'); }}>
+                      <td className="py-3 pr-3 font-mono text-xs text-accent">{s.supplierCode}</td>
+                      <td className="py-3 pr-3 font-medium text-t1">{s.name}</td>
+                      <td className="py-3 pr-3">
+                        <div className="flex flex-wrap gap-1">
+                          {s.supplierType.slice(0, 2).map(t => (
+                            <span key={t} className={`text-xs border rounded px-1.5 py-0.5 ${TYPE_STYLES[t] ?? ''}`}>{t.replace('_', ' ')}</span>
+                          ))}
+                          {s.supplierType.length > 2 && <span className="text-xs text-t3">+{s.supplierType.length - 2}</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3.5">
-                        <p className="text-sm text-t2">{s.contactPerson}</p>
+                      <td className="py-3 pr-3 text-t2 text-xs">
+                        <p>{s.contactName || '—'}</p>
+                        {s.contactPhone && <p className="text-t3">{s.contactPhone}</p>}
                       </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5 text-t3" />
-                          <span className="text-sm text-t2">{s.city}, {s.country}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 text-sm text-t2">{s.category}</td>
-                      <td className="px-4 py-3.5"><StarRating rating={s.rating} /></td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 max-w-[60px] bg-surface rounded-full h-1.5">
-                            <div
-                              className={`h-1.5 rounded-full ${s.onTimeDelivery >= 90 ? 'bg-green-500' : s.onTimeDelivery >= 75 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                              style={{ width: `${s.onTimeDelivery}%` }}
-                            />
-                          </div>
-                          <span className="text-xs font-semibold text-t2">{s.onTimeDelivery}%</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 text-sm font-medium text-t1">{s.totalOrders}</td>
-                      <td className="px-4 py-3.5 text-sm font-bold text-t1">{formatRWF(s.totalSpend)}</td>
-                      <td className="px-4 py-3.5">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[s.status]}`}>
-                          {s.status}
+                      <td className="py-3 pr-3 text-t2">{s.country}</td>
+                      <td className="py-3 pr-3 text-t2">{s.currency}</td>
+                      <td className="py-3 pr-3">
+                        <span className={`text-xs border rounded px-2 py-0.5 ${STATUS_STYLES[s.status] ?? ''}`}>
+                          {s.status.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center justify-end gap-1">
-                          <button onClick={e => { e.stopPropagation(); setSelectedSupplier(s); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded transition-colors">
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button onClick={e => e.stopPropagation()} className="p-1.5 text-t3 hover:text-t2 hover:bg-surface rounded transition-colors">
-                            <DotsThree className="w-4 h-4" />
-                          </button>
+                      <td className="py-3">
+                        <div className="flex gap-1">
+                          <button onClick={e => { e.stopPropagation(); setSelected(s); setModalMode('view'); }}
+                            className="p-1 hover:text-t1 text-t3"><Eye size={14} /></button>
+                          <button onClick={e => { e.stopPropagation(); openEdit(s); }}
+                            className="p-1 hover:text-t1 text-t3"><PencilSimple size={14} /></button>
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-            {filteredSuppliers.length > 0 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-border-s text-xs text-t2">
-                <span>Showing {filteredSuppliers.length} suppliers</span>
-              </div>
-            )}
-          </OverlayScrollbarsComponent>
-        )}
+                  ))}
+                </tbody>
+              </table>
+            </OverlayScrollbarsComponent>
+          )}
+        </div>
 
-        {/* ── CARDS VIEW ─────────────────────────────────────── */}
-        {viewMode === 'cards' && (
-          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredSuppliers.map(s => (
-              <div key={s.id} onClick={() => setSelectedSupplier(s)}
-                className="border border-border rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer group">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center font-bold text-accent text-lg">
-                    {s.name.charAt(0)}
-                  </div>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[s.status]}`}>
-                    {s.status}
-                  </span>
-                </div>
-                <h3 className="font-semibold text-t1 group-hover:text-accent transition-colors leading-tight">{s.name}</h3>
-                <p className="text-xs text-t2 mt-1">{s.category}</p>
-                <div className="mt-3 flex items-center gap-2">
-                  <StarRating rating={s.rating} />
-                  <span className="text-xs text-t3">({s.totalOrders} orders)</span>
-                </div>
-                <div className="mt-3 space-y-1.5 text-xs text-t2">
-                  <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{s.city}, {s.country}</div>
-                  <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{s.phone}</div>
-                  <div className="flex items-center gap-1.5"><Envelope className="w-3.5 h-3.5" />{s.email}</div>
-                </div>
-                <div className="mt-4 pt-4 border-t border-border-s flex justify-between text-xs">
-                  <div>
-                    <p className="text-t3">On-time</p>
-                    <p className={`font-bold ${s.onTimeDelivery >= 90 ? 'text-green-600' : s.onTimeDelivery >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>{s.onTimeDelivery}%</p>
-                  </div>
-                  <div>
-                    <p className="text-t3">Total Spend</p>
-                    <p className="font-bold text-t1">{formatRWF(s.totalSpend)}</p>
-                  </div>
-                  <div>
-                    <p className="text-t3">Terms</p>
-                    <p className="font-bold text-t1">{s.paymentTerms}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ── BAR PERFORMANCE VIEW ───────────────────────────── */}
-        {viewMode === 'bar' && (
-          <div className="p-6">
-            <h3 className="text-sm font-semibold text-t2 mb-1">Supplier Performance Overview</h3>
-            <p className="text-xs text-t3 mb-6">On-time delivery, quality, and cost scores (%)</p>
-            <ResponsiveContainer width="100%" height={360}>
-              <BarChart data={supplierPerformance} layout="vertical" margin={{ top: 0, right: 30, left: 130, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
-                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} unit="%" />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: '#374151' }} width={130} />
-                <Tooltip formatter={(v: number) => [`${v}%`]} />
-                <Legend />
-                <Bar dataKey="onTime" name="On-Time Delivery" fill="#1e3a8a" radius={[0, 4, 4, 0]} />
-                <Bar dataKey="quality" name="Quality Score" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-                <Bar dataKey="cost" name="Cost Competitiveness" fill="#93c5fd" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* ── RADAR VIEW ─────────────────────────────────────── */}
-        {viewMode === 'radar' && (
-          <div className="p-6 flex flex-col items-center">
-            <h3 className="text-sm font-semibold text-t2 mb-1 self-start">Top Supplier Scorecard</h3>
-            <p className="text-xs text-t3 mb-6 self-start">Multi-dimensional performance comparison</p>
-            <ResponsiveContainer width="100%" height={380}>
-              <RadarChart data={supplierPerformance.slice(0, 3)}>
-                <PolarGrid />
-                <PolarAngleAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
-                <Radar name="On-Time" dataKey="onTime" stroke="#1e3a8a" fill="#1e3a8a" fillOpacity={0.2} />
-                <Radar name="Quality" dataKey="quality" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} />
-                <Radar name="Cost" dataKey="cost" stroke="#22c55e" fill="#22c55e" fillOpacity={0.2} />
-                <Legend />
-                <Tooltip />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
+        {modalMode && (
+          <DocumentSidePanel
+            isOpen={true}
+            onClose={() => setModalMode(null)}
+            title={modalMode === 'new' ? 'New Supplier' : modalMode === 'edit' ? 'Edit Supplier' : selected?.name ?? ''}
+            formContent={formContent}
+            previewContent={viewContent}
+          />
         )}
       </div>
-
-      {/* ── Standardized Side Panel ─────────────────────────────────────────── */}
-      <DocumentSidePanel
-        isOpen={!!selectedSupplier}
-        onClose={() => setSelectedSupplier(null)}
-        title="Supplier Profile"
-        currentIndex={selectedSupplier ? filteredSuppliers.findIndex(s => s.id === selectedSupplier.id) + 1 : undefined}
-        totalItems={filteredSuppliers.length}
-        onPrev={() => {
-          const idx = filteredSuppliers.findIndex(s => s.id === selectedSupplier?.id);
-          if (idx > 0) setSelectedSupplier(filteredSuppliers[idx - 1]);
-        }}
-        onNext={() => {
-          const idx = filteredSuppliers.findIndex(s => s.id === selectedSupplier?.id);
-          if (idx < filteredSuppliers.length - 1) setSelectedSupplier(filteredSuppliers[idx + 1]);
-        }}
-        footerInfo={`Supplier since 2024 • Last order on ${selectedSupplier?.lastOrderDate}`}
-        formContent={
-          selectedSupplier && (
-            <div className="space-y-6">
-              <div>
-                <label className="block text-[11px] font-bold text-t3 uppercase tracking-wider mb-2">Company Name</label>
-                <input 
-                  type="text" 
-                  defaultValue={selectedSupplier.name}
-                  className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm focus:ring-2 focus:ring-[#1e3a8a]/10 focus:border-accent outline-none transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-t3 uppercase tracking-wider mb-2">Primary Contact</label>
-                <div className="space-y-3">
-                  <input type="text" placeholder="Contact Person" defaultValue={selectedSupplier.contactPerson} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none focus:border-accent" />
-                  <input type="email" placeholder="Email Address" defaultValue={selectedSupplier.email} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none focus:border-accent" />
-                  <input type="tel" placeholder="Phone Number" defaultValue={selectedSupplier.phone} className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none focus:border-accent" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-t3 uppercase tracking-wider mb-2">Contract Details</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] text-t2 mb-1">Payment Terms</label>
-                    <div className="relative">
-                      <select defaultValue={selectedSupplier.paymentTerms} className="w-full px-2 py-1.5 bg-surface border border-border rounded text-xs appearance-none outline-none focus:border-accent">
-                        <option>Net 7</option>
-                        <option>Net 15</option>
-                        <option>Net 30</option>
-                        <option>Net 45</option>
-                        <option>Prepayment</option>
-                      </select>
-                      <CaretDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-t3 pointer-events-none" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-t2 mb-1">Status</label>
-                    <div className="relative">
-                      <select defaultValue={selectedSupplier.status} className="w-full px-2 py-1.5 bg-surface border border-border rounded text-xs appearance-none outline-none focus:border-accent">
-                        <option>Active</option>
-                        <option>Inactive</option>
-                        <option>On Hold</option>
-                        <option>Blacklisted</option>
-                      </select>
-                      <CaretDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-t3 pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-gray-50">
-                <button className="w-full py-2.5 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent-h shadow-lg shadow-[#1e3a8a]/20 transition-all active:scale-[0.98]">
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          )
-        }
-        previewContent={
-          selectedSupplier && (
-            <div className="relative font-sans text-t1">
-              {/* Header */}
-              <div className="flex justify-between items-start mb-16 pb-8 border-b border-border-s">
-                <div className="flex gap-6">
-                  <div className="w-20 h-20 bg-accent rounded-2xl flex items-center justify-center text-white text-4xl font-black shadow-xl shadow-[#1e3a8a]/20 shrink-0">
-                    {selectedSupplier.name.charAt(0)}
-                  </div>
-                  <div>
-                    <h1 className="text-3xl font-black text-t1 tracking-tight mb-2">{selectedSupplier.name}</h1>
-                    <div className="flex items-center gap-3">
-                      <StarRating rating={selectedSupplier.rating} />
-                      <span className="text-xs font-bold text-t3 uppercase tracking-widest px-2 py-1 bg-surface rounded-xl">ID: {selectedSupplier.id.padStart(4, '0')}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest border-2 ${
-                    selectedSupplier.status === 'Active' ? 'bg-green-50 text-green-700 border-green-200' : 
-                    selectedSupplier.status === 'On Hold' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-red-50 text-red-700 border-red-200'
-                  }`}>
-                    {selectedSupplier.status}
-                  </div>
-                </div>
-              </div>
-
-              {/* Grid Data */}
-              <div className="grid grid-cols-2 gap-x-16 gap-y-12 mb-16">
-                <div>
-                  <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-4">Location Portfolio</label>
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-accent-glow rounded-xl"><MapPin className="w-4 h-4 text-accent" /></div>
-                    <div>
-                      <p className="text-sm font-bold text-t1">{selectedSupplier.city}, {selectedSupplier.country}</p>
-                      <p className="text-xs text-t2">Corporate HQ & Regional Hub</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-4">Financial Overview</label>
-                  <div className="flex items-center justify-between p-4 bg-surface rounded-xl">
-                    <div>
-                      <p className="text-[10px] text-t3 uppercase font-black">Total Spend</p>
-                      <p className="text-lg font-black text-accent">{formatRWF(selectedSupplier.totalSpend)}</p>
-                    </div>
-                    <div className="w-px h-8 bg-surface-hover" />
-                    <div className="text-right">
-                      <p className="text-[10px] text-t3 uppercase font-black">Orders</p>
-                      <p className="text-lg font-black text-t1">{selectedSupplier.totalOrders}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-4">Performance Metrics</label>
-                  <div className="space-y-6">
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-bold text-t2">On-Time Delivery</span>
-                        <span className="text-xs font-black text-accent">{selectedSupplier.onTimeDelivery}%</span>
-                      </div>
-                      <div className="h-2 bg-surface rounded-full overflow-hidden">
-                        <div className="h-full bg-accent rounded-full transition-all duration-1000" style={{ width: `${selectedSupplier.onTimeDelivery}%` }} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-bold text-t2">Service level (SL)</span>
-                        <span className="text-xs font-black text-blue-500">92%</span>
-                      </div>
-                      <div className="h-2 bg-surface rounded-full overflow-hidden">
-                        <div className="h-full bg-accent-glow0 rounded-full transition-all duration-1000" style={{ width: '92%' }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-4">Supply Chain Category</label>
-                  <div className="p-4 border-2 border-dashed border-border rounded-xl flex items-center gap-4">
-                    <div className="p-2 bg-amber-50 rounded-xl"><Trophy className="w-5 h-5 text-amber-600" /></div>
-                    <div>
-                      <p className="text-sm font-bold text-t1">{selectedSupplier.category}</p>
-                      <p className="text-xs text-t2 underline underline-offset-4 decoration-amber-200">Critical Supplier Tier 1</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Pulse Timeline Placeholder */}
-              <div>
-                <label className="block text-[10px] text-t3 font-black uppercase tracking-widest mb-6">Recent Logistics Pipeline</label>
-                <div className="space-y-4">
-                  {[
-                    { label: 'Bulk Raw Materials Shipment', date: 'Apr 12, 2026', status: 'In Transit', id: 'SHP-9902' },
-                    { label: 'Inventory Restock Phase 1', date: 'Mar 28, 2026', status: 'Delivered', id: 'SHP-8211' },
-                    { label: 'Q1 Performance Review Meeting', date: 'Mar 15, 2026', status: 'Completed', id: 'EVT-0192' },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 hover:bg-surface rounded-xl border border-transparent hover:border-border-s transition-all cursor-default group">
-                      <div className="flex items-center gap-4">
-                        <div className="w-2 h-2 rounded-full bg-accent" />
-                        <div>
-                          <p className="text-sm font-bold text-t1 group-hover:text-accent transition-colors">{item.label}</p>
-                          <p className="text-[10px] text-t3 uppercase font-black">{item.id} • {item.date}</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-black uppercase py-1 px-3 bg-card border border-border-s rounded-xl text-t2">{item.status}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-16 pt-8 border-t border-border-s text-[10px] text-t3 text-center italic">
-                This profile is verified and managed by TEKACCESS Procurement Division.
-              </div>
-            </div>
-          )
-        }
-      />
     </div>
   );
 }
