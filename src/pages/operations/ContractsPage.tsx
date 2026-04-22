@@ -131,7 +131,8 @@ export default function ContractsPage() {
   }
 
   async function handleSave() {
-    if (!draft.contractRef || !draft.title || !draft.clientName) { setError('Contract ref, title and client are required.'); return; }
+    const needsClient = !draft.isTemplate && draft.contractType === 'client';
+    if (!draft.contractRef || !draft.title || (needsClient && !draft.clientName)) { setError('Contract ref, title and client are required.'); return; }
     if (draft.lines.some(l => !l.materialDescription || l.committedQty <= 0)) { setError('All lines need a description and committed quantity.'); return; }
     setSaving(true); setError(null);
     const payload = {
