@@ -489,7 +489,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0 }}
-                              className="w-full h-full bg-black/40 flex items-center justify-center"
+                              className="w-full h-full bg-black/40 rounded-full flex items-center justify-center"
                             >
                               <CircleNotchIcon size={22} weight="bold" className="text-white animate-spin" />
                             </motion.div>
@@ -502,7 +502,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                               transition={{ duration: 0.25 }}
                               src={avatarPreview || user?.avatarUrl!}
                               alt="Avatar"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover rounded-full"
                             />
                           ) : (
                             <motion.div
@@ -510,7 +510,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0 }}
-                              className="w-full h-full bg-accent flex items-center justify-center text-white text-2xl font-bold"
+                              className="w-full h-full bg-accent flex rounded-full items-center justify-center text-white text-2xl font-bold"
                             >
                               {(nameEditing ? nameValue : user?.fullName)?.[0]?.toUpperCase() || 'U'}
                             </motion.div>

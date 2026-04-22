@@ -533,6 +533,8 @@ export type OperationsContract = {
   };
   accountManagerName: string | null;
   notes: string | null;
+  documentUrl: string | null;
+  documentName: string | null;
   createdAt: string;
 };
 
@@ -667,6 +669,15 @@ export async function apiCreateContract(data: Partial<OperationsContract> & { co
 
 export async function apiUpdateContract(id: string, data: Partial<OperationsContract>) {
   return request<{ contract: OperationsContract }>(`/operations/contracts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function apiUploadContractDocument(contractId: string, file: File) {
+  const form = new FormData();
+  form.append('document', file);
+  return request<{ contract: OperationsContract }>(`/operations/contracts/${contractId}/document`, {
+    method: 'POST',
+    body: form,
+  });
 }
 
 export async function apiInstantiateContract(data: { templateId: string; targetId?: string; targetName: string; startDate: string; endDate: string }) {
