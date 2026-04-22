@@ -3,11 +3,11 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, DownloadSimple, Funnel, CaretDown,
   Eye, PencilSimple, Warning, CheckCircle, Package,
-  Cube, CurrencyCircleDollar, X, Spinner, ArrowsCounterClockwise,
+  Cube, CurrencyCircleDollar, X, Spinner, ArrowsCounterClockwise, Trash,
 } from '@phosphor-icons/react';
 import {
   apiListStockItems, apiGetInventorySummary, apiCreateStockItem, apiUpdateStockItem,
-  apiListWarehouses, apiCreateMovement,
+  apiDeleteStockItem, apiListWarehouses, apiCreateMovement,
   StockItem, Warehouse,
 } from '../../lib/api';
 import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSelect';
@@ -61,6 +61,7 @@ export default function StockItemsPage() {
   const [movementDraft, setMovementDraft] = useState<MovementDraft>({ movementType: 'INBOUND', qty: 1, unitCost: 0, sourceRef: '', reason: '', notes: '', countedQty: 0 });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -88,6 +89,13 @@ export default function StockItemsPage() {
   function openEdit(item: StockItem) { setDraft({ itemCode: item.itemCode, name: item.name, description: item.description || '', category: item.category, warehouseId: typeof item.warehouseId === 'string' ? item.warehouseId : (item as any).warehouseId?._id || '', stockUnit: item.stockUnit, onHandQty: item.onHandQty, weightedAvgCost: item.weightedAvgCost, currency: item.currency, minimumDaysCover: (item as any).minimumDaysCover || 14, reorderQty: (item as any).reorderQty || 100 }); setSelectedItem(item); setError(null); setModalMode('edit'); }
   function openView(item: StockItem) { setSelectedItem(item); setModalMode('view'); }
   function openMovement(item: StockItem) { setSelectedItem(item); setMovementDraft({ movementType: 'INBOUND', qty: 1, unitCost: item.weightedAvgCost, sourceRef: '', reason: '', notes: '', countedQty: item.onHandQty }); setError(null); setModalMode('movement'); }
+
+  async function handleDelete(id: string) {
+    await apiDeleteStockItem(id);
+    setDeleteConfirm(null);
+    setModalMode(null);
+    load();
+  }
 
   async function handleSaveItem() {
     if (!draft.itemCode.trim() || !draft.name.trim() || !draft.warehouseId) { setError('Item code, name and warehouse are required.'); return; }
@@ -186,6 +194,18 @@ export default function StockItemsPage() {
       <div className="flex gap-2 pt-2">
         <button onClick={() => openEdit(selectedItem)} className="flex-1 py-2.5 border border-accent text-accent rounded-xl text-sm font-bold hover:bg-accent/5 transition-all">Edit</button>
         <button onClick={() => openMovement(selectedItem)} className="flex-1 py-2.5 bg-accent text-white rounded-xl text-sm font-bold hover:bg-accent-h transition-all">Record Movement</button>
+      </div>
+      <div className="pt-1">
+        {deleteConfirm === selectedItem._id ? (
+          <div className="flex gap-2">
+            <button onClick={() => handleDelete(selectedItem._id)} className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 transition-all">Confirm Delete</button>
+            <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2.5 border border-border text-t2 rounded-xl text-sm font-bold hover:bg-surface transition-all">Cancel</button>
+          </div>
+        ) : (
+          <button onClick={() => setDeleteConfirm(selectedItem._id)} className="w-full py-2.5 border border-rose-500/30 text-rose-400 rounded-xl text-sm font-bold hover:bg-rose-500/10 transition-all flex items-center justify-center gap-2">
+            <Trash size={14} /> Delete Item
+          </button>
+        )}
       </div>
     </div>
   ) : modalMode === 'movement' && selectedItem ? (
@@ -337,6 +357,14 @@ export default function StockItemsPage() {
                       <button onClick={e => { e.stopPropagation(); openView(item); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"><Eye size={14} weight="duotone" /></button>
                       <button onClick={e => { e.stopPropagation(); openMovement(item); }} className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors" title="Record movement"><ArrowsCounterClockwise size={14} weight="duotone" /></button>
                       <button onClick={e => { e.stopPropagation(); openEdit(item); }} className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"><PencilSimple size={14} weight="duotone" /></button>
+                      {deleteConfirm === item._id ? (
+                        <>
+                          <button onClick={e => { e.stopPropagation(); handleDelete(item._id); }} className="text-[10px] font-bold px-2 py-1 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors">Yes</button>
+                          <button onClick={e => { e.stopPropagation(); setDeleteConfirm(null); }} className="text-[10px] px-2 py-1 border border-border rounded-lg text-t3 hover:bg-surface transition-colors">No</button>
+                        </>
+                      ) : (
+                        <button onClick={e => { e.stopPropagation(); setDeleteConfirm(item._id); }} className="p-1.5 text-t3 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"><Trash size={14} weight="duotone" /></button>
+                      )}
                     </div>
                   </td>
                 </tr>

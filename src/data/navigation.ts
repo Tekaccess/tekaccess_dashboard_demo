@@ -232,9 +232,9 @@ export const departmentsData = [
             subItems: ["Warehouse List", "Capacity Usage"],
           },
           {
-            name: "Stock Counts",
+            name: "Stock History",
             icon: ClipboardText,
-            subItems: ["Reconciliation", "Discrepancy Log"],
+            subItems: ["All Movements", "By Type", "By Warehouse"],
           },
         ],
       },

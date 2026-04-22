@@ -23,7 +23,7 @@ const EXPLICIT_ROUTES: Record<string, string> = {
   "inventory/stock": "/inventory/stock",
   "inventory/warehouses": "/inventory/warehouses",
   "inventory/movements": "/inventory/movements",
-  "inventory/stock-counts": "/inventory/stock-counts",
+  "inventory/stock-history": "/inventory/stock-history",
 };
 
 // Maps each frontend department id to the backend dashboardAccess slugs that grant access.

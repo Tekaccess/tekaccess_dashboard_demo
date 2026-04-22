@@ -793,6 +793,10 @@ export async function apiUpdateStockItem(id: string, data: Partial<StockItem>) {
   return request<{ item: StockItem }>(`/inventory/stock-items/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
+export async function apiDeleteStockItem(id: string) {
+  return request<{ item: StockItem }>(`/inventory/stock-items/${id}`, { method: 'DELETE' });
+}
+
 // ─── Warehouses ───────────────────────────────────────────────────────────────
 
 export type Warehouse = {
@@ -822,6 +826,10 @@ export async function apiCreateWarehouse(data: Partial<Warehouse>) {
 
 export async function apiUpdateWarehouse(id: string, data: Partial<Warehouse>) {
   return request<{ warehouse: Warehouse }>(`/inventory/warehouses/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function apiDeleteWarehouse(id: string) {
+  return request<{ warehouse: Warehouse }>(`/inventory/warehouses/${id}`, { method: 'DELETE' });
 }
 
 // ─── Stock Movements ──────────────────────────────────────────────────────────
@@ -865,6 +873,10 @@ export async function apiCreateMovement(data: {
   countedQty?: number;
 }) {
   return request<{ movement: StockMovement }>('/inventory/movements', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiDeleteMovement(id: string) {
+  return request<{ message: string }>(`/inventory/movements/${id}`, { method: 'DELETE' });
 }
 
 export async function apiCreateTransfer(data: {

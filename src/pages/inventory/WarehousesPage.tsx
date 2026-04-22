@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, Warehouse as WarehouseIcon, MapPin,
-  PencilSimple, Eye, CheckCircle, Warning, Spinner, Gauge,
+  PencilSimple, Eye, CheckCircle, Warning, Spinner, Gauge, Trash,
 } from '@phosphor-icons/react';
 import {
-  apiListWarehouses, apiCreateWarehouse, apiUpdateWarehouse, apiGetInventorySummary,
-  Warehouse,
+  apiListWarehouses, apiCreateWarehouse, apiUpdateWarehouse, apiDeleteWarehouse,
+  apiGetInventorySummary, Warehouse,
 } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
 
@@ -60,6 +60,7 @@ export default function WarehousesPage() {
   const [draft, setDraft] = useState<DraftWarehouse>(emptyDraft());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -95,6 +96,13 @@ export default function WarehousesPage() {
 
   function openView(w: Warehouse) { setSelected(w); setModalMode('view'); }
 
+  async function handleDelete(id: string) {
+    await apiDeleteWarehouse(id);
+    setDeleteConfirm(null);
+    setModalMode(null);
+    load();
+  }
+
   async function handleSave() {
     if (!draft.warehouseCode || !draft.name) { setError('Warehouse code and name are required.'); return; }
     setSaving(true); setError(null);
@@ -106,6 +114,8 @@ export default function WarehousesPage() {
     if (!res.success) { setError((res as any).message || 'Save failed.'); return; }
     setModalMode(null); load();
   }
+
+  const selectedUsedPct = selected?.liveCapacity?.usedPct ?? 0;
 
   const modalSummary = (
     <div className="space-y-6">
@@ -145,11 +155,11 @@ export default function WarehousesPage() {
         <div>
           <p className="text-[10px] text-t3 uppercase font-black tracking-widest mb-2">Usage Analytics</p>
           <div className="flex items-center justify-between mb-2">
-             <span className="text-xl font-bold text-t1">{usedPct.toFixed(1)}%</span>
+             <span className="text-xl font-bold text-t1">{selectedUsedPct.toFixed(1)}%</span>
              <span className="text-xs text-t3">Occupied</span>
           </div>
           <div className="h-2 bg-surface rounded-full overflow-hidden">
-             <div className={`h-full rounded-full transition-all ${usedPct > 80 ? 'bg-rose-500' : usedPct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(usedPct, 100)}%` }} />
+             <div className={`h-full rounded-full transition-all ${selectedUsedPct > 80 ? 'bg-rose-500' : selectedUsedPct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(selectedUsedPct, 100)}%` }} />
           </div>
           <p className="text-xs text-t3 mt-2">
             {selected.liveCapacity?.occupiedCapacity.toLocaleString()} / {selected.totalCapacity.toLocaleString()} {selected.capacityUnit}
@@ -277,10 +287,10 @@ export default function WarehousesPage() {
           <p className="text-xs text-t3 mb-2">Capacity Usage</p>
           <div className="flex items-center gap-3">
             <div className="flex-1 h-2 bg-surface rounded-full overflow-hidden">
-              <div className={`h-full rounded-full transition-all ${usedPct > 80 ? 'bg-rose-500' : usedPct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                style={{ width: `${Math.min(usedPct, 100)}%` }} />
+              <div className={`h-full rounded-full transition-all ${selectedUsedPct > 80 ? 'bg-rose-500' : selectedUsedPct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                style={{ width: `${Math.min(selectedUsedPct, 100)}%` }} />
             </div>
-            <span className="text-sm font-medium text-t1 w-12 text-right">{usedPct.toFixed(1)}%</span>
+            <span className="text-sm font-medium text-t1 w-12 text-right">{selectedUsedPct.toFixed(1)}%</span>
           </div>
           <p className="text-xs text-t3 mt-1">
             {selected.liveCapacity.occupiedCapacity.toLocaleString()} / {selected.totalCapacity.toLocaleString()} {selected.capacityUnit}
@@ -320,6 +330,23 @@ export default function WarehousesPage() {
           className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm border border-border rounded-xl hover:bg-surface text-t2 transition-colors">
           <PencilSimple size={14} /> Edit
         </button>
+        {deleteConfirm === selected._id ? (
+          <div className="flex gap-1">
+            <button onClick={() => handleDelete(selected._id)}
+              className="flex items-center gap-1 px-3 py-2.5 text-xs bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 transition-colors">
+              Confirm
+            </button>
+            <button onClick={() => setDeleteConfirm(null)}
+              className="px-3 py-2.5 text-xs border border-border rounded-xl text-t2 hover:bg-surface transition-colors">
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setDeleteConfirm(selected._id)}
+            className="flex items-center gap-1.5 px-3 py-2.5 text-sm border border-rose-500/30 rounded-xl text-rose-400 hover:bg-rose-500/10 transition-colors">
+            <Trash size={14} /> Delete
+          </button>
+        )}
       </div>
     </div>
   ) : null;
@@ -427,6 +454,14 @@ export default function WarehousesPage() {
                           <div className="flex justify-end gap-2 text-t3">
                             <button onClick={e => { e.stopPropagation(); openEdit(w); }} className="hover:text-t1 p-1"><PencilSimple size={14} /></button>
                             <button onClick={e => { e.stopPropagation(); openView(w); }} className="hover:text-t1 p-1"><Eye size={14} /></button>
+                            {deleteConfirm === w._id ? (
+                              <>
+                                <button onClick={e => { e.stopPropagation(); handleDelete(w._id); }} className="text-rose-400 hover:text-rose-300 p-1 text-xs font-bold">Yes</button>
+                                <button onClick={e => { e.stopPropagation(); setDeleteConfirm(null); }} className="hover:text-t1 p-1 text-xs">No</button>
+                              </>
+                            ) : (
+                              <button onClick={e => { e.stopPropagation(); setDeleteConfirm(w._id); }} className="hover:text-rose-400 p-1"><Trash size={14} /></button>
+                            )}
                           </div>
                         </td>
                       </tr>
