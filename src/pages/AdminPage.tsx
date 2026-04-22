@@ -295,7 +295,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => setDeleteUser(u)}
                       title="Deactivate user"
-                      disabled={u._id === currentUser?._id}
+                      disabled={u._id === currentUser?.id}
                       className="p-2 rounded-lg text-t3 hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       <UserMinus size={16} weight="regular" />
@@ -520,7 +520,7 @@ export default function AdminPage() {
                       onClick={() => setEditForm({ ...editForm, isActive: !editForm.isActive })}
                       className={`relative w-10 h-5.5 rounded-full transition-colors ${editForm.isActive ? 'bg-accent' : 'bg-border'}`}
                     >
-                      <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 rounded-full bg-white shadow transition-transform ${editForm.isActive ? 'translate-x-[18px]' : 'translate-x-0'}`} />
+                      <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 rounded-full bg-white shadow transition-transform ${editForm.isActive ? 'translate-x-4.5' : 'translate-x-0'}`} />
                     </button>
                   </div>
 

@@ -103,7 +103,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
         `}
       >
         {/* Logo */}
-        <div className="px-4 h-[56px] flex items-center justify-between shrink-0 border-b border-border">
+        <div className="px-4 h-14 flex items-center justify-between shrink-0 border-b border-border">
           <Logo className="h-8 w-auto object-contain" />
           <button onClick={onClose} className="lg:hidden text-t3 hover:text-t1 transition-colors p-1">
             <XIcon size={16} weight="bold" />
