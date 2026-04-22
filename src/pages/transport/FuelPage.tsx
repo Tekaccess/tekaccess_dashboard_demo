@@ -406,7 +406,7 @@ export default function FuelPage() {
         {[
           { label: 'Total Logs', value: stats.total, Icon: CheckCircle, color: 'text-accent', bg: 'bg-accent-glow' },
           { label: 'Total Litres', value: `${stats.totalLitres.toLocaleString()} L`, Icon: CheckCircle, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-          { label: 'Total Fuel Cost', value: stats.totalCost >= 1_000_000 ? `${(stats.totalCost / 1_000_000).toFixed(1)}M` : `${(stats.totalCost / 1_000).toFixed(0)}K`, Icon: TrendUp, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+          { label: 'Total Fuel Cost', value: stats.totalCost >= 1_000_000 ? `${(stats.totalCost / 1_000_000).toFixed(1)}M` : stats.totalCost >= 1_000 ? `${(stats.totalCost / 1_000).toFixed(0)}K` : stats.totalCost.toLocaleString(), Icon: TrendUp, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
           { label: 'Anomaly Flags', value: stats.anomalies, Icon: Warning, color: 'text-red-500', bg: 'bg-red-500/10' },
         ].map(card => (
           <div key={card.label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
@@ -536,7 +536,7 @@ export default function FuelPage() {
               <LineChart data={monthlyData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'var(--text-3)' }} />
-                <YAxis tick={{ fontSize: 12, fill: 'var(--text-3)' }} tickFormatter={v => `${(v / 1000).toFixed(0)}K`} />
+                <YAxis tick={{ fontSize: 12, fill: 'var(--text-3)' }} tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)} />
                 <Tooltip contentStyle={chartTooltipStyle} formatter={(v: any) => [`${Number(v).toLocaleString()}`, 'Cost']} />
                 <Line type="monotone" dataKey="cost" name="Cost" stroke="#4285f4" strokeWidth={2.5} dot={{ fill: '#4285f4', r: 4 }} />
               </LineChart>

@@ -96,7 +96,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
 
       <aside
         className={`
-          fixed inset-y-0 left-0 z-40 w-60 bg-card border-r border-border flex flex-col h-full overflow-hidden shrink-0
+          fixed inset-y-0 left-0 z-40 lg:z-0 w-60 bg-card border-r border-border flex flex-col h-full overflow-hidden shrink-0
           transform transition-transform duration-300 ease-in-out
           lg:relative lg:translate-x-0
           ${isOpen ? "translate-x-0" : "-translate-x-full"}

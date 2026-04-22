@@ -4,8 +4,9 @@ import {
   Plus, MagnifyingGlass, DownloadSimple, Funnel,
   ListDashes, ChartBar, TrendUp, CaretDown,
   CheckCircle, Warning, FileText, Eye, PencilSimple, X,
-  Spinner, Package, UserPlus
+  Spinner, Package, UserPlus, Trash,
 } from '@phosphor-icons/react';
+import { motion, AnimatePresence } from 'motion/react';
 import QuickAddClient from '../components/QuickAddClient';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -17,7 +18,7 @@ import SearchSelect, { SearchSelectOption } from '../components/ui/SearchSelect'
 import {
   apiListSuppliers, apiListContractsForPO, apiListTaxRates, apiListCurrencies,
   apiListProjects, apiListClients, apiListStockItems,
-  apiListPurchaseOrders, apiCreatePurchaseOrder, apiUpdatePurchaseOrder,
+  apiListPurchaseOrders, apiCreatePurchaseOrder, apiUpdatePurchaseOrder, apiDeletePurchaseOrder,
   Supplier, Contract, TaxRate, Currency, Project, Client, StockItem, PurchaseOrder, POLineItem,
 } from '../lib/api';
 
@@ -172,6 +173,8 @@ export default function PurchaseOrdersPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showAddClient, setShowAddClient] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PurchaseOrder | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Data from API
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
@@ -317,6 +320,18 @@ export default function PurchaseOrdersPage() {
   function handleNewOrder() {
     setSaveError(null);
     setModal({ mode: 'new', draft: emptyDraft() });
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await apiDeletePurchaseOrder(deleteTarget._id);
+      setDeleteTarget(null);
+      await loadOrders();
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   function handleEdit(order: PurchaseOrder) {
@@ -1143,6 +1158,13 @@ export default function PurchaseOrdersPage() {
                           >
                             <PencilSimple size={14} weight="duotone" />
                           </button>
+                          <button
+                            onClick={e => { e.stopPropagation(); setDeleteTarget(order); }}
+                            className="p-1.5 text-t3 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash size={14} weight="duotone" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1267,6 +1289,43 @@ export default function PurchaseOrdersPage() {
           }}
         />
       )}
+
+      <AnimatePresence>
+        {deleteTarget && (
+          <>
+            <motion.div key="del-bd" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-50" onClick={() => !isDeleting && setDeleteTarget(null)} />
+            <motion.div key="del-dlg" initial={{ opacity: 0, scale: 0.95, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }} transition={{ duration: 0.18 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xs px-4"
+              onClick={e => e.stopPropagation()}>
+              <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 text-center">
+                <div className="w-12 h-12 bg-red-100 dark:bg-red-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash size={22} weight="duotone" className="text-red-500" />
+                </div>
+                <h2 className="text-base font-bold text-t1 mb-1">Delete purchase order?</h2>
+                <p className="text-xs text-t3 mb-1">
+                  <span className="font-semibold text-t2">{deleteTarget.poRef}</span> will be permanently removed.
+                </p>
+                {deleteTarget.status !== 'draft' && (
+                  <p className="text-xs text-amber-500 mb-4">Only draft orders can be deleted.</p>
+                )}
+                {deleteTarget.status === 'draft' && <div className="mb-4" />}
+                <div className="flex flex-col gap-2">
+                  <button onClick={handleDelete} disabled={isDeleting || deleteTarget.status !== 'draft'}
+                    className="w-full py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                    {isDeleting ? <><Spinner size={16} className="animate-spin" /> Deleting…</> : 'Delete'}
+                  </button>
+                  <button onClick={() => setDeleteTarget(null)} disabled={isDeleting}
+                    className="w-full py-2.5 border border-border text-t1 hover:bg-surface rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

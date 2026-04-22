@@ -173,7 +173,9 @@ function TransportDashboard() {
         <KpiCard label="Total Fuel Cost" value={
           (s.totalFuelCost ?? 0) >= 1_000_000
             ? `${((s.totalFuelCost ?? 0) / 1_000_000).toFixed(1)}M`
-            : `${Math.round((s.totalFuelCost ?? 0) / 1000)}K`
+            : (s.totalFuelCost ?? 0) >= 1_000
+            ? `${Math.round((s.totalFuelCost ?? 0) / 1000)}K`
+            : (s.totalFuelCost ?? 0).toLocaleString()
         } Icon={GasPump} bg="bg-purple-500/10" color="text-purple-400" />
       </div>
 

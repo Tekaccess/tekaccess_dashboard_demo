@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, Gear, Warning, CheckCircle,
-  PencilSimple, Eye, Spinner, CurrencyDollar,
+  PencilSimple, Eye, Spinner, CurrencyDollar, Trash,
 } from '@phosphor-icons/react';
-import { apiGetSparePartsSummary, apiListSpareParts, apiCreateSparePart, apiUpdateSparePart, SparePart } from '../lib/api';
+import { apiGetSparePartsSummary, apiListSpareParts, apiCreateSparePart, apiUpdateSparePart, apiDeleteSparePart, SparePart } from '../lib/api';
+import { motion, AnimatePresence } from 'motion/react';
 import DocumentSidePanel from '../components/DocumentSidePanel';
 
 const CATEGORIES = ['engine', 'transmission', 'brakes', 'suspension', 'electrical', 'tyres_wheels', 'body_panel', 'filters', 'belts_hoses', 'fluids_lubricants', 'other'];
@@ -56,6 +57,8 @@ export default function SparePartsPage() {
   const [draft, setDraft] = useState<DraftPart>(emptyDraft());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SparePart | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,6 +88,18 @@ export default function SparePartsPage() {
       compatibleTruckModels: (p.compatibleTruckModels || []).join(', '), notes: '',
     });
     setSelected(p); setError(null); setModalMode('edit');
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await apiDeleteSparePart(deleteTarget._id);
+      setDeleteTarget(null);
+      await load();
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   async function handleSave() {
@@ -368,6 +383,8 @@ export default function SparePartsPage() {
                             className="p-1 hover:text-t1 text-t3"><Eye size={14} /></button>
                           <button onClick={e => { e.stopPropagation(); openEdit(p); }}
                             className="p-1 hover:text-t1 text-t3"><PencilSimple size={14} /></button>
+                          <button onClick={e => { e.stopPropagation(); setDeleteTarget(p); }}
+                            className="p-1 hover:text-red-500 text-t3"><Trash size={14} /></button>
                         </div>
                       </td>
                     </tr>
@@ -388,6 +405,39 @@ export default function SparePartsPage() {
           previewContent={viewContent}
         />
       )}
+
+      <AnimatePresence>
+        {deleteTarget && (
+          <>
+            <motion.div key="del-bd" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-50" onClick={() => !isDeleting && setDeleteTarget(null)} />
+            <motion.div key="del-dlg" initial={{ opacity: 0, scale: 0.95, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }} transition={{ duration: 0.18 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xs px-4"
+              onClick={e => e.stopPropagation()}>
+              <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 text-center">
+                <div className="w-12 h-12 bg-red-100 dark:bg-red-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash size={22} weight="duotone" className="text-red-500" />
+                </div>
+                <h2 className="text-base font-bold text-t1 mb-1">Delete spare part?</h2>
+                <p className="text-xs text-t3 mb-5">
+                  <span className="font-semibold text-t2">{deleteTarget.name}</span> will be permanently removed.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <button onClick={handleDelete} disabled={isDeleting}
+                    className="w-full py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-75 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                    {isDeleting ? <><Spinner size={16} className="animate-spin" /> Deleting…</> : 'Delete'}
+                  </button>
+                  <button onClick={() => setDeleteTarget(null)} disabled={isDeleting}
+                    className="w-full py-2.5 border border-border text-t1 hover:bg-surface rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }

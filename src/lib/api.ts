@@ -149,6 +149,25 @@ export async function apiUpdateProfile(userId: string, fields: { fullName?: stri
   });
 }
 
+export async function apiListUsers(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ users: BackendUser[]; pagination: { page: number; limit: number; total: number; pages: number } }>(
+    `/users${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function apiAdminCreateUser(data: { fullName: string; email: string; password: string; role: string; dashboardAccess: string[] }) {
+  return request<{ user: BackendUser }>('/users', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiAdminUpdateUser(id: string, data: Partial<Pick<BackendUser, 'fullName' | 'email' | 'role' | 'dashboardAccess' | 'isActive'>>) {
+  return request<{ user: BackendUser }>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function apiDeactivateUser(id: string) {
+  return request(`/users/${id}`, { method: 'DELETE' });
+}
+
 export type ActivityLog = {
   _id: string;
   action: 'create' | 'read' | 'update' | 'delete';
@@ -306,6 +325,10 @@ export async function apiUpdateSupplier(id: string, data: Partial<Supplier>) {
   return request<{ supplier: Supplier }>(`/procurement/suppliers/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
+export async function apiDeleteSupplier(id: string) {
+  return request(`/procurement/suppliers/${id}`, { method: 'DELETE' });
+}
+
 // Shipments
 export type Shipment = {
   _id: string;
@@ -353,6 +376,10 @@ export async function apiUpdateShipment(id: string, data: Partial<Shipment>) {
   return request<{ shipment: Shipment }>(`/procurement/shipments/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
+export async function apiDeleteShipment(id: string) {
+  return request(`/procurement/shipments/${id}`, { method: 'DELETE' });
+}
+
 // Spare Parts
 export type SparePart = {
   _id: string;
@@ -392,6 +419,10 @@ export async function apiCreateSparePart(data: Partial<SparePart>) {
 
 export async function apiUpdateSparePart(id: string, data: Partial<SparePart>) {
   return request<{ part: SparePart }>(`/procurement/spare-parts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function apiDeleteSparePart(id: string) {
+  return request(`/procurement/spare-parts/${id}`, { method: 'DELETE' });
 }
 
 // ─── Finance ──────────────────────────────────────────────────────────────────

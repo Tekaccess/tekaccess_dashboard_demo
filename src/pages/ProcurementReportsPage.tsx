@@ -86,9 +86,12 @@ export default function ProcurementReportsPage() {
         <div className="bg-card border border-border rounded-xl p-5">
           <p className="text-sm font-semibold text-t1 mb-1">Active PO Value</p>
           <p className="text-4xl font-bold text-accent mt-3">
-            {(s.activePoValue ?? 0) >= 1_000_000
-              ? `${((s.activePoValue ?? 0) / 1_000_000).toFixed(2)}M`
-              : `${((s.activePoValue ?? 0) / 1_000).toFixed(0)}K`}
+            {(() => {
+              const v = s.activePoValue ?? 0;
+              return v >= 1_000_000 ? `${(v / 1_000_000).toFixed(2)}M`
+                : v >= 1_000 ? `${(v / 1_000).toFixed(0)}K`
+                : v.toLocaleString();
+            })()}
           </p>
           <p className="text-xs text-t3 mt-2">Across approved, sent &amp; partially received POs</p>
         </div>
