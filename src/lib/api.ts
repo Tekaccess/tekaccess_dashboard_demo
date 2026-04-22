@@ -739,6 +739,9 @@ export type StockItem = {
   currency: string;
   warehouseId: string;
   warehouseName: string;
+  taxRateId: string | null;
+  taxRateName: string | null;
+  taxRatePercentage: number;
 };
 
 export async function apiListStockItems(params: Record<string, string> = {}) {

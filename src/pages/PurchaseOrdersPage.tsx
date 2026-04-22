@@ -16,10 +16,10 @@ import DocumentSidePanel from '../components/DocumentSidePanel';
 import DatePicker from '../components/ui/DatePicker';
 import SearchSelect, { SearchSelectOption } from '../components/ui/SearchSelect';
 import {
-  apiListSuppliers, apiListContractsForPO, apiListTaxRates, apiListCurrencies,
+  apiListSuppliers, apiListContractsForPO, apiListCurrencies,
   apiListProjects, apiListClients, apiListStockItems,
   apiListPurchaseOrders, apiCreatePurchaseOrder, apiUpdatePurchaseOrder, apiDeletePurchaseOrder,
-  Supplier, Contract, TaxRate, Currency, Project, Client, StockItem, PurchaseOrder, POLineItem,
+  Supplier, Contract, Currency, Project, Client, StockItem, PurchaseOrder, POLineItem,
 } from '../lib/api';
 
 type ViewMode = 'table' | 'bar' | 'trend' | 'pie';
@@ -181,7 +181,6 @@ export default function PurchaseOrdersPage() {
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
-  const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -192,7 +191,6 @@ export default function PurchaseOrdersPage() {
     Promise.all([
       apiListSuppliers().then(r => r.success && setSuppliers(r.data.suppliers)),
       apiListContractsForPO().then(r => r.success && setContracts(r.data.contracts)),
-      apiListTaxRates('purchase').then(r => r.success && setTaxRates(r.data.taxRates)),
       apiListCurrencies().then(r => r.success && setCurrencies(r.data.currencies)),
       apiListProjects().then(r => r.success && setProjects(r.data.projects)),
       apiListClients().then(r => r.success && setClients(r.data.clients)),
@@ -226,11 +224,6 @@ export default function PurchaseOrdersPage() {
     currencies.map(c => ({ value: c.code, label: c.code, meta: c.symbol })),
     [currencies]
   );
-
-  const taxOptions = useMemo<SearchSelectOption[]>(() => [
-    { value: '', label: 'No Tax (0%)', sublabel: 'Tax exempt' },
-    ...taxRates.map(t => ({ value: t._id, label: `${t.name} (${t.percentage}%)`, sublabel: t.taxType, meta: `${t.percentage}%` })),
-  ], [taxRates]);
 
   const projectOptions = useMemo<SearchSelectOption[]>(() =>
     projects.map(p => ({ value: p._id, label: p.name, sublabel: p.projectCode, meta: p.department })),
@@ -599,6 +592,9 @@ export default function PurchaseOrdersPage() {
                     description: opt?.label || item.description,
                     unit: (si?.stockUnit as any) || item.unit,
                     unitPrice: si?.weightedAvgCost || item.unitPrice,
+                    taxRateId: si?.taxRateId || null,
+                    taxRateName: si?.taxRateName || null,
+                    taxRatePercentage: si?.taxRatePercentage || 0,
                   });
                 }}
                 placeholder="Select from inventory..."
@@ -655,20 +651,15 @@ export default function PurchaseOrdersPage() {
                     className="w-full bg-card border border-border px-3 py-1.5 rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
                   />
                 </div>
-                <SearchSelect
-                  options={taxOptions}
-                  value={item.taxRateId || ''}
-                  onChange={(val) => {
-                    const tr = taxRates.find(t => t._id === val);
-                    updateLineItem(item._key, {
-                      taxRateId: val || null,
-                      taxRateName: tr?.name || null,
-                      taxRatePercentage: tr?.percentage || 0,
-                    });
-                  }}
-                  placeholder="Tax..."
-                  clearable={false}
-                />
+                <div>
+                  <label className="block text-[10px] text-t3 mb-1">Tax (from product)</label>
+                  <div className="w-full bg-surface border border-border px-3 py-1.5 rounded-lg text-sm text-t2 h-[34px] flex items-center">
+                    {item.taxRateName
+                      ? `${item.taxRateName} (${item.taxRatePercentage}%)`
+                      : <span className="text-t3">No tax</span>
+                    }
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-between pt-1 border-t border-border text-xs">

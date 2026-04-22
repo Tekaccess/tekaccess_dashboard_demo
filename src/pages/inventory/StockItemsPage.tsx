@@ -7,8 +7,8 @@ import {
 } from '@phosphor-icons/react';
 import {
   apiListStockItems, apiGetInventorySummary, apiCreateStockItem, apiUpdateStockItem,
-  apiDeleteStockItem, apiListWarehouses, apiCreateMovement,
-  StockItem, Warehouse,
+  apiDeleteStockItem, apiListWarehouses, apiCreateMovement, apiListTaxRates,
+  StockItem, Warehouse, TaxRate,
 } from '../../lib/api';
 import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSelect';
 import DocumentSidePanel from '../../components/DocumentSidePanel';
@@ -37,10 +37,11 @@ interface DraftItem {
   itemCode: string; name: string; description: string; category: string;
   warehouseId: string; stockUnit: string; onHandQty: number; weightedAvgCost: number;
   currency: string; minimumDaysCover: number; reorderQty: number;
+  taxRateId: string | null; taxRateName: string | null; taxRatePercentage: number;
 }
 
 function emptyDraft(): DraftItem {
-  return { itemCode: '', name: '', description: '', category: 'raw_material', warehouseId: '', stockUnit: 'tons', onHandQty: 0, weightedAvgCost: 0, currency: 'RWF', minimumDaysCover: 14, reorderQty: 100 };
+  return { itemCode: '', name: '', description: '', category: 'raw_material', warehouseId: '', stockUnit: 'tons', onHandQty: 0, weightedAvgCost: 0, currency: 'RWF', minimumDaysCover: 14, reorderQty: 100, taxRateId: null, taxRateName: null, taxRatePercentage: 0 };
 }
 
 interface MovementDraft {
@@ -50,6 +51,7 @@ interface MovementDraft {
 export default function StockItemsPage() {
   const [items, setItems] = useState<StockItem[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [summary, setSummary] = useState({ totalItems: 0, totalValue: 0, lowStockItems: 0, warehouseCount: 0 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -69,14 +71,16 @@ export default function StockItemsPage() {
     if (search) params.search = search;
     if (categoryFilter) params.category = categoryFilter;
     if (warehouseFilter) params.warehouseId = warehouseFilter;
-    const [itemsRes, summaryRes, whRes] = await Promise.all([
+    const [itemsRes, summaryRes, whRes, taxRes] = await Promise.all([
       apiListStockItems(params),
       apiGetInventorySummary(),
       apiListWarehouses(),
+      apiListTaxRates('purchase'),
     ]);
     if (itemsRes.success) setItems(itemsRes.data.items);
     if (summaryRes.success) setSummary(summaryRes.data.summary);
     if (whRes.success) setWarehouses(whRes.data.warehouses);
+    if (taxRes.success) setTaxRates(taxRes.data.taxRates);
     setLoading(false);
   }, [search, categoryFilter, warehouseFilter]);
 
@@ -86,7 +90,7 @@ export default function StockItemsPage() {
     warehouses.map(w => ({ value: w._id, label: w.name, sublabel: w.warehouseCode })), [warehouses]);
 
   function openNew() { setDraft(emptyDraft()); setError(null); setSelectedItem(null); setModalMode('new'); }
-  function openEdit(item: StockItem) { setDraft({ itemCode: item.itemCode, name: item.name, description: item.description || '', category: item.category, warehouseId: typeof item.warehouseId === 'string' ? item.warehouseId : (item as any).warehouseId?._id || '', stockUnit: item.stockUnit, onHandQty: item.onHandQty, weightedAvgCost: item.weightedAvgCost, currency: item.currency, minimumDaysCover: (item as any).minimumDaysCover || 14, reorderQty: (item as any).reorderQty || 100 }); setSelectedItem(item); setError(null); setModalMode('edit'); }
+  function openEdit(item: StockItem) { setDraft({ itemCode: item.itemCode, name: item.name, description: item.description || '', category: item.category, warehouseId: typeof item.warehouseId === 'string' ? item.warehouseId : (item as any).warehouseId?._id || '', stockUnit: item.stockUnit, onHandQty: item.onHandQty, weightedAvgCost: item.weightedAvgCost, currency: item.currency, minimumDaysCover: (item as any).minimumDaysCover || 14, reorderQty: (item as any).reorderQty || 100, taxRateId: item.taxRateId || null, taxRateName: item.taxRateName || null, taxRatePercentage: item.taxRatePercentage || 0 }); setSelectedItem(item); setError(null); setModalMode('edit'); }
   function openView(item: StockItem) { setSelectedItem(item); setModalMode('view'); }
   function openMovement(item: StockItem) { setSelectedItem(item); setMovementDraft({ movementType: 'INBOUND', qty: 1, unitCost: item.weightedAvgCost, sourceRef: '', reason: '', notes: '', countedQty: item.onHandQty }); setError(null); setModalMode('movement'); }
 
@@ -159,6 +163,20 @@ export default function StockItemsPage() {
               {['RWF','USD','EUR','KES','UGX','TZS','BIF'].map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
+        </div>
+        <div>
+          <label className="block text-[10px] text-t3 mb-1">Tax Rate</label>
+          <select
+            className={inp}
+            value={draft.taxRateId || ''}
+            onChange={e => {
+              const tr = taxRates.find(t => t._id === e.target.value);
+              setDraft(d => ({ ...d, taxRateId: tr?._id || null, taxRateName: tr?.name || null, taxRatePercentage: tr?.percentage || 0 }));
+            }}
+          >
+            <option value="">No Tax (0%)</option>
+            {taxRates.map(t => <option key={t._id} value={t._id}>{t.name} ({t.percentage}%)</option>)}
+          </select>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div><label className="block text-[10px] text-t3 mb-1">Min. Days Cover</label><input type="number" min="0" value={draft.minimumDaysCover} onChange={e => setDraft(d => ({ ...d, minimumDaysCover: Number(e.target.value) }))} className={inp} /></div>
