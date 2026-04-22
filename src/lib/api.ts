@@ -7,11 +7,18 @@ type ApiResponse<T = null> = {
   errors?: { field: string; message: string }[];
 };
 
-// In-memory access token — never written to localStorage to avoid XSS exposure.
-let _accessToken: string | null = null;
+const TOKEN_KEY = 'tekaccess_token';
+
+// Load persisted token on module init so it's ready before the first request.
+let _accessToken: string | null = localStorage.getItem(TOKEN_KEY);
 
 export function setAccessToken(token: string | null) {
   _accessToken = token;
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+  }
 }
 
 export function getAccessToken() {
@@ -21,7 +28,6 @@ export function getAccessToken() {
 async function request<T>(
   path: string,
   options: RequestInit = {},
-  retry = true
 ): Promise<ApiResponse<T>> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -32,53 +38,17 @@ async function request<T>(
     headers['Authorization'] = `Bearer ${_accessToken}`;
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers,
-    credentials: 'include', // send httpOnly refresh cookie
-  });
+  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
 
-  // If access token expired, try to refresh once then replay the request.
-  if (res.status === 401 && retry) {
-    const refreshed = await tryRefresh();
-    if (refreshed) {
-      return request<T>(path, options, false);
-    }
+  // If the server rejects the token (expired, password changed, deactivated),
+  // wipe local storage so the user is redirected to login on next navigation.
+  if (res.status === 401 || res.status === 403) {
+    setAccessToken(null);
+    localStorage.removeItem('tekaccess_user');
   }
 
   const json = await res.json();
   return json as ApiResponse<T>;
-}
-
-// Deduplicates concurrent refresh calls — only one HTTP request in flight at a time.
-// Without this, page load fires multiple simultaneous refreshes; the server rotates
-// the token on the first one and the rest get 401, which clears the auth state.
-let _refreshPromise: Promise<boolean> | null = null;
-
-async function tryRefresh(): Promise<boolean> {
-  if (_refreshPromise) return _refreshPromise;
-
-  _refreshPromise = (async () => {
-    try {
-      const res = await fetch(`${BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (!res.ok) return false;
-      const json = await res.json();
-      if (json.success && json.data?.accessToken) {
-        setAccessToken(json.data.accessToken);
-        return true;
-      }
-      return false;
-    } catch {
-      return false;
-    } finally {
-      _refreshPromise = null;
-    }
-  })();
-
-  return _refreshPromise;
 }
 
 // ─── Auth endpoints ──────────────────────────────────────────────────────────
@@ -105,14 +75,9 @@ export async function apiLogin(email: string, password: string) {
   });
 }
 
-export async function apiRefresh() {
-  return tryRefresh();
-}
-
 export async function apiLogout() {
-  const res = await request('/auth/logout', { method: 'POST' });
   setAccessToken(null);
-  return res;
+  return request('/auth/logout', { method: 'POST' });
 }
 
 export async function apiValidateResetToken(token: string) {

@@ -4,8 +4,8 @@ import {
   apiLogout,
   apiForgotPassword,
   apiResetPassword,
-  apiRefresh,
   apiUpdateProfile,
+  getAccessToken,
   setAccessToken,
   type BackendUser,
 } from "../lib/api";
@@ -49,26 +49,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const userRef = useRef<User | null>(null);
 
   useEffect(() => {
-    const cached = sessionStorage.getItem("tekaccess_user");
-    if (cached) {
+    // Restore session from localStorage — token was already loaded into memory by api.ts.
+    const token = getAccessToken();
+    const cached = localStorage.getItem("tekaccess_user");
+    if (token && cached) {
       try {
         const parsed = JSON.parse(cached);
         userRef.current = parsed;
         setUser(parsed);
       } catch {
-        sessionStorage.removeItem("tekaccess_user");
+        localStorage.removeItem("tekaccess_user");
+        setAccessToken(null);
       }
     }
-
-    // Silently restore the access token from the httpOnly refresh cookie on page load.
-    apiRefresh()
-      .then((ok) => {
-        if (!ok) {
-          setUser(null);
-          sessionStorage.removeItem("tekaccess_user");
-        }
-      })
-      .finally(() => setIsInitialising(false));
+    setIsInitialising(false);
   }, []);
 
   const login = async (email: string, password: string): Promise<string | null> => {
@@ -80,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const u = toUser(res.data.user);
     userRef.current = u;
     setUser(u);
-    sessionStorage.setItem("tekaccess_user", JSON.stringify(u));
+    localStorage.setItem("tekaccess_user", JSON.stringify(u));
     return null;
   };
 
@@ -88,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await apiLogout();
     userRef.current = null;
     setUser(null);
-    sessionStorage.removeItem("tekaccess_user");
+    localStorage.removeItem("tekaccess_user");
   };
 
   const forgotPassword = async (email: string): Promise<string | null> => {
@@ -108,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = { ...userRef.current, fullName: res.data.user.fullName };
     userRef.current = updated;
     setUser(updated);
-    sessionStorage.setItem('tekaccess_user', JSON.stringify(updated));
+    localStorage.setItem('tekaccess_user', JSON.stringify(updated));
     return null;
   };
 
