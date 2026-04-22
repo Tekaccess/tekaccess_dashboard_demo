@@ -379,7 +379,7 @@ export default function AdminPage() {
                         required
                         value={addForm.password}
                         onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
-                        placeholder="Min. 8 chars, uppercase, number, symbol"
+                        placeholder="Set a password"
                         className="w-full px-4 py-2.5 pr-10 rounded-xl border border-border bg-surface text-t1 placeholder-t3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
                       />
                       <button
