@@ -5,6 +5,8 @@ import {
   apiForgotPassword,
   apiResetPassword,
   apiUpdateProfile,
+  apiUpdateDashboardOrder,
+  apiUploadAvatar,
   getAccessToken,
   setAccessToken,
   type BackendUser,
@@ -18,6 +20,10 @@ export interface User {
   fullName: string;
   role: UserRole;
   dashboardAccess: string[];
+  avatarUrl: string | null;
+  preferences: {
+    dashboardOrder: string[];
+  };
 }
 
 interface AuthContextType {
@@ -29,6 +35,8 @@ interface AuthContextType {
   forgotPassword: (email: string) => Promise<string | null>;
   resetPassword: (token: string, password: string) => Promise<string | null>;
   updateName: (fullName: string) => Promise<string | null>;
+  updateDashboardOrder: (order: string[]) => Promise<string | null>;
+  uploadAvatar: (file: File) => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,6 +48,10 @@ function toUser(u: BackendUser): User {
     fullName: u.fullName,
     role: u.role,
     dashboardAccess: u.dashboardAccess,
+    avatarUrl: u.avatarUrl ?? null,
+    preferences: {
+      dashboardOrder: u.preferences?.dashboardOrder ?? [],
+    },
   };
 }
 
@@ -106,6 +118,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   };
 
+  const uploadAvatar = async (file: File): Promise<string | null> => {
+    const res = await apiUploadAvatar(file);
+    if (!res.success || !res.data) return res.message || 'Upload failed.';
+    const updated = { ...userRef.current!, avatarUrl: res.data.user.avatarUrl };
+    userRef.current = updated;
+    setUser(updated);
+    localStorage.setItem('tekaccess_user', JSON.stringify(updated));
+    return null;
+  };
+
+  const updateDashboardOrder = async (order: string[]): Promise<string | null> => {
+    if (!userRef.current) return 'Not authenticated.';
+    const res = await apiUpdateDashboardOrder(userRef.current.id, order);
+    if (!res.success || !res.data) {
+      return res.message || 'Failed to save order.';
+    }
+    const updated = { ...userRef.current, preferences: { ...userRef.current.preferences, dashboardOrder: order } };
+    userRef.current = updated;
+    setUser(updated);
+    localStorage.setItem('tekaccess_user', JSON.stringify(updated));
+    return null;
+  };
+
   const resetPassword = async (token: string, password: string): Promise<string | null> => {
     const res = await apiResetPassword(token, password);
     if (!res.success) {
@@ -126,6 +161,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         forgotPassword,
         resetPassword,
         updateName,
+        updateDashboardOrder,
+        uploadAvatar,
       }}
     >
       {children}

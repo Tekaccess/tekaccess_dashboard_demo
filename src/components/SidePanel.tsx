@@ -34,7 +34,7 @@ export default function SidePanel({ isOpen, onClose, children, title }: SidePane
         </div>
         <OverlayScrollbarsComponent
           className="flex-1 bg-card"
-          options={{ scrollbars: { autoHide: 'scroll' } }}
+          options={{ scrollbars: { autoHide: 'never' } }}
           defer
         >
           {children}

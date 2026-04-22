@@ -70,7 +70,7 @@ const AttendanceDetail: React.FC<AttendanceDetailProps> = ({ records = defaultRe
       </div>
 
       <OverlayScrollbarsComponent
-        options={{ scrollbars: { autoHide: 'scroll' } }}
+        options={{ scrollbars: { autoHide: 'never' } }}
         defer
       >
         <table className="w-full">

@@ -26,7 +26,7 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
       <OverlayScrollbarsComponent
         element="div"
         className="w-full md:w-[35%] border-r border-border p-6 flex flex-col bg-card"
-        options={{ scrollbars: { autoHide: 'scroll' } }}
+        options={{ scrollbars: { autoHide: 'never' } }}
         defer
       >
         <div className="flex items-center space-x-2 mb-4">
@@ -181,7 +181,7 @@ export default function TransactionDetail({ transaction }: TransactionDetailProp
 
         <OverlayScrollbarsComponent
           className="flex-1 p-6 bg-app"
-          options={{ scrollbars: { autoHide: 'scroll' } }}
+          options={{ scrollbars: { autoHide: 'never' } }}
           defer
         >
           {activeTab === 'Activity' && (

@@ -77,21 +77,30 @@ const DEPT_ACCESS_SLUGS: Record<string, string[]> = {
   data_team:   ['data_entry'],
 };
 
+function getFirstDept(user: ReturnType<typeof useAuth>['user']): string {
+  if (!user) return ALL_DEPT_IDS[0];
+  const slugToDeptId: Record<string, string> = {};
+  for (const [id, slugs] of Object.entries(DEPT_ACCESS_SLUGS)) {
+    for (const s of slugs) slugToDeptId[s] = id;
+  }
+  const access = user.role === 'super_admin' ? ALL_DEPT_IDS : ALL_DEPT_IDS.filter(id =>
+    DEPT_ACCESS_SLUGS[id]?.some(s => user.dashboardAccess?.includes(s))
+  );
+  const order = user.preferences?.dashboardOrder ?? [];
+  const ordered = [
+    ...order.map(s => slugToDeptId[s]).filter(id => id && access.includes(id)),
+    ...access.filter(id => !order.map(s => slugToDeptId[s]).includes(id)),
+  ];
+  return ordered[0] ?? ALL_DEPT_IDS[0];
+}
+
 function IndexRedirect() {
   const { user, isInitialising } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (isInitialising || !user) return;
-    let firstDept: string;
-    if (user.role === 'super_admin') {
-      firstDept = ALL_DEPT_IDS[0];
-    } else {
-      firstDept = ALL_DEPT_IDS.find(id =>
-        DEPT_ACCESS_SLUGS[id]?.some(slug => user.dashboardAccess?.includes(slug))
-      ) ?? ALL_DEPT_IDS[0];
-    }
-    navigate({ to: `/${firstDept}`, replace: true });
+    navigate({ to: `/${getFirstDept(user)}`, replace: true });
   }, [user, isInitialising, navigate]);
 
   return null;

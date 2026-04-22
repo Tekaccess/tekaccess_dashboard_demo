@@ -157,7 +157,7 @@ export default function RecentTransactions() {
 
         <OverlayScrollbarsComponent
           className="min-h-[250px]"
-          options={{ scrollbars: { autoHide: 'scroll' } }}
+          options={{ scrollbars: { autoHide: 'never' } }}
           defer
         >
           <table className="min-w-full divide-y divide-border">

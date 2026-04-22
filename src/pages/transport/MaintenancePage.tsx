@@ -500,7 +500,7 @@ export default function MaintenancePage() {
         </div>
 
         {viewMode === 'table' && (
-          <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'scroll' } }} defer>
+          <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'never' } }} defer>
             <table className="min-w-full divide-y divide-border">
               <thead className="bg-surface">
                 <tr>

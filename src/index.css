@@ -70,13 +70,28 @@ body {
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
+/* Hide all native browser scrollbars — OverlayScrollbars handles everything */
 * {
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-bg);
+  scrollbar-width: none;
 }
-*::-webkit-scrollbar { width: 5px; height: 5px; }
-*::-webkit-scrollbar-track { background: var(--scrollbar-bg); }
-*::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 9999px; }
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/* OverlayScrollbars — always visible, full opacity */
+.os-scrollbar {
+  --os-handle-bg: var(--scrollbar-thumb);
+  --os-handle-bg-hover: color-mix(in srgb, var(--scrollbar-thumb) 80%, black);
+  --os-handle-bg-active: color-mix(in srgb, var(--scrollbar-thumb) 65%, black);
+  --os-handle-border-radius: 9999px;
+  --os-track-bg: var(--scrollbar-bg);
+  --os-track-border-radius: 9999px;
+}
+.os-scrollbar-vertical { width: 8px !important; }
+.os-scrollbar-horizontal { height: 8px !important; }
+.os-scrollbar-handle { opacity: 1 !important; }
+.os-scrollbar-track { border-radius: 9999px !important; }
+.os-scrollbar-handle .os-scrollbar-handle-interactive { border-radius: 9999px !important; }
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }

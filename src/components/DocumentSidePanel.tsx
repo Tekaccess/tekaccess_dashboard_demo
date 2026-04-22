@@ -86,7 +86,7 @@ export default function DocumentSidePanel({
           <div className="w-[400px] border-r border-border flex flex-col bg-card">
             <OverlayScrollbarsComponent
               className="flex-1 p-6"
-              options={{ scrollbars: { autoHide: 'scroll' } }}
+              options={{ scrollbars: { autoHide: 'never' } }}
               defer
             >
               <div className="space-y-6">{formContent}</div>
@@ -101,7 +101,7 @@ export default function DocumentSidePanel({
           {/* Preview pane */}
           <OverlayScrollbarsComponent
             className="flex-1 bg-app p-12 flex justify-center"
-            options={{ scrollbars: { autoHide: 'scroll' } }}
+            options={{ scrollbars: { autoHide: 'never' } }}
             defer
           >
           <div className="flex justify-center w-full">

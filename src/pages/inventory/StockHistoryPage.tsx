@@ -147,7 +147,7 @@ export default function StockHistoryPage() {
             <p>No stock movements found.</p>
           </div>
         ) : (
-          <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'scroll' } }}>
+          <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'never' } }}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface/30">

@@ -237,7 +237,7 @@ export default function TaskManagement() {
       {viewMode === 'list' && (
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           <OverlayScrollbarsComponent
-            options={{ scrollbars: { autoHide: 'scroll' } }}
+            options={{ scrollbars: { autoHide: 'never' } }}
             defer
           >
             <table className="w-full">

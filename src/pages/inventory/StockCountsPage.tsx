@@ -113,7 +113,7 @@ export default function StockCountsPage() {
         </p>
       )}
 
-      <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'scroll' } }} className="flex-1 overflow-y-auto">
+      <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'never' } }} className="flex-1 overflow-y-auto">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-card z-10">
             <tr className="border-b border-border">
@@ -218,7 +218,7 @@ export default function StockCountsPage() {
               <Spinner size={24} className="animate-spin text-accent" />
             </div>
           ) : (
-            <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'scroll' } }}>
+            <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'never' } }}>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
@@ -261,7 +261,7 @@ export default function StockCountsPage() {
               <p className="text-sm">No stock counts recorded yet.</p>
             </div>
           ) : (
-            <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'scroll' } }}>
+            <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'never' } }}>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">

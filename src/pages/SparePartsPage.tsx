@@ -335,7 +335,7 @@ export default function SparePartsPage() {
               <Gear size={40} className="mb-2 opacity-40" /><p>No spare parts found.</p>
             </div>
           ) : (
-            <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'scroll' } }}>
+            <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'never' } }}>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">

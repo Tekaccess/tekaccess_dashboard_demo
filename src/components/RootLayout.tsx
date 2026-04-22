@@ -17,11 +17,18 @@ const DEPT_ACCESS_SLUGS: Record<string, string[]> = {
   data_team:   ['data_entry'],
 };
 
-function getAccessibleDepts(role: string, dashboardAccess: string[]): string[] {
-  if (role === 'super_admin') return ALL_DEPT_IDS;
-  return ALL_DEPT_IDS.filter((id) =>
-    DEPT_ACCESS_SLUGS[id]?.some((slug) => dashboardAccess?.includes(slug))
-  );
+function getOrderedDepts(role: string, dashboardAccess: string[], dashboardOrder: string[]): string[] {
+  const slugToDeptId: Record<string, string> = {};
+  for (const [id, slugs] of Object.entries(DEPT_ACCESS_SLUGS)) {
+    for (const s of slugs) slugToDeptId[s] = id;
+  }
+  const access = role === 'super_admin'
+    ? ALL_DEPT_IDS
+    : ALL_DEPT_IDS.filter((id) => DEPT_ACCESS_SLUGS[id]?.some((slug) => dashboardAccess?.includes(slug)));
+  if (!dashboardOrder?.length) return access;
+  const ordered = dashboardOrder.map(s => slugToDeptId[s]).filter(id => id && access.includes(id));
+  const rest = access.filter(id => !ordered.includes(id));
+  return [...ordered, ...rest];
 }
 
 export default function RootLayout() {
@@ -36,7 +43,7 @@ export default function RootLayout() {
   const firstSegment = pathParts[0] || '';
   const currentDepartmentId = ALL_DEPT_IDS.includes(firstSegment) ? firstSegment : '';
 
-  const accessibleDepts = user ? getAccessibleDepts(user.role, user.dashboardAccess) : [];
+  const accessibleDepts = user ? getOrderedDepts(user.role, user.dashboardAccess, user.preferences?.dashboardOrder ?? []) : [];
   const defaultDept = accessibleDepts[0] ?? 'finance';
 
   useEffect(() => {
@@ -69,7 +76,7 @@ export default function RootLayout() {
         <OverlayScrollbarsComponent
           element="main"
           className="flex-1 p-4 sm:p-6"
-          options={{ scrollbars: { autoHide: 'scroll' } }}
+          options={{ scrollbars: { autoHide: 'never' } }}
           defer
         >
           <Outlet />

@@ -50,11 +50,30 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
   const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
-  const accessibleDepts = user?.role === 'super_admin'
-    ? departmentsData
-    : departmentsData.filter((d) =>
-        DEPT_ACCESS_SLUGS[d.id]?.some((slug) => user?.dashboardAccess?.includes(slug))
-      );
+  const dashboardOrder = user?.preferences?.dashboardOrder ?? [];
+
+  const sortByOrder = (depts: typeof departmentsData) => {
+    if (dashboardOrder.length === 0) return depts;
+    // Build a slug→deptId map from DEPT_ACCESS_SLUGS
+    const slugToDeptId: Record<string, string> = {};
+    for (const [deptId, slugs] of Object.entries(DEPT_ACCESS_SLUGS)) {
+      for (const slug of slugs) slugToDeptId[slug] = deptId;
+    }
+    // Order: first those present in dashboardOrder, then any remainder
+    const ordered = dashboardOrder
+      .map(slug => depts.find(d => d.id === slugToDeptId[slug]))
+      .filter(Boolean) as typeof departmentsData;
+    const rest = depts.filter(d => !ordered.includes(d));
+    return [...ordered, ...rest];
+  };
+
+  const accessibleDepts = sortByOrder(
+    user?.role === 'super_admin'
+      ? departmentsData
+      : departmentsData.filter((d) =>
+          DEPT_ACCESS_SLUGS[d.id]?.some((slug) => user?.dashboardAccess?.includes(slug))
+        )
+  );
 
   const currentDepartment = departmentsData.find((d) => d.id === currentDepartmentId) || accessibleDepts[0];
 
@@ -113,7 +132,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
         {/* Navigation — scrollable */}
         <OverlayScrollbarsComponent
           className="flex-1 px-3 py-4"
-          options={{ scrollbars: { autoHide: 'scroll' } }}
+          options={{ scrollbars: { autoHide: 'never' } }}
           defer
         >
         <div className="space-y-5">
@@ -281,7 +300,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
               </div>
               <OverlayScrollbarsComponent
                 className="max-h-52"
-                options={{ scrollbars: { autoHide: 'scroll' } }}
+                options={{ scrollbars: { autoHide: 'never' } }}
                 defer
               >
               <div className="py-1.5 space-y-0.5 px-1.5">

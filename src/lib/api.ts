@@ -29,8 +29,9 @@ async function request<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<ApiResponse<T>> {
+  const isFormData = options.body instanceof FormData;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string>),
   };
 
@@ -61,10 +62,12 @@ export type BackendUser = {
   dashboardAccess: string[];
   isActive: boolean;
   lastLoginAt: string | null;
+  avatarUrl: string | null;
   preferences: {
     timezone: string;
     dateFormat: string;
     alertsEnabled: boolean;
+    dashboardOrder: string[];
   };
 };
 
@@ -111,6 +114,22 @@ export async function apiUpdateProfile(userId: string, fields: { fullName?: stri
   return request<{ user: BackendUser }>(`/users/${userId}`, {
     method: 'PATCH',
     body: JSON.stringify(fields),
+  });
+}
+
+export async function apiUploadAvatar(file: File) {
+  const form = new FormData();
+  form.append('avatar', file);
+  return request<{ user: BackendUser }>('/users/me/avatar', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+export async function apiUpdateDashboardOrder(userId: string, dashboardOrder: string[]) {
+  return request<{ user: BackendUser }>(`/users/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ preferences: { dashboardOrder } }),
   });
 }
 

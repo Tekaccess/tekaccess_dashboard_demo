@@ -1,12 +1,13 @@
-import React, { useState, useCallback } from 'react';
-import { MagnifyingGlass, Bell, List, Sun, Moon, SignOut, Key, Gear, KeyIcon, GearFineIcon, GearIcon, PencilSimpleIcon, X, CheckIcon, Buildings, ShieldCheck, ClockCounterClockwise, ClockCounterClockwiseIcon, CircleNotchIcon } from '@phosphor-icons/react';
+import React, { useState, useCallback, useRef } from 'react';
+import { MagnifyingGlass, Bell, List, SignOut, KeyIcon, GearIcon, PencilSimpleIcon, X, CheckIcon, ShieldCheck, ClockCounterClockwise, ClockCounterClockwiseIcon, CircleNotchIcon, DotsSixVerticalIcon, CheckCircleIcon, CameraIcon } from '@phosphor-icons/react';
 import { Eye, EyeSlash, CircleNotch, CheckCircle } from '@phosphor-icons/react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from '@tanstack/react-router';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { apiChangePassword, apiGetMyActivity, type ActivityLog } from '../lib/api';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 
 const SLUG_LABELS: Record<string, string> = {
   executive: 'Executive',
@@ -27,7 +28,7 @@ type ModalState = 'idle' | 'open' | 'success';
 
 export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
-  const { user, logout, updateName } = useAuth();
+  const { user, logout, updateName, updateDashboardOrder, uploadAvatar } = useAuth();
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -50,6 +51,13 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
   const [nameSaving, setNameSaving] = useState(false);
   const [nameError, setNameError] = useState('');
   const [nameSaved, setNameSaved] = useState(false);
+  const [dashOrder, setDashOrder] = useState<string[]>([]);
+  const dashOrderRef = useRef<string[]>([]);
+  const [orderSaved, setOrderSaved] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Activity modal state
   const [showActivity, setShowActivity] = useState(false);
@@ -64,6 +72,15 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
     setNameEditing(false);
     setNameError('');
     setNameSaved(false);
+    // Build initial order: saved order first, then any slugs not yet in it
+    const saved = user?.preferences?.dashboardOrder ?? [];
+    const access = user?.dashboardAccess ?? [];
+    const merged = [...saved.filter(s => access.includes(s)), ...access.filter(s => !saved.includes(s))];
+    setDashOrder(merged);
+    dashOrderRef.current = merged;
+    setOrderSaved(false);
+    setAvatarPreview(null);
+    setAvatarError('');
     setShowSettings(true);
   };
 
@@ -87,6 +104,30 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
       setActivityLoading(false);
     }
   }, []);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      setAvatarError('Image must be under 4 MB.');
+      return;
+    }
+    setAvatarError('');
+    setAvatarPreview(URL.createObjectURL(file));
+    setAvatarUploading(true);
+    const err = await uploadAvatar(file);
+    setAvatarUploading(false);
+    if (err) {
+      setAvatarError(err);
+      setAvatarPreview(null);
+    }
+  };
+
+  const handleReorderEnd = async () => {
+    await updateDashboardOrder(dashOrderRef.current);
+    setOrderSaved(true);
+    setTimeout(() => setOrderSaved(false), 2000);
+  };
 
   const handleSaveName = async () => {
     if (!nameValue.trim() || nameValue.trim() === user?.fullName) {
@@ -188,8 +229,10 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               className="flex items-center gap-2 p-1 border border-border rounded-full bg-surface hover:bg-accent-glow transition-all overflow-hidden"
             >
-              <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-white text-[10px] font-bold">
-                {user?.fullName?.[0].toUpperCase() || 'U'}
+              <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-white text-[10px] font-bold overflow-hidden">
+                {user?.avatarUrl
+                  ? <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  : user?.fullName?.[0].toUpperCase() || 'U'}
               </div>
               <span className="text-xs font-medium text-t1 pr-2 hidden lg:block">{user?.fullName}</span>
             </button>
@@ -207,8 +250,10 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                   >
                     {/* User identity */}
                     <div className="p-3 flex items-start gap-3 border-b border-border">
-                      <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-white text-sm font-bold shrink-0">
-                        {user?.fullName?.[0].toUpperCase() || 'U'}
+                      <div className="size-12 rounded-full bg-accent flex items-center justify-center text-white text-sm font-bold shrink-0 overflow-hidden">
+                        {user?.avatarUrl
+                          ? <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                          : user?.fullName?.[0].toUpperCase() || 'U'}
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-t1 truncate">{user?.fullName}</p>
@@ -410,13 +455,13 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.97, y: 12 }}
               transition={{ duration: 0.2 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xl px-4"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex w-[calc(100%-1.5rem)] max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+              <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col w-full max-h-[90vh]">
 
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border shrink-0">
                   <h2 className="text-base font-bold text-t1">Account Settings</h2>
                   <button
                     onClick={() => setShowSettings(false)}
@@ -426,12 +471,65 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                   </button>
                 </div>
 
-                <div className="p-6 space-y-6">
+                <OverlayScrollbarsComponent className="p-4 sm:p-6 space-y-6 flex-1" options={{ scrollbars: { autoHide: 'never' } }} defer>
 
                   {/* Avatar + identity */}
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-white text-2xl font-bold shrink-0">
-                      {(nameEditing ? nameValue : user?.fullName)?.[0]?.toUpperCase() || 'U'}
+                    {/* Clickable avatar */}
+                    <div className="relative shrink-0 group">
+                      <button
+                        type="button"
+                        onClick={() => avatarInputRef.current?.click()}
+                        className="size-20 rounded-full overflow-hidden transition-all duration-200 focus:outline-none"
+                      >
+                        <AnimatePresence mode="wait">
+                          {avatarUploading ? (
+                            <motion.div
+                              key="uploading"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="w-full h-full bg-black/40 flex items-center justify-center"
+                            >
+                              <CircleNotchIcon size={22} weight="bold" className="text-white animate-spin" />
+                            </motion.div>
+                          ) : (avatarPreview || user?.avatarUrl) ? (
+                            <motion.img
+                              key={avatarPreview || user?.avatarUrl || 'img'}
+                              initial={{ opacity: 0, scale: 1.08 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.25 }}
+                              src={avatarPreview || user?.avatarUrl!}
+                              alt="Avatar"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <motion.div
+                              key="initials"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="w-full h-full bg-accent flex items-center justify-center text-white text-2xl font-bold"
+                            >
+                              {(nameEditing ? nameValue : user?.fullName)?.[0]?.toUpperCase() || 'U'}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                        {/* Hover overlay */}
+                        {!avatarUploading && (
+                          <div className="absolute aspect-square size-20 top-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                            <CameraIcon size={24} className="text-white" />
+                          </div>
+                        )}
+                      </button>
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={handleAvatarChange}
+                      />
                     </div>
                     <div>
                       <p className="text-base font-bold text-t1">{user?.fullName}</p>
@@ -439,11 +537,14 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                       <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-accent-glow text-accent text-[10px] font-bold uppercase tracking-wide">
                         {user?.role?.replace(/_/g, ' ')}
                       </span>
+                      {avatarError && (
+                        <p className="text-[10px] text-red-500 mt-1">{avatarError}</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Divider */}
-                  <div className="border-t border-border" />
+                  <div className="border-t border-border mt-6 mb-4" />
 
                   {/* Name field */}
                   <div>
@@ -501,38 +602,69 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                   </div>
 
                   {/* Divider */}
-                  <div className="border-t border-border" />
+                  <div className="border-t border-border my-4" />
 
-                  {/* Dashboard access */}
+                  {/* Dashboard access & order */}
                   <div>
-                    <label className="text-xs font-semibold text-t3 uppercase tracking-widest block mb-3">
-                      Dashboard Access
-                    </label>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-xs font-semibold text-t3 py-1 uppercase tracking-widest">
+                        Dashboard(s) You can Access
+                      </label>
+                      <AnimatePresence>
+                        {orderSaved && (
+                          <motion.span
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="flex items-center gap-1 text-[13px] text-green-700"
+                          >
+                            <CheckCircleIcon size={15} weight="fill" /> Saved
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </div>
                     {user?.role === 'super_admin' ? (
                       <div className="flex items-center gap-2.5 p-3 rounded-xl bg-accent-glow border border-accent-border">
                         <ShieldCheck size={18} weight="duotone" className="text-accent shrink-0" />
                         <p className="text-xs font-medium text-accent">Full access to all dashboards</p>
                       </div>
-                    ) : user?.dashboardAccess && user.dashboardAccess.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        {user.dashboardAccess.map((slug) => (
-                          <div
-                            key={slug}
-                            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-surface border border-border"
-                          >
-                            <Buildings size={15} weight="duotone" className="text-accent shrink-0" />
-                            <span className="text-xs font-medium text-t1 truncate">
-                              {SLUG_LABELS[slug] ?? slug}
-                            </span>
-                          </div>
-                        ))}
+                    ) : dashOrder.length > 0 ? (
+                      <div>
+                        <Reorder.Group
+                          axis="y"
+                          values={dashOrder}
+                          onReorder={(v) => { setDashOrder(v); dashOrderRef.current = v; }}
+                          as="ul"
+                          className="space-y-1.5"
+                        >
+                          {dashOrder.map((slug, idx) => (
+                            <Reorder.Item
+                              key={slug}
+                              value={slug}
+                              as="li"
+                              onDragEnd={() => handleReorderEnd()}
+                              style={{ listStyle: 'none' }}
+                              whileDrag={{ zIndex: 50 }}
+                              className="flex items-center justify-start gap-3 w-full cursor-grab active:cursor-grabbing"
+                            >
+                              <DotsSixVerticalIcon size={14} weight="bold" className="text-t3 shrink-0" />
+                              <div
+                                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-border bg-surface text-t1 select-none hover:border-accent/40"
+                              >
+                                <span className="text-[10px] font-bold text-t3 w-4 text-center shrink-0">{idx + 1}</span>
+                                <span className="flex-1 text-xs font-semibold">{SLUG_LABELS[slug] ?? slug}</span>
+                              </div>
+                            </Reorder.Item>
+                          ))}
+                        </Reorder.Group>
+                        <p className="text-xs text-t3 mt-3 px-1">Drag to reorder.</p>
                       </div>
                     ) : (
                       <p className="text-xs text-t3 italic">No dashboard access assigned.</p>
                     )}
                   </div>
 
-                </div>
+                </OverlayScrollbarsComponent>
               </div>
             </motion.div>
           </>
@@ -588,7 +720,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                 </div>
 
                 {/* Body */}
-                <div className="overflow-y-auto flex-1 p-0">
+                <OverlayScrollbarsComponent className="flex-1" options={{ scrollbars: { autoHide: 'never' } }} defer>
                   {activityLoading && (
                     <div className="flex items-center justify-center py-12">
                       <CircleNotchIcon size={24} weight="bold" className="animate-spin text-accent" />
@@ -615,7 +747,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                         </div>
                       );
                   })()}
-                </div>
+                </OverlayScrollbarsComponent>
               </div>
             </motion.div>
           </>
@@ -685,7 +817,7 @@ const ACTION_STYLES: Record<string, string> = {
   create: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400',
   update: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400',
   delete: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400',
-  read:   'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-400',
+  read: 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-400',
 };
 
 const DASHBOARD_LABELS: Record<string, string> = {
