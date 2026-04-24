@@ -42,6 +42,7 @@ interface NewMovementDraft {
   sourceRef: string;
   reason: string;
   notes: string;
+  delay_reason: string;
   destinationWarehouseId: string;
 }
 
@@ -49,7 +50,7 @@ function emptyDraft(): NewMovementDraft {
   return {
     mode: 'direct', movementType: 'INBOUND', stockItemId: '',
     qty: 1, unitCost: 0, sourceRef: '', reason: '', notes: '',
-    destinationWarehouseId: '',
+    delay_reason: '', destinationWarehouseId: '',
   };
 }
 
@@ -119,6 +120,7 @@ export default function MovementsPage() {
         qty: draft.qty, unitCost: draft.unitCost || undefined,
         sourceRef: draft.sourceRef || 'Manual entry',
         reason: draft.reason || undefined, notes: draft.notes || undefined,
+        delay_reason: draft.delay_reason || undefined,
       });
     }
     setSaving(false);
@@ -229,6 +231,13 @@ export default function MovementsPage() {
           value={draft.notes} onChange={e => updateDraft({ notes: e.target.value })} />
       </div>
 
+      <div>
+        <label className="block text-xs text-t3 mb-1.5">Delay Reason</label>
+        <input className={inp}
+          value={draft.delay_reason} onChange={e => updateDraft({ delay_reason: e.target.value })}
+          placeholder="Reason for any delay (optional)" />
+      </div>
+
       <button onClick={handleSave} disabled={saving}
         className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
         {saving && <Spinner className="animate-spin" size={14} />}
@@ -298,6 +307,7 @@ export default function MovementsPage() {
                     <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Before → After</th>
                     <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Unit Cost</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Source</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Delay Reason</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Posted</th>
                   </tr>
                 </thead>
@@ -329,6 +339,9 @@ export default function MovementsPage() {
                           {m.unitCost > 0 ? m.unitCost.toLocaleString() : '—'}
                         </td>
                         <td className="px-4 py-3.5 text-t2 text-xs">{m.sourceRef}</td>
+                        <td className="px-4 py-3.5 text-xs text-t3 max-w-[140px] truncate" title={m.delay_reason ?? ''}>
+                          {m.delay_reason || '—'}
+                        </td>
                         <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">
                           <p>{new Date(m.postedAt).toLocaleDateString()}</p>
                           {m.postedBy && <p>{m.postedBy.fullName}</p>}

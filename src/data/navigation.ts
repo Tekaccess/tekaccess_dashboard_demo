@@ -212,13 +212,18 @@ export const departmentsData = [
         title: "Inventory Department",
         items: [
           {
+            name: "Products",
+            icon: Package,
+            subItems: ["All Products", "Bagged", "Unbagged"],
+          },
+          {
             name: "Stock",
             icon: Cube,
             subItems: [
-              "All Stock Items",
+              "All Stock Records",
+              "Pending",
+              "Complete",
               "By Warehouse",
-              "By Category",
-              "Reserved Stock",
             ],
           },
           {
@@ -227,14 +232,14 @@ export const departmentsData = [
             subItems: ["Inbound", "Outbound", "Transfers", "Adjustments"],
           },
           {
+            name: "Documents",
+            icon: ClipboardText,
+            subItems: ["All Documents", "Invoices", "Receipts", "Waybills"],
+          },
+          {
             name: "Warehouses",
             icon: Buildings,
             subItems: ["Warehouse List", "Capacity Usage"],
-          },
-          {
-            name: "Stock History",
-            icon: ClipboardText,
-            subItems: ["All Movements", "By Type", "By Warehouse"],
           },
         ],
       },

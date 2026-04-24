@@ -858,6 +858,7 @@ export type StockMovement = {
   sourceRef: string;
   reason: string | null;
   notes: string | null;
+  delay_reason: string | null;
   postedBy: { _id: string; fullName: string } | null;
   postedAt: string;
 };
@@ -877,6 +878,7 @@ export async function apiCreateMovement(data: {
   reason?: string;
   notes?: string;
   countedQty?: number;
+  delay_reason?: string;
 }) {
   return request<{ movement: StockMovement }>('/inventory/movements', { method: 'POST', body: JSON.stringify(data) });
 }
@@ -900,6 +902,113 @@ export async function apiGetInventorySummary() {
     recentMovements: StockMovement[];
     categories: { _id: string; count: number; totalValue: number; totalQty: number }[];
   }>('/inventory/summary');
+}
+
+// ─── Product Catalog ──────────────────────────────────────────────────────────
+
+export type Product = {
+  _id: string;
+  name: string;
+  type: 'Bagged' | 'Unbagged';
+  cost_per_unit: number;
+  currency: string;
+};
+
+export async function apiListProducts(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ products: Product[]; pagination: { total: number } }>(
+    `/inventory/products${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function apiCreateProduct(data: Omit<Product, '_id'>) {
+  return request<{ product: Product }>('/inventory/products', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateProduct(id: string, data: Partial<Omit<Product, '_id'>>) {
+  return request<{ product: Product }>(`/inventory/products/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function apiDeleteProduct(id: string) {
+  return request<{ message: string }>(`/inventory/products/${id}`, { method: 'DELETE' });
+}
+
+// ─── Stock Records ────────────────────────────────────────────────────────────
+
+export type StockRecord = {
+  _id: string;
+  item_code: string;
+  product_id: string;
+  product_name: string;
+  product_type: 'Bagged' | 'Unbagged';
+  warehouse_id: string;
+  warehouse_name: string;
+  on_hand: number;
+  demand: number;
+  stock_deficit: number;
+  cost_per_unit: number;
+  currency: string;
+  total_value: number;
+  paid_amount: number;
+  cash_deficit: number;
+  status: 'Complete' | 'Pending';
+  deadline: string | null;
+  supporting_doc: string | null;
+};
+
+export async function apiListStockRecords(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ records: StockRecord[]; pagination: { total: number } }>(
+    `/inventory/stock-records${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function apiGetStockRecordsSummary() {
+  return request<{
+    summary: { totalItems: number; totalValue: number; cashDeficit: number; pendingItems: number; warehouseCount: number };
+  }>('/inventory/stock-records/summary');
+}
+
+export async function apiCreateStockRecord(data: Partial<StockRecord> & { product_id: string; warehouse_id: string }) {
+  return request<{ record: StockRecord }>('/inventory/stock-records', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateStockRecord(id: string, data: Partial<StockRecord>) {
+  return request<{ record: StockRecord }>(`/inventory/stock-records/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function apiDeleteStockRecord(id: string) {
+  return request<{ message: string }>(`/inventory/stock-records/${id}`, { method: 'DELETE' });
+}
+
+// ─── Inventory Documents ──────────────────────────────────────────────────────
+
+export type InventoryDoc = {
+  _id: string;
+  movement_id: string;
+  movement_ref?: string;
+  doc_type: 'Invoice' | 'Receipt' | 'Waybill';
+  image_path: string;
+  uploaded_at?: string;
+};
+
+export async function apiListInventoryDocs(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ documents: InventoryDoc[]; pagination: { total: number } }>(
+    `/inventory/documents${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function apiCreateInventoryDoc(data: { movement_id: string; doc_type: string; image: File }) {
+  const form = new FormData();
+  form.append('movement_id', data.movement_id);
+  form.append('doc_type', data.doc_type);
+  form.append('image', data.image);
+  return request<{ document: InventoryDoc }>('/inventory/documents', { method: 'POST', body: form });
+}
+
+export async function apiDeleteInventoryDoc(id: string) {
+  return request<{ message: string }>(`/inventory/documents/${id}`, { method: 'DELETE' });
 }
 
 // ─── Transport ────────────────────────────────────────────────────────────────

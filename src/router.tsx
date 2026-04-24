@@ -25,10 +25,12 @@ import ContractsPage from "./pages/operations/ContractsPage";
 import DeliveriesPage from "./pages/operations/DeliveriesPage";
 import SitesPage from "./pages/operations/SitesPage";
 import ClientsPage from "./pages/operations/ClientsPage";
+import ProductsPage from "./pages/inventory/ProductsPage";
 import StockItemsPage from "./pages/inventory/StockItemsPage";
 import WarehousesPage from "./pages/inventory/WarehousesPage";
 import MovementsPage from "./pages/inventory/MovementsPage";
 import StockHistoryPage from "./pages/inventory/StockHistoryPage";
+import DocumentsPage from "./pages/inventory/DocumentsPage";
 import ProcurementReportsPage from "./pages/ProcurementReportsPage";
 import FleetPage from "./pages/transport/FleetPage";
 import TripsPage from "./pages/transport/TripsPage";
@@ -212,6 +214,12 @@ const opClientsRoute = createRoute({
 });
 
 // ── Explicit Inventory Routes ───────────────────────────────────────────────
+const productsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/products",
+  component: ProductsPage,
+});
+
 const stockItemsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/inventory/stock",
@@ -234,6 +242,12 @@ const stockHistoryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/inventory/stock-history",
   component: StockHistoryPage,
+});
+
+const documentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/documents",
+  component: DocumentsPage,
 });
 
 // ── Route Tree ──────────────────────────────────────────────────────────────
@@ -278,10 +292,12 @@ const routeTree = rootRoute.addChildren([
   sitesRoute,
   opClientsRoute,
   // Inventory explicit pages
+  productsRoute,
   stockItemsRoute,
   warehousesRoute,
   movementsRoute,
   stockHistoryRoute,
+  documentsRoute,
 ]);
 
 export const router = createRouter({ routeTree });
