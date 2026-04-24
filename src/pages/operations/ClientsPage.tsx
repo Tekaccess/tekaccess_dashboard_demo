@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, Users, Eye, PencilSimple,
-  Spinner, Phone, Envelope,
+  Spinner, Phone, Envelope, Trash,
 } from '@phosphor-icons/react';
-import { apiListClients, apiCreateClient, apiUpdateClient, apiListContracts, apiInstantiateContract, Client, OperationsContract } from '../../lib/api';
+import { apiListClients, apiCreateClient, apiUpdateClient, apiDeleteClient, apiListContracts, apiInstantiateContract, Client, OperationsContract } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
 
 const CLIENT_TYPES = ['mining', 'construction', 'government', 'logistics', 'agriculture', 'retail', 'other'];
@@ -56,6 +56,7 @@ export default function ClientsPage() {
   const [contracts, setContracts] = useState<OperationsContract[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const loadClients = useCallback(async () => {
     setLoading(true);
@@ -121,6 +122,15 @@ export default function ClientsPage() {
     setSaving(false);
     if (!res.success) { setError((res as any).message || 'Save failed.'); return; }
     setModalMode(null); loadClients();
+  }
+
+  async function handleDelete() {
+    if (!selected) return;
+    setSaving(true); setError(null);
+    const res = await apiDeleteClient(selected._id);
+    setSaving(false);
+    if (!res.success) { setError((res as any).message || 'Delete failed.'); setConfirmDelete(false); return; }
+    setModalMode(null); setConfirmDelete(false); loadClients();
   }
 
   const formContent = modalMode !== 'view' ? (
@@ -415,6 +425,17 @@ export default function ClientsPage() {
           className={`flex-1 py-2.5 text-sm border rounded-xl transition-colors ${selected.isActive ? 'border-rose-500/30 text-rose-400 hover:bg-rose-500/10' : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'}`}>
           {selected.isActive ? 'Deactivate' : 'Activate'}
         </button>
+        {!confirmDelete ? (
+          <button onClick={() => setConfirmDelete(true)}
+            className="px-3 py-2.5 text-sm border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors">
+            <Trash size={14} />
+          </button>
+        ) : (
+          <button onClick={handleDelete} disabled={saving}
+            className="px-3 py-2.5 text-sm border border-rose-500 text-rose-400 bg-rose-500/10 rounded-xl transition-colors flex items-center gap-1">
+            {saving ? <Spinner size={13} className="animate-spin" /> : <Trash size={13} />} Confirm
+          </button>
+        )}
       </div>
     </div>
   ) : null;
@@ -506,7 +527,7 @@ export default function ClientsPage() {
 
       <ModernModal
         isOpen={modalMode !== null}
-        onClose={() => setModalMode(null)}
+        onClose={() => { setModalMode(null); setConfirmDelete(false); }}
         title={modalMode === 'new' ? 'Onboard New Client' : modalMode === 'edit' ? 'Update Client' : selected?.name ?? ''}
         summaryContent={modalMode === 'view' ? viewModalSummary : modalSummary}
         actions={modalMode !== 'view' ? (

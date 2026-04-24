@@ -644,6 +644,10 @@ export async function apiUpdateClient(id: string, data: Partial<Client>) {
   return request<{ client: Client }>(`/operations/clients/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
+export async function apiDeleteClient(id: string) {
+  return request<{ message: string }>(`/operations/clients/${id}`, { method: 'DELETE' });
+}
+
 // Contracts
 export async function apiGetContractsSummary() {
   return request<{
@@ -752,6 +756,10 @@ export async function apiCreateSite(data: Partial<Site>) {
 
 export async function apiUpdateSite(id: string, data: Partial<Site>) {
   return request<{ site: Site }>(`/operations/sites/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function apiDeleteSite(id: string) {
+  return request<{ message: string }>(`/operations/sites/${id}`, { method: 'DELETE' });
 }
 
 // ─── Inventory ────────────────────────────────────────────────────────────────

@@ -57,8 +57,8 @@ const LoginPage: React.FC = () => {
           transition={{ duration: 0.22 }}
           className="w-full"
         >
-          <h1 className="text-2xl font-bold text-t1 mb-1">Welcome Back</h1>
-          <p className="text-sm text-t3 mb-6">Log in to access your account</p>
+          <h1 className="text-center text-2xl font-bold text-t1 mb-1">Welcome Back</h1>
+          <p className="text-center text-sm text-t3 mb-6">Log in to access your account</p>
 
           <AnimatePresence mode="wait">
             {step === "email" ? (

@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, MapPin, Eye, PencilSimple,
-  Spinner, Truck,
+  Spinner, Truck, Trash,
 } from '@phosphor-icons/react';
-import { apiListSites, apiCreateSite, apiUpdateSite, Site } from '../../lib/api';
+import { apiListSites, apiCreateSite, apiUpdateSite, apiDeleteSite, Site } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
 
 const SITE_TYPES = ['loading', 'offloading', 'depot', 'workshop'];
@@ -40,6 +40,7 @@ export default function SitesPage() {
   const [draft, setDraft] = useState<DraftSite>(emptyDraft());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,6 +87,15 @@ export default function SitesPage() {
     setSaving(false);
     if (!res.success) { setError((res as any).message || 'Save failed.'); return; }
     setModalMode(null); load();
+  }
+
+  async function handleDelete() {
+    if (!selected) return;
+    setSaving(true); setError(null);
+    const res = await apiDeleteSite(selected._id);
+    setSaving(false);
+    if (!res.success) { setError((res as any).message || 'Delete failed.'); setConfirmDelete(false); return; }
+    setModalMode(null); setConfirmDelete(false); load();
   }
 
   const loading_sites = sites.filter(s => s.siteType.includes('loading'));
@@ -302,6 +312,17 @@ export default function SitesPage() {
           className={`flex-1 py-2.5 text-sm border rounded-xl transition-colors ${selected.isActive ? 'border-rose-500/30 text-rose-400 hover:bg-rose-500/10' : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'}`}>
           {selected.isActive ? 'Deactivate' : 'Activate'}
         </button>
+        {!confirmDelete ? (
+          <button onClick={() => setConfirmDelete(true)}
+            className="px-3 py-2.5 text-sm border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors">
+            <Trash size={14} />
+          </button>
+        ) : (
+          <button onClick={handleDelete} disabled={saving}
+            className="px-3 py-2.5 text-sm border border-rose-500 text-rose-400 bg-rose-500/10 rounded-xl transition-colors flex items-center gap-1">
+            {saving ? <Spinner size={13} className="animate-spin" /> : <Trash size={13} />} Confirm
+          </button>
+        )}
       </div>
     </div>
   ) : null;
@@ -399,7 +420,7 @@ export default function SitesPage() {
 
       <ModernModal
         isOpen={modalMode !== null}
-        onClose={() => setModalMode(null)}
+        onClose={() => { setModalMode(null); setConfirmDelete(false); }}
         title={modalMode === 'new' ? 'Initialize New Site' : modalMode === 'edit' ? 'Update Site' : selected?.name ?? ''}
         summaryContent={modalMode === 'view' ? viewModalSummary : modalSummary}
         actions={modalMode !== 'view' ? (
