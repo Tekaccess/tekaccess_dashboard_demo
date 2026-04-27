@@ -9,6 +9,7 @@ import {
   apiGetInventorySummary, Warehouse,
 } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
 const TYPE_LABELS: Record<string, string> = {
   commercial: 'Commercial',
@@ -49,6 +50,15 @@ function emptyDraft(): DraftWarehouse {
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
 
+const WH_COLS: ColDef[] = [
+  { key: 'ref',     label: 'Ref',     defaultVisible: true },
+  { key: 'name',    label: 'Name',    defaultVisible: true },
+  { key: 'type',    label: 'Type',    defaultVisible: true },
+  { key: 'usage',   label: 'Usage',   defaultVisible: true },
+  { key: 'manager', label: 'Manager', defaultVisible: true },
+  { key: 'actions', label: 'Actions', defaultVisible: true },
+];
+
 export default function WarehousesPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [summary, setSummary] = useState({ totalItems: 0, totalValue: 0, warehouseCount: 0, lowStockItems: 0 });
@@ -61,6 +71,7 @@ export default function WarehousesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('warehouses', WH_COLS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -400,6 +411,7 @@ export default function WarehousesPage() {
             <option value="">All Types</option>
             {WAREHOUSE_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
           </select>
+          <ColumnSelector cols={WH_COLS} visible={colVis} onToggle={colToggle} />
         </div>
 
         {/* Warehouses Table */}
@@ -418,12 +430,12 @@ export default function WarehousesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-surface/30">
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Ref</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Type</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Usage</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Manager</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider">Actions</th>
+                    {colVis.has('ref') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Ref</th>}
+                    {colVis.has('name') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Name</th>}
+                    {colVis.has('type') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Type</th>}
+                    {colVis.has('usage') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Usage</th>}
+                    {colVis.has('manager') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Manager</th>}
+                    {colVis.has('actions') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -431,39 +443,47 @@ export default function WarehousesPage() {
                     const pct = w.liveCapacity?.usedPct ?? 0;
                     return (
                       <tr key={w._id} className="hover:bg-surface/50 cursor-pointer transition-colors" onClick={() => openView(w)}>
-                        <td className="px-4 py-3.5 font-mono text-xs text-accent">{w.warehouseCode}</td>
-                        <td className="px-4 py-3.5 font-medium text-t1">{w.name}</td>
-                        <td className="px-4 py-3.5">
-                          <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${TYPE_STYLES[w.warehouseType] ?? 'bg-surface text-t3 border-border'}`}>
-                            {TYPE_LABELS[w.warehouseType] ?? w.warehouseType}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-2">
-                             <div className="w-16 h-1.5 bg-surface rounded-full overflow-hidden">
-                               <div className={`h-full rounded-full ${pct > 80 ? 'bg-rose-500' : pct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
-                             </div>
-                             <span className="text-[11px] font-bold text-t2">{pct.toFixed(0)}%</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3.5 text-t2 text-xs">
-                          {w.managerName || '—'}
-                          {w.managerContact && <p className="text-t3">{w.managerContact}</p>}
-                        </td>
-                        <td className="px-4 py-3.5 text-right">
-                          <div className="flex justify-end gap-2 text-t3">
-                            <button onClick={e => { e.stopPropagation(); openEdit(w); }} className="hover:text-t1 p-1"><PencilSimple size={14} /></button>
-                            <button onClick={e => { e.stopPropagation(); openView(w); }} className="hover:text-t1 p-1"><Eye size={14} /></button>
-                            {deleteConfirm === w._id ? (
-                              <>
-                                <button onClick={e => { e.stopPropagation(); handleDelete(w._id); }} className="text-rose-400 hover:text-rose-300 p-1 text-xs font-bold">Yes</button>
-                                <button onClick={e => { e.stopPropagation(); setDeleteConfirm(null); }} className="hover:text-t1 p-1 text-xs">No</button>
-                              </>
-                            ) : (
-                              <button onClick={e => { e.stopPropagation(); setDeleteConfirm(w._id); }} className="hover:text-rose-400 p-1"><Trash size={14} /></button>
-                            )}
-                          </div>
-                        </td>
+                        {colVis.has('ref') && <td className="px-4 py-3.5 font-mono text-xs text-accent">{w.warehouseCode}</td>}
+                        {colVis.has('name') && <td className="px-4 py-3.5 font-medium text-t1">{w.name}</td>}
+                        {colVis.has('type') && (
+                          <td className="px-4 py-3.5">
+                            <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${TYPE_STYLES[w.warehouseType] ?? 'bg-surface text-t3 border-border'}`}>
+                              {TYPE_LABELS[w.warehouseType] ?? w.warehouseType}
+                            </span>
+                          </td>
+                        )}
+                        {colVis.has('usage') && (
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-2">
+                               <div className="w-16 h-1.5 bg-surface rounded-full overflow-hidden">
+                                 <div className={`h-full rounded-full ${pct > 80 ? 'bg-rose-500' : pct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                               </div>
+                               <span className="text-[11px] font-bold text-t2">{pct.toFixed(0)}%</span>
+                            </div>
+                          </td>
+                        )}
+                        {colVis.has('manager') && (
+                          <td className="px-4 py-3.5 text-t2 text-xs">
+                            {w.managerName || '—'}
+                            {w.managerContact && <p className="text-t3">{w.managerContact}</p>}
+                          </td>
+                        )}
+                        {colVis.has('actions') && (
+                          <td className="px-4 py-3.5 text-right">
+                            <div className="flex justify-end gap-2 text-t3">
+                              <button onClick={e => { e.stopPropagation(); openEdit(w); }} className="hover:text-t1 p-1"><PencilSimple size={14} /></button>
+                              <button onClick={e => { e.stopPropagation(); openView(w); }} className="hover:text-t1 p-1"><Eye size={14} /></button>
+                              {deleteConfirm === w._id ? (
+                                <>
+                                  <button onClick={e => { e.stopPropagation(); handleDelete(w._id); }} className="text-rose-400 hover:text-rose-300 p-1 text-xs font-bold">Yes</button>
+                                  <button onClick={e => { e.stopPropagation(); setDeleteConfirm(null); }} className="hover:text-t1 p-1 text-xs">No</button>
+                                </>
+                              ) : (
+                                <button onClick={e => { e.stopPropagation(); setDeleteConfirm(w._id); }} className="hover:text-rose-400 p-1"><Trash size={14} /></button>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}

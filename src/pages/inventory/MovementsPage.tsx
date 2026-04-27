@@ -3,7 +3,7 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, ArrowDown, ArrowUp, ArrowsLeftRight,
   ArrowsCounterClockwise, Clipboard, Spinner, CaretLeft, CaretRight,
-  Truck, Receipt, UserCircle, Scales,
+  Truck, Receipt, UserCircle, Scales, Hammer,
 } from '@phosphor-icons/react';
 import {
   apiListMovements, apiCreateMovement, apiCreateTransfer,
@@ -12,6 +12,7 @@ import {
 } from '../../lib/api';
 import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSelect';
 import DocumentSidePanel from '../../components/DocumentSidePanel';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
 const MOVEMENT_TABS = [
   { id: '', label: 'All' },
@@ -57,6 +58,11 @@ interface NewMovementDraft {
   deliveryTime: string;
   remark: string;
   selectedPoLineIdx?: number;
+  // Processing / site costs
+  crusherCost: string;
+  samplingCost: string;
+  otherProcessingCost: string;
+  otherProcessingDescription: string;
 }
 
 function emptyDraft(): NewMovementDraft {
@@ -68,11 +74,25 @@ function emptyDraft(): NewMovementDraft {
     deductionWeight: '0', transportMethod: '', truckPlate: '', driverName: '',
     pickupCode: '', deliveryTime: new Date().toISOString().slice(0, 16), remark: '',
     unitCost: 0,
+    crusherCost: '', samplingCost: '', otherProcessingCost: '', otherProcessingDescription: '',
   };
 }
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
 const inpReadonly = 'w-full px-3 py-2 bg-surface/50 border border-border/50 rounded-lg text-sm text-t2 outline-none cursor-default';
+
+const MOV_COLS: ColDef[] = [
+  { key: 'plate',     label: 'Plate No.',    defaultVisible: true },
+  { key: 'type',      label: 'Type',         defaultVisible: true },
+  { key: 'item',      label: 'Item',         defaultVisible: true },
+  { key: 'warehouse', label: 'Warehouse',    defaultVisible: true },
+  { key: 'qty',       label: 'Net / Qty',    defaultVisible: true },
+  { key: 'balance',   label: 'Before → After', defaultVisible: true },
+  { key: 'supplier',  label: 'Supplier / Truck', defaultVisible: true },
+  { key: 'costs',     label: 'Processing Costs', defaultVisible: true },
+  { key: 'source',    label: 'Source',       defaultVisible: true },
+  { key: 'posted',    label: 'Posted',       defaultVisible: true },
+];
 
 export default function MovementsPage() {
   const [movements, setMovements] = useState<StockMovement[]>([]);
@@ -90,6 +110,7 @@ export default function MovementsPage() {
   const [draft, setDraft] = useState<NewMovementDraft>(emptyDraft());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('movements', MOV_COLS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -201,6 +222,10 @@ export default function MovementsPage() {
       pickupCode: draft.pickupCode || undefined,
       deliveryTime: draft.deliveryTime || undefined,
       remark: draft.remark || undefined,
+      crusherCost: draft.crusherCost ? parseFloat(draft.crusherCost) : undefined,
+      samplingCost: draft.samplingCost ? parseFloat(draft.samplingCost) : undefined,
+      otherProcessingCost: draft.otherProcessingCost ? parseFloat(draft.otherProcessingCost) : undefined,
+      otherProcessingDescription: draft.otherProcessingDescription || undefined,
     };
 
     if (draft.mode === 'transfer') {
@@ -537,6 +562,56 @@ export default function MovementsPage() {
         </div>
       </section>
 
+      {/* ── Processing / Site Costs ── */}
+      {draft.mode !== 'transfer' && (
+        <section className="space-y-3">
+          <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
+            <Hammer size={11} weight="duotone" /> Site Processing Costs
+          </p>
+          <p className="text-[10px] text-t3 -mt-1">Fill in costs paid on behalf of supplier (e.g. when supplier has no crusher)</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] text-t3 mb-1">Crusher Cost</label>
+              <input type="number" min={0} step={0.01} className={inp}
+                value={draft.crusherCost}
+                onChange={e => upd({ crusherCost: e.target.value })}
+                placeholder="0.00" />
+            </div>
+            <div>
+              <label className="block text-[10px] text-t3 mb-1">Sampling Cost</label>
+              <input type="number" min={0} step={0.01} className={inp}
+                value={draft.samplingCost}
+                onChange={e => upd({ samplingCost: e.target.value })}
+                placeholder="0.00" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] text-t3 mb-1">Other Cost</label>
+              <input type="number" min={0} step={0.01} className={inp}
+                value={draft.otherProcessingCost}
+                onChange={e => upd({ otherProcessingCost: e.target.value })}
+                placeholder="0.00" />
+            </div>
+            <div>
+              <label className="block text-[10px] text-t3 mb-1">Other Cost Description</label>
+              <input className={inp}
+                value={draft.otherProcessingDescription}
+                onChange={e => upd({ otherProcessingDescription: e.target.value })}
+                placeholder="e.g. Loading fee" />
+            </div>
+          </div>
+          {(draft.crusherCost || draft.samplingCost || draft.otherProcessingCost) && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs">
+              <span className="text-t3">Total processing cost: </span>
+              <span className="font-bold text-amber-500">
+                {((parseFloat(draft.crusherCost || '0') + parseFloat(draft.samplingCost || '0') + parseFloat(draft.otherProcessingCost || '0'))).toFixed(2)}
+              </span>
+            </div>
+          )}
+        </section>
+      )}
+
       <button onClick={handleSave} disabled={saving}
         className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
         {saving && <Spinner className="animate-spin" size={14} />}
@@ -577,6 +652,7 @@ export default function MovementsPage() {
                 placeholder="Search ref, item, source..." value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }} />
             </div>
+            <ColumnSelector cols={MOV_COLS} visible={colVis} onToggle={colToggle} />
           </div>
 
           {loading ? (
@@ -593,65 +669,103 @@ export default function MovementsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-surface">
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Ref</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Type</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Item</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Net / Qty</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Before → After</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Supplier / Truck</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Source</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Posted</th>
+                    {colVis.has('plate') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Plate No.</th>}
+                    {colVis.has('type') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Type</th>}
+                    {colVis.has('item') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Item</th>}
+                    {colVis.has('warehouse') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse</th>}
+                    {colVis.has('qty') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Net / Qty</th>}
+                    {colVis.has('balance') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Before → After</th>}
+                    {colVis.has('supplier') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Supplier / Truck</th>}
+                    {colVis.has('costs') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Processing Costs</th>}
+                    {colVis.has('source') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Source</th>}
+                    {colVis.has('posted') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Posted</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {movements.map(m => {
                     const meta = TYPE_META[m.movementType] ?? { label: m.movementType, style: 'bg-surface text-t3 border-border', dot: 'bg-t3', Icon: ArrowsCounterClockwise };
+                    const totalProcessing = (m.crusherCost ?? 0) + (m.samplingCost ?? 0) + (m.otherProcessingCost ?? 0);
                     return (
                       <tr key={m._id} className="hover:bg-surface transition-colors">
-                        <td className="px-4 py-3.5 font-mono text-xs text-t2 whitespace-nowrap">{m.movementRef}</td>
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-0.5 font-medium ${meta.style}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
-                            {meta.label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <p className="text-t1 font-medium">{m.itemName}</p>
-                          <p className="text-xs text-t3">{m.itemCode}</p>
-                        </td>
-                        <td className="px-4 py-3.5 text-t2 whitespace-nowrap">{m.warehouseName}</td>
-                        <td className="px-4 py-3.5 text-right font-medium text-t1 whitespace-nowrap">
-                          {m.netWeight != null ? (
-                            <div>
-                              <span className="text-emerald-400 font-bold">{m.netWeight} t</span>
-                              <div className="text-[10px] text-t3">{m.qty > 0 ? '+' : ''}{m.qty}</div>
-                            </div>
-                          ) : (
-                            <span>{m.qty > 0 ? '+' : ''}{m.qty.toLocaleString()}</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3.5 text-right text-xs text-t3 whitespace-nowrap">
-                          {m.qtyBefore.toLocaleString()} → {m.qtyAfter.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          {m.supplierName && <p className="text-xs text-t2">{m.supplierName}</p>}
-                          {m.truckPlate && (
-                            <p className="text-xs text-t3 flex items-center gap-1">
-                              <Truck size={10} /> {m.truckPlate}{m.driverName ? ` · ${m.driverName}` : ''}
-                            </p>
-                          )}
-                          {!m.supplierName && !m.truckPlate && <span className="text-t3 text-xs">—</span>}
-                        </td>
-                        <td className="px-4 py-3.5 text-t2 text-xs whitespace-nowrap">
-                          {m.linkedPoRef ? (
-                            <span className="text-accent">{m.linkedPoRef}</span>
-                          ) : m.sourceRef || '—'}
-                        </td>
-                        <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">
-                          <p>{new Date(m.postedAt).toLocaleDateString()}</p>
-                          {m.postedBy && <p className="text-t3/60">{m.postedBy.fullName}</p>}
-                        </td>
+                        {colVis.has('plate') && (
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            {m.truckPlate ? (
+                              <span className="font-mono text-sm font-semibold text-accent">{m.truckPlate}</span>
+                            ) : <span className="text-t3 text-xs">—</span>}
+                          </td>
+                        )}
+                        {colVis.has('type') && (
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-0.5 font-medium ${meta.style}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                              {meta.label}
+                            </span>
+                          </td>
+                        )}
+                        {colVis.has('item') && (
+                          <td className="px-4 py-3.5">
+                            <p className="text-t1 font-medium">{m.itemName}</p>
+                            <p className="text-xs text-t3">{m.itemCode}</p>
+                          </td>
+                        )}
+                        {colVis.has('warehouse') && (
+                          <td className="px-4 py-3.5 text-t2 whitespace-nowrap">{m.warehouseName}</td>
+                        )}
+                        {colVis.has('qty') && (
+                          <td className="px-4 py-3.5 text-right font-medium text-t1 whitespace-nowrap">
+                            {m.netWeight != null ? (
+                              <div>
+                                <span className="text-emerald-400 font-bold">{m.netWeight} t</span>
+                                <div className="text-[10px] text-t3">{m.qty > 0 ? '+' : ''}{m.qty}</div>
+                              </div>
+                            ) : (
+                              <span>{m.qty > 0 ? '+' : ''}{m.qty.toLocaleString()}</span>
+                            )}
+                          </td>
+                        )}
+                        {colVis.has('balance') && (
+                          <td className="px-4 py-3.5 text-right text-xs text-t3 whitespace-nowrap">
+                            {m.qtyBefore.toLocaleString()} → {m.qtyAfter.toLocaleString()}
+                          </td>
+                        )}
+                        {colVis.has('supplier') && (
+                          <td className="px-4 py-3.5">
+                            {m.supplierName && <p className="text-xs text-t2">{m.supplierName}</p>}
+                            {m.truckPlate && (
+                              <p className="text-xs text-t3 flex items-center gap-1">
+                                <Truck size={10} /> {m.truckPlate}{m.driverName ? ` · ${m.driverName}` : ''}
+                              </p>
+                            )}
+                            {!m.supplierName && !m.truckPlate && <span className="text-t3 text-xs">—</span>}
+                          </td>
+                        )}
+                        {colVis.has('costs') && (
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                            {totalProcessing > 0 ? (
+                              <div>
+                                <span className="text-amber-500 font-semibold text-sm">{totalProcessing.toLocaleString()}</span>
+                                <div className="text-[10px] text-t3 space-y-0.5 mt-0.5 text-left">
+                                  {(m.crusherCost ?? 0) > 0 && <p>Crusher: {m.crusherCost?.toLocaleString()}</p>}
+                                  {(m.samplingCost ?? 0) > 0 && <p>Sampling: {m.samplingCost?.toLocaleString()}</p>}
+                                  {(m.otherProcessingCost ?? 0) > 0 && <p>{m.otherProcessingDescription || 'Other'}: {m.otherProcessingCost?.toLocaleString()}</p>}
+                                </div>
+                              </div>
+                            ) : <span className="text-t3 text-xs">—</span>}
+                          </td>
+                        )}
+                        {colVis.has('source') && (
+                          <td className="px-4 py-3.5 text-t2 text-xs whitespace-nowrap">
+                            {m.linkedPoRef ? (
+                              <span className="text-accent">{m.linkedPoRef}</span>
+                            ) : m.sourceRef || '—'}
+                          </td>
+                        )}
+                        {colVis.has('posted') && (
+                          <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">
+                            <p>{new Date(m.postedAt).toLocaleDateString()}</p>
+                            {m.postedBy && <p className="text-t3/60">{m.postedBy.fullName}</p>}
+                          </td>
+                        )}
                       </tr>
                     );
                   })}

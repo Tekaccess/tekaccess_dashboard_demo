@@ -11,6 +11,16 @@ import {
   OperationsContract,
 } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
+
+const CONTRACT_COLS: ColDef[] = [
+  { key: 'contractRef', label: 'Contract ID' },
+  { key: 'title',       label: 'Name' },
+  { key: 'contractType', label: 'Type' },
+  { key: 'document',    label: 'Document' },
+  { key: 'status',      label: 'Status' },
+  { key: 'createdAt',   label: 'Created' },
+];
 
 const STATUS_STYLES: Record<string, string> = {
   draft:                'bg-surface text-t3 border-border',
@@ -83,6 +93,8 @@ export default function ContractsPage() {
   const [draft, setDraft] = useState<DraftContract>(emptyDraft());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('contracts', CONTRACT_COLS);
 
   const [docFile, setDocFile] = useState<File | null>(null);
   const [docError, setDocError] = useState<string | null>(null);
@@ -350,22 +362,27 @@ export default function ContractsPage() {
             <option value="">All Statuses</option>
             {CONTRACT_STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
           </select>
+          <ColumnSelector cols={CONTRACT_COLS} visible={colVis} onToggle={colToggle} />
         </div>
 
         <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'never' } }} defer>
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-surface">
               <tr>
-                {['Contract ID', 'Name', 'Type', 'Document', 'Status', 'Created', ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                ))}
+                {colVis.has('contractRef')   && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Contract ID</th>}
+                {colVis.has('title')         && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Name</th>}
+                {colVis.has('contractType')  && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Type</th>}
+                {colVis.has('document')      && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Document</th>}
+                {colVis.has('status')        && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Status</th>}
+                {colVis.has('createdAt')     && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Created</th>}
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="bg-card divide-y divide-border-s">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-16 text-center"><Spinner size={24} className="animate-spin text-t3 mx-auto" /></td></tr>
+                <tr><td colSpan={CONTRACT_COLS.length + 1} className="px-4 py-16 text-center"><Spinner size={24} className="animate-spin text-t3 mx-auto" /></td></tr>
               ) : contracts.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-16 text-center text-t3 text-sm">
+                <tr><td colSpan={CONTRACT_COLS.length + 1} className="px-4 py-16 text-center text-t3 text-sm">
                   <div className="flex flex-col items-center gap-3">
                     <FileText size={40} weight="duotone" className="text-t3/40" />
                     <p>No contracts found.</p>
@@ -374,24 +391,24 @@ export default function ContractsPage() {
                 </td></tr>
               ) : contracts.map(c => (
                 <tr key={c._id} className="hover:bg-surface transition-colors cursor-pointer" onClick={() => { setSelected(c); setModalMode('view'); }}>
-                  <td className="px-4 py-3.5 text-sm font-mono font-semibold text-accent">{c.contractRef}</td>
-                  <td className="px-4 py-3.5 text-sm font-medium text-t1 max-w-[200px] truncate">{c.title}</td>
-                  <td className="px-4 py-3.5">
+                  {colVis.has('contractRef')  && <td className="px-4 py-3.5 text-sm font-mono font-semibold text-accent">{c.contractRef}</td>}
+                  {colVis.has('title')        && <td className="px-4 py-3.5 text-sm font-medium text-t1 max-w-[200px] truncate">{c.title}</td>}
+                  {colVis.has('contractType') && <td className="px-4 py-3.5">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-surface border border-border text-[11px] font-medium text-t2 capitalize">{c.contractType}</span>
-                  </td>
-                  <td className="px-4 py-3.5">
+                  </td>}
+                  {colVis.has('document')     && <td className="px-4 py-3.5">
                     {c.documentUrl
                       ? <a href={c.documentUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-accent hover:text-accent-h">{docIcon(c.documentName)}</a>
                       : <span className="text-border"><FileText size={16} /></span>
                     }
-                  </td>
-                  <td className="px-4 py-3.5">
+                  </td>}
+                  {colVis.has('status')       && <td className="px-4 py-3.5">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[c.status] ?? STATUS_STYLES.draft}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[c.status] ?? STATUS_DOT.draft}`} />
                       {c.status.replace(/_/g, ' ')}
                     </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">{fmtDate(c.createdAt)}</td>
+                  </td>}
+                  {colVis.has('createdAt')    && <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">{fmtDate(c.createdAt)}</td>}
                   <td className="px-4 py-3.5">
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={e => { e.stopPropagation(); setSelected(c); setModalMode('view'); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"><Eye size={14} weight="duotone" /></button>

@@ -10,6 +10,7 @@ import {
 } from '../../lib/api';
 import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSelect';
 import DocumentSidePanel from '../../components/DocumentSidePanel';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
 const DOC_TYPES: InventoryDoc['doc_type'][] = ['Invoice', 'Receipt', 'Waybill', 'Weighbridge'];
 
@@ -41,6 +42,14 @@ function emptyDraft(): Draft {
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors';
 
+const DOC_COLS: ColDef[] = [
+  { key: 'type',     label: 'Type',         defaultVisible: true },
+  { key: 'movement', label: 'Movement Ref', defaultVisible: true },
+  { key: 'path',     label: 'File Path',    defaultVisible: true },
+  { key: 'uploaded', label: 'Uploaded',     defaultVisible: true },
+  { key: 'actions',  label: 'Actions',      defaultVisible: true },
+];
+
 export default function DocumentsPage() {
   const [docs, setDocs] = useState<InventoryDoc[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
@@ -53,6 +62,7 @@ export default function DocumentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('inventory-documents', DOC_COLS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -201,22 +211,25 @@ export default function DocumentsPage() {
             <option value="">All Types</option>
             {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
+          <ColumnSelector cols={DOC_COLS} visible={colVis} onToggle={colToggle} />
         </div>
 
         <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'never' } }} defer>
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-surface">
               <tr>
-                {['Type', 'Movement Ref', 'File Path', 'Uploaded', ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                ))}
+                {colVis.has('type') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Type</th>}
+                {colVis.has('movement') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Movement Ref</th>}
+                {colVis.has('path') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">File Path</th>}
+                {colVis.has('uploaded') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Uploaded</th>}
+                {colVis.has('actions') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap"></th>}
               </tr>
             </thead>
             <tbody className="bg-card divide-y divide-border-s">
               {loading ? (
-                <tr><td colSpan={5} className="px-4 py-16 text-center"><Spinner size={24} className="animate-spin text-t3 mx-auto" /></td></tr>
+                <tr><td colSpan={colVis.size} className="px-4 py-16 text-center"><Spinner size={24} className="animate-spin text-t3 mx-auto" /></td></tr>
               ) : docs.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-16 text-center text-sm text-t3">
+                <tr><td colSpan={colVis.size} className="px-4 py-16 text-center text-sm text-t3">
                   <div className="flex flex-col items-center gap-3">
                     <FileText size={40} weight="duotone" className="text-t3/40" />
                     <p>No documents uploaded yet.</p>
@@ -225,32 +238,40 @@ export default function DocumentsPage() {
                 </td></tr>
               ) : docs.map(doc => (
                 <tr key={doc._id} className="hover:bg-surface transition-colors">
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${DOC_STYLES[doc.doc_type] || 'bg-surface text-t3 border-border'}`}>
-                      {DOC_ICONS[doc.doc_type]} {doc.doc_type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-accent">{doc.movement_ref || doc.movement_id}</td>
-                  <td className="px-4 py-3 text-sm text-t2 max-w-[220px] truncate" title={doc.image_path}>
-                    <a href={doc.image_path} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-accent transition-colors" onClick={e => e.stopPropagation()}>
-                      <Eye size={12} /> {doc.image_path.split('/').pop() || doc.image_path}
-                    </a>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-t3">
-                    {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString() : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end">
-                      {deleteConfirm === doc._id ? (
-                        <>
-                          <button onClick={() => handleDelete(doc._id)} className="text-[10px] font-bold px-2 py-1 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors">Yes</button>
-                          <button onClick={() => setDeleteConfirm(null)} className="ml-1 text-[10px] px-2 py-1 border border-border rounded-lg text-t3 hover:bg-surface transition-colors">No</button>
-                        </>
-                      ) : (
-                        <button onClick={() => setDeleteConfirm(doc._id)} className="p-1.5 text-t3 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"><Trash size={14} weight="duotone" /></button>
-                      )}
-                    </div>
-                  </td>
+                  {colVis.has('type') && (
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${DOC_STYLES[doc.doc_type] || 'bg-surface text-t3 border-border'}`}>
+                        {DOC_ICONS[doc.doc_type]} {doc.doc_type}
+                      </span>
+                    </td>
+                  )}
+                  {colVis.has('movement') && <td className="px-4 py-3 font-mono text-xs text-accent">{doc.movement_ref || doc.movement_id}</td>}
+                  {colVis.has('path') && (
+                    <td className="px-4 py-3 text-sm text-t2 max-w-[220px] truncate" title={doc.image_path}>
+                      <a href={doc.image_path} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-accent transition-colors" onClick={e => e.stopPropagation()}>
+                        <Eye size={12} /> {doc.image_path.split('/').pop() || doc.image_path}
+                      </a>
+                    </td>
+                  )}
+                  {colVis.has('uploaded') && (
+                    <td className="px-4 py-3 text-xs text-t3">
+                      {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString() : '—'}
+                    </td>
+                  )}
+                  {colVis.has('actions') && (
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end">
+                        {deleteConfirm === doc._id ? (
+                          <>
+                            <button onClick={() => handleDelete(doc._id)} className="text-[10px] font-bold px-2 py-1 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors">Yes</button>
+                            <button onClick={() => setDeleteConfirm(null)} className="ml-1 text-[10px] px-2 py-1 border border-border rounded-lg text-t3 hover:bg-surface transition-colors">No</button>
+                          </>
+                        ) : (
+                          <button onClick={() => setDeleteConfirm(doc._id)} className="p-1.5 text-t3 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"><Trash size={14} weight="duotone" /></button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

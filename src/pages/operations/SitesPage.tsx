@@ -6,6 +6,7 @@ import {
 } from '@phosphor-icons/react';
 import { apiListSites, apiCreateSite, apiUpdateSite, apiDeleteSite, Site } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
 const SITE_TYPES = ['loading', 'offloading', 'depot', 'workshop'];
 
@@ -30,6 +31,15 @@ function emptyDraft(): DraftSite {
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
 
+const SITE_COLS: ColDef[] = [
+  { key: 'ref',      label: 'Ref',       defaultVisible: true },
+  { key: 'name',     label: 'Name',      defaultVisible: true },
+  { key: 'type',     label: 'Type',      defaultVisible: true },
+  { key: 'location', label: 'Location',  defaultVisible: true },
+  { key: 'live',     label: 'Wait/Load', defaultVisible: true },
+  { key: 'actions',  label: 'Actions',   defaultVisible: true },
+];
+
 export default function SitesPage() {
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +51,7 @@ export default function SitesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('sites', SITE_COLS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -354,6 +365,7 @@ export default function SitesPage() {
             <option value="">All Types</option>
             {SITE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
+          <ColumnSelector cols={SITE_COLS} visible={colVis} onToggle={colToggle} />
         </div>
 
         {/* Sites Table */}
@@ -372,43 +384,51 @@ export default function SitesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-surface/30">
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Ref</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Type</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Location</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Wait/Load</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider">Actions</th>
+                    {colVis.has('ref') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Ref</th>}
+                    {colVis.has('name') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Name</th>}
+                    {colVis.has('type') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Type</th>}
+                    {colVis.has('location') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Location</th>}
+                    {colVis.has('live') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Wait/Load</th>}
+                    {colVis.has('actions') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {sites.map(s => (
                     <tr key={s._id} className="hover:bg-surface/50 cursor-pointer transition-colors" onClick={() => { setSelected(s); setModalMode('view'); }}>
-                      <td className="px-4 py-3.5 font-mono text-xs text-accent">{s.siteCode}</td>
-                      <td className="px-4 py-3.5 font-medium text-t1">{s.name}</td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex gap-1">
-                          {s.siteType.map(t => (
-                            <span key={t} className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${TYPE_STYLES[t] ?? ''}`}>{t}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 text-t2 text-xs">
-                        {[s.region, s.country].filter(Boolean).join(', ')}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        {s.liveStatus && (
-                          <div className="flex gap-3 text-[11px]">
-                            <span className="flex items-center gap-1 text-amber-500 font-bold">{s.liveStatus.trucksWaiting} W</span>
-                            <span className="flex items-center gap-1 text-blue-400 font-bold">{s.liveStatus.trucksLoading} L</span>
+                      {colVis.has('ref') && <td className="px-4 py-3.5 font-mono text-xs text-accent">{s.siteCode}</td>}
+                      {colVis.has('name') && <td className="px-4 py-3.5 font-medium text-t1">{s.name}</td>}
+                      {colVis.has('type') && (
+                        <td className="px-4 py-3.5">
+                          <div className="flex gap-1">
+                            {s.siteType.map(t => (
+                              <span key={t} className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${TYPE_STYLES[t] ?? ''}`}>{t}</span>
+                            ))}
                           </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <div className="flex justify-end gap-2 text-t3">
-                          <button onClick={e => { e.stopPropagation(); openEdit(s); }} className="hover:text-t1 p-1"><PencilSimple size={14} /></button>
-                          <button onClick={e => { e.stopPropagation(); setSelected(s); setModalMode('view'); }} className="hover:text-t1 p-1"><Eye size={14} /></button>
-                        </div>
-                      </td>
+                        </td>
+                      )}
+                      {colVis.has('location') && (
+                        <td className="px-4 py-3.5 text-t2 text-xs">
+                          {[s.region, s.country].filter(Boolean).join(', ')}
+                        </td>
+                      )}
+                      {colVis.has('live') && (
+                        <td className="px-4 py-3.5">
+                          {s.liveStatus && (
+                            <div className="flex gap-3 text-[11px]">
+                              <span className="flex items-center gap-1 text-amber-500 font-bold">{s.liveStatus.trucksWaiting} W</span>
+                              <span className="flex items-center gap-1 text-blue-400 font-bold">{s.liveStatus.trucksLoading} L</span>
+                            </div>
+                          )}
+                        </td>
+                      )}
+                      {colVis.has('actions') && (
+                        <td className="px-4 py-3.5 text-right">
+                          <div className="flex justify-end gap-2 text-t3">
+                            <button onClick={e => { e.stopPropagation(); openEdit(s); }} className="hover:text-t1 p-1"><PencilSimple size={14} /></button>
+                            <button onClick={e => { e.stopPropagation(); setSelected(s); setModalMode('view'); }} className="hover:text-t1 p-1"><Eye size={14} /></button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

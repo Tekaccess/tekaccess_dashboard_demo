@@ -9,6 +9,7 @@ import {
   Delivery,
 } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
 const STATUS_STYLES: Record<string, string> = {
   pending_confirmation: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
@@ -43,6 +44,18 @@ function fmtDate(d: string | null) {
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
 
+const DELIVERY_COLS: ColDef[] = [
+  { key: 'ref',       label: 'Ref',       defaultVisible: true },
+  { key: 'client',    label: 'Client',    defaultVisible: true },
+  { key: 'contract',  label: 'Contract',  defaultVisible: true },
+  { key: 'truck',     label: 'Truck',     defaultVisible: true },
+  { key: 'planned',   label: 'Planned',   defaultVisible: true },
+  { key: 'confirmed', label: 'Confirmed', defaultVisible: true },
+  { key: 'variance',  label: 'Variance',  defaultVisible: true },
+  { key: 'status',    label: 'Status',    defaultVisible: true },
+  { key: 'date',      label: 'Date',      defaultVisible: true },
+];
+
 export default function DeliveriesPage() {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [summary, setSummary] = useState({ pendingConfirmation: 0, confirmed: 0, disputed: 0, tonsToday: 0, tonsThisMonth: 0 });
@@ -59,6 +72,7 @@ export default function DeliveriesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const PAGE_LIMIT = 50;
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('deliveries', DELIVERY_COLS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -193,6 +207,7 @@ export default function DeliveriesPage() {
                 placeholder="Ref, contract, client, truck..." value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }} />
             </div>
+            <ColumnSelector cols={DELIVERY_COLS} visible={colVis} onToggle={colToggle} />
           </div>
 
           {/* Table */}
@@ -210,15 +225,15 @@ export default function DeliveriesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Ref</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Client</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Contract</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Truck</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Planned</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Confirmed</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Variance</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Date</th>
+                    {colVis.has('ref') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Ref</th>}
+                    {colVis.has('client') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Client</th>}
+                    {colVis.has('contract') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Contract</th>}
+                    {colVis.has('truck') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Truck</th>}
+                    {colVis.has('planned') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Planned</th>}
+                    {colVis.has('confirmed') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Confirmed</th>}
+                    {colVis.has('variance') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Variance</th>}
+                    {colVis.has('status') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Status</th>}
+                    {colVis.has('date') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Date</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -226,26 +241,30 @@ export default function DeliveriesPage() {
                     <tr key={d._id}
                       className={`hover:bg-surface transition-colors cursor-pointer ${i < deliveries.length - 1 ? 'border-b border-border' : ''}`}
                       onClick={() => openView(d)}>
-                      <td className="px-4 py-3.5 font-mono text-xs text-accent">{d.deliveryRef}</td>
-                      <td className="px-4 py-3.5 text-t1 font-medium">{d.clientName}</td>
-                      <td className="px-4 py-3.5 text-t2 text-xs">{d.contractRef}</td>
-                      <td className="px-4 py-3.5 text-t2">{d.truckPlate}</td>
-                      <td className="px-4 py-3.5 text-right text-t1">{d.plannedTons.toLocaleString()} t</td>
-                      <td className="px-4 py-3.5 text-right text-t1">{d.confirmedTons != null ? `${d.confirmedTons.toLocaleString()} t` : '—'}</td>
-                      <td className="px-4 py-3.5 text-right">
-                        {d.tonVariance != null ? (
-                          <span className={d.tonVariance < 0 ? 'text-rose-400' : 'text-emerald-400'}>
-                            {d.tonVariance > 0 ? '+' : ''}{d.tonVariance.toLocaleString()} t
+                      {colVis.has('ref') && <td className="px-4 py-3.5 font-mono text-xs text-accent">{d.deliveryRef}</td>}
+                      {colVis.has('client') && <td className="px-4 py-3.5 text-t1 font-medium">{d.clientName}</td>}
+                      {colVis.has('contract') && <td className="px-4 py-3.5 text-t2 text-xs">{d.contractRef}</td>}
+                      {colVis.has('truck') && <td className="px-4 py-3.5 text-t2">{d.truckPlate}</td>}
+                      {colVis.has('planned') && <td className="px-4 py-3.5 text-right text-t1">{d.plannedTons.toLocaleString()} t</td>}
+                      {colVis.has('confirmed') && <td className="px-4 py-3.5 text-right text-t1">{d.confirmedTons != null ? `${d.confirmedTons.toLocaleString()} t` : '—'}</td>}
+                      {colVis.has('variance') && (
+                        <td className="px-4 py-3.5 text-right">
+                          {d.tonVariance != null ? (
+                            <span className={d.tonVariance < 0 ? 'text-rose-400' : 'text-emerald-400'}>
+                              {d.tonVariance > 0 ? '+' : ''}{d.tonVariance.toLocaleString()} t
+                            </span>
+                          ) : '—'}
+                        </td>
+                      )}
+                      {colVis.has('status') && (
+                        <td className="px-4 py-3.5">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[d.status] ?? ''}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[d.status] ?? 'bg-t3'}`} />
+                            {STATUS_LABEL[d.status] ?? d.status}
                           </span>
-                        ) : '—'}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[d.status] ?? ''}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[d.status] ?? 'bg-t3'}`} />
-                          {STATUS_LABEL[d.status] ?? d.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">{fmtDate(d.deliveryDate)}</td>
+                        </td>
+                      )}
+                      {colVis.has('date') && <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">{fmtDate(d.deliveryDate)}</td>}
                     </tr>
                   ))}
                 </tbody>

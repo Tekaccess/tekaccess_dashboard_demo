@@ -11,6 +11,7 @@ import {
   apiListMaintenanceRecords, apiCreateMaintenanceRecord, apiUpdateMaintenanceRecord, MaintenanceRecord,
 } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
 type ViewMode = 'table' | 'bar' | 'pie';
 type ActiveTab = 'All' | 'Open Records' | 'Scheduled Services' | 'Maintenance History';
@@ -47,6 +48,18 @@ const TYPE_STYLES: Record<string, string> = {
 };
 
 const CHART_COLORS = ['#4285f4', '#93bbfa', '#bfd0fc', '#d5e4ff', '#e8f0ff'];
+
+const MAINT_COLS: ColDef[] = [
+  { key: 'ref',         label: 'Ref',         defaultVisible: false },
+  { key: 'truck',       label: 'Truck',       defaultVisible: true },
+  { key: 'type',        label: 'Type',        defaultVisible: true },
+  { key: 'description', label: 'Description', defaultVisible: true },
+  { key: 'status',      label: 'Status',      defaultVisible: true },
+  { key: 'scheduled',   label: 'Scheduled',   defaultVisible: true },
+  { key: 'cost',        label: 'Actual Cost', defaultVisible: false },
+  { key: 'mechanic',    label: 'Mechanic',    defaultVisible: true },
+  { key: 'actions',     label: 'Actions',     defaultVisible: true },
+];
 
 const TAB_STATUS: Record<ActiveTab, MaintenanceRecord['status'][] | null> = {
   All: null,
@@ -99,6 +112,7 @@ export default function MaintenancePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [records, setRecords] = useState<MaintenanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('maintenance', MAINT_COLS);
 
   const loadRecords = useCallback(async () => {
     setLoading(true);
@@ -484,6 +498,7 @@ export default function MaintenancePage() {
           <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
             <DownloadSimple size={14} weight="duotone" /> Export
           </button>
+          <ColumnSelector cols={MAINT_COLS} visible={colVis} onToggle={colToggle} />
           <div className="flex border border-border rounded-lg overflow-hidden ml-auto">
             {([
               { mode: 'table', Icon: ListDashes, label: 'Table' },
@@ -504,16 +519,22 @@ export default function MaintenancePage() {
             <table className="min-w-full divide-y divide-border">
               <thead className="bg-surface">
                 <tr>
-                  {['Ref', 'Truck', 'Type', 'Description', 'Status', 'Scheduled', 'Actual Cost', 'Mechanic', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                  ))}
+                  {colVis.has('ref') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Ref</th>}
+                  {colVis.has('truck') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Truck</th>}
+                  {colVis.has('type') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Type</th>}
+                  {colVis.has('description') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Description</th>}
+                  {colVis.has('status') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Status</th>}
+                  {colVis.has('scheduled') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Scheduled</th>}
+                  {colVis.has('cost') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Actual Cost</th>}
+                  {colVis.has('mechanic') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Mechanic</th>}
+                  {colVis.has('actions') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Actions</th>}
                 </tr>
               </thead>
               <tbody className="bg-card divide-y divide-border-s">
                 {loading ? (
-                  <tr><td colSpan={9} className="px-4 py-16 text-center"><Spinner size={24} className="animate-spin text-t3 mx-auto" /></td></tr>
+                  <tr><td colSpan={colVis.size} className="px-4 py-16 text-center"><Spinner size={24} className="animate-spin text-t3 mx-auto" /></td></tr>
                 ) : filteredRecords.length === 0 ? (
-                  <tr><td colSpan={9} className="px-4 py-16 text-center text-t3 text-sm">
+                  <tr><td colSpan={colVis.size} className="px-4 py-16 text-center text-t3 text-sm">
                     {records.length === 0 ? (
                       <div className="flex flex-col items-center gap-3">
                         <Wrench size={40} weight="duotone" className="text-t3/40" />
@@ -524,29 +545,35 @@ export default function MaintenancePage() {
                   </td></tr>
                 ) : filteredRecords.map(record => (
                   <tr key={record._id} className="hover:bg-surface transition-colors cursor-pointer" onClick={() => setModal({ mode: 'view', record })}>
-                    <td className="px-4 py-3.5 text-sm font-semibold text-accent whitespace-nowrap">{record.recordRef}</td>
-                    <td className="px-4 py-3.5 text-sm font-medium text-t1">{record.plateNumber}</td>
-                    <td className="px-4 py-3.5">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${TYPE_STYLES[record.maintenanceType]}`}>
-                        {TYPE_LABEL[record.maintenanceType]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-sm text-t2 max-w-[180px] truncate">{record.description}</td>
-                    <td className="px-4 py-3.5">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[record.status]}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[record.status]}`} />
-                        {STATUS_LABEL[record.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">{record.scheduledDate ? new Date(record.scheduledDate).toLocaleDateString() : '—'}</td>
-                    <td className="px-4 py-3.5 text-sm font-bold text-t1 whitespace-nowrap">{record.actualCost ? formatCost(record.actualCost, record.currency) : '—'}</td>
-                    <td className="px-4 py-3.5 text-sm text-t2">{record.mechanicName || '—'}</td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={e => { e.stopPropagation(); setModal({ mode: 'view', record }); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"><Eye size={14} weight="duotone" /></button>
-                        <button onClick={e => { e.stopPropagation(); handleEdit(record); }} className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"><PencilSimple size={14} weight="duotone" /></button>
-                      </div>
-                    </td>
+                    {colVis.has('ref') && <td className="px-4 py-3.5 text-sm font-semibold text-accent whitespace-nowrap">{record.recordRef}</td>}
+                    {colVis.has('truck') && <td className="px-4 py-3.5 text-sm font-medium text-t1">{record.plateNumber}</td>}
+                    {colVis.has('type') && (
+                      <td className="px-4 py-3.5">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${TYPE_STYLES[record.maintenanceType]}`}>
+                          {TYPE_LABEL[record.maintenanceType]}
+                        </span>
+                      </td>
+                    )}
+                    {colVis.has('description') && <td className="px-4 py-3.5 text-sm text-t2 max-w-[180px] truncate">{record.description}</td>}
+                    {colVis.has('status') && (
+                      <td className="px-4 py-3.5">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[record.status]}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[record.status]}`} />
+                          {STATUS_LABEL[record.status]}
+                        </span>
+                      </td>
+                    )}
+                    {colVis.has('scheduled') && <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">{record.scheduledDate ? new Date(record.scheduledDate).toLocaleDateString() : '—'}</td>}
+                    {colVis.has('cost') && <td className="px-4 py-3.5 text-sm font-bold text-t1 whitespace-nowrap">{record.actualCost ? formatCost(record.actualCost, record.currency) : '—'}</td>}
+                    {colVis.has('mechanic') && <td className="px-4 py-3.5 text-sm text-t2">{record.mechanicName || '—'}</td>}
+                    {colVis.has('actions') && (
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={e => { e.stopPropagation(); setModal({ mode: 'view', record }); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"><Eye size={14} weight="duotone" /></button>
+                          <button onClick={e => { e.stopPropagation(); handleEdit(record); }} className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"><PencilSimple size={14} weight="duotone" /></button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

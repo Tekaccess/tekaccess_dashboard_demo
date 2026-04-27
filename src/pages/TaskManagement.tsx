@@ -14,6 +14,7 @@ import {
   X
 } from '@phosphor-icons/react';
 import DocumentSidePanel from '../components/DocumentSidePanel';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../components/ui/ColumnSelector';
 
 interface Task {
   id: string;
@@ -47,6 +48,16 @@ const statusIcons = {
   review: Warning,
   completed: CheckCircle
 };
+
+const TASK_COLS: ColDef[] = [
+  { key: 'task',     label: 'Task',     defaultVisible: true },
+  { key: 'status',   label: 'Status',   defaultVisible: true },
+  { key: 'priority', label: 'Priority', defaultVisible: true },
+  { key: 'assignee', label: 'Assignee', defaultVisible: true },
+  { key: 'due',      label: 'Due Date', defaultVisible: true },
+  { key: 'progress', label: 'Progress', defaultVisible: true },
+  { key: 'actions',  label: 'Actions',  defaultVisible: true },
+];
 
 const sampleTasks: Task[] = [
   {
@@ -124,6 +135,7 @@ export default function TaskManagement() {
   const [priorityFunnel, setPriorityFunnel] = useState<string>('all');
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'board'>('board');
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('task-management', TASK_COLS);
 
   const filteredTasks = tasks.filter((task) => {
     const matchesMagnifyingGlass = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -230,6 +242,8 @@ export default function TaskManagement() {
               Board
             </button>
           </div>
+
+          {viewMode === 'list' && <ColumnSelector cols={TASK_COLS} visible={colVis} onToggle={colToggle} />}
         </div>
       </div>
 
@@ -243,67 +257,79 @@ export default function TaskManagement() {
             <table className="w-full">
               <thead className="bg-surface border-b border-border">
                 <tr>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Task</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Status</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Priority</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Assignee</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Due Date</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Progress</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider"></th>
+                  {colVis.has('task') && <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Task</th>}
+                  {colVis.has('status') && <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Status</th>}
+                  {colVis.has('priority') && <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Priority</th>}
+                  {colVis.has('assignee') && <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Assignee</th>}
+                  {colVis.has('due') && <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Due Date</th>}
+                  {colVis.has('progress') && <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Progress</th>}
+                  {colVis.has('actions') && <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider"></th>}
                 </tr>
               </thead>
               <tbody>
                 {filteredTasks.map((task) => (
                   <tr key={task.id} className="border-b border-border-s hover:bg-surface transition-colors">
-                    <td className="py-4 px-4">
-                      <div>
-                        <p className="text-sm font-medium text-t1">{task.title}</p>
-                        <div className="flex gap-1 mt-1">
-                          {task.tags.map((tag) => (
-                            <span key={tag} className="text-xs px-2 py-0.5 bg-surface text-t2 rounded">
-                              {tag}
-                            </span>
-                          ))}
+                    {colVis.has('task') && (
+                      <td className="py-4 px-4">
+                        <div>
+                          <p className="text-sm font-medium text-t1">{task.title}</p>
+                          <div className="flex gap-1 mt-1">
+                            {task.tags.map((tag) => (
+                              <span key={tag} className="text-xs px-2 py-0.5 bg-surface text-t2 rounded">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-t2">
-                        {React.createElement(statusIcons[task.status], { className: 'w-3 h-3' })}
-                        {statusLabels[task.status]}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${priorityColors[task.priority]}`}>
-                        <Flag className="w-3 h-3 mr-1" />
-                        {task.priority}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center text-xs font-medium text-accent">
-                          {task.assignee.charAt(0)}
+                      </td>
+                    )}
+                    {colVis.has('status') && (
+                      <td className="py-4 px-4">
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-t2">
+                          {React.createElement(statusIcons[task.status], { className: 'w-3 h-3' })}
+                          {statusLabels[task.status]}
+                        </span>
+                      </td>
+                    )}
+                    {colVis.has('priority') && (
+                      <td className="py-4 px-4">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${priorityColors[task.priority]}`}>
+                          <Flag className="w-3 h-3 mr-1" />
+                          {task.priority}
+                        </span>
+                      </td>
+                    )}
+                    {colVis.has('assignee') && (
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center text-xs font-medium text-accent">
+                            {task.assignee.charAt(0)}
+                          </div>
+                          <span className="text-sm text-t2">{task.assignee}</span>
                         </div>
-                        <span className="text-sm text-t2">{task.assignee}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-sm text-t2">{task.dueDate}</td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-surface-hover rounded-full h-2">
-                          <div
-                            className="bg-accent h-2 rounded-full transition-all"
-                            style={{ width: `${task.progress}%` }}
-                          />
+                      </td>
+                    )}
+                    {colVis.has('due') && <td className="py-4 px-4 text-sm text-t2">{task.dueDate}</td>}
+                    {colVis.has('progress') && (
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-surface-hover rounded-full h-2">
+                            <div
+                              className="bg-accent h-2 rounded-full transition-all"
+                              style={{ width: `${task.progress}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-t2">{task.progress}%</span>
                         </div>
-                        <span className="text-xs text-t2">{task.progress}%</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <button className="p-1 hover:bg-surface rounded">
-                        <DotsThree className="w-4 h-4 text-t2" />
-                      </button>
-                    </td>
+                      </td>
+                    )}
+                    {colVis.has('actions') && (
+                      <td className="py-4 px-4">
+                        <button className="p-1 hover:bg-surface rounded">
+                          <DotsThree className="w-4 h-4 text-t2" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

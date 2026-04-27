@@ -15,6 +15,7 @@ import {
 import DocumentSidePanel from '../components/DocumentSidePanel';
 import DatePicker from '../components/ui/DatePicker';
 import SearchSelect, { SearchSelectOption } from '../components/ui/SearchSelect';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../components/ui/ColumnSelector';
 import {
   apiListSuppliers, apiListContractsForPO, apiListCurrencies,
   apiListProjects, apiListClients, apiListStockItems,
@@ -75,6 +76,18 @@ const UNIT_OPTIONS: SearchSelectOption[] = [
   { value: 'ml', label: 'Millilitres (ml)' },
   { value: 'units', label: 'Units' },
   { value: 'boxes', label: 'Boxes' },
+];
+
+const PO_COLS: ColDef[] = [
+  { key: 'poRef',     label: 'PO Ref',    defaultVisible: true },
+  { key: 'supplier',  label: 'Supplier',  defaultVisible: true },
+  { key: 'deliverTo', label: 'Deliver To', defaultVisible: true },
+  { key: 'contract',  label: 'Contract',  defaultVisible: false },
+  { key: 'currency',  label: 'Currency',  defaultVisible: false },
+  { key: 'total',     label: 'Total',     defaultVisible: true },
+  { key: 'status',    label: 'Status',    defaultVisible: true },
+  { key: 'expected',  label: 'Expected',  defaultVisible: true },
+  { key: 'actions',   label: 'Actions',   defaultVisible: true },
 ];
 
 function formatCurrency(value: number, code = 'RWF'): string {
@@ -200,6 +213,9 @@ export default function PurchaseOrdersPage() {
   const [showAddClient, setShowAddClient] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PurchaseOrder | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [modalTab, setModalTab] = useState<'manual' | 'supporting'>('manual');
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('purchase-orders', PO_COLS);
+
   // Data from API
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
@@ -1096,6 +1112,7 @@ export default function PurchaseOrdersPage() {
           <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
             <DownloadSimple size={14} weight="duotone" /> Export
           </button>
+          <ColumnSelector cols={PO_COLS} visible={colVis} onToggle={colToggle} />
           <div className="flex border border-border rounded-lg overflow-hidden ml-auto">
             {([
               { mode: 'table', Icon: ListDashes, label: 'Table' },
@@ -1123,21 +1140,27 @@ export default function PurchaseOrdersPage() {
             <table className="min-w-full divide-y divide-border">
               <thead className="bg-surface">
                 <tr>
-                  {['PO Ref', 'Supplier', 'Deliver To', 'Contract', 'Currency', 'Total', 'Status', 'Expected', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                  ))}
+                  {colVis.has('poRef') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">PO Ref</th>}
+                  {colVis.has('supplier') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Supplier</th>}
+                  {colVis.has('deliverTo') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Deliver To</th>}
+                  {colVis.has('contract') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Contract</th>}
+                  {colVis.has('currency') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Currency</th>}
+                  {colVis.has('total') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Total</th>}
+                  {colVis.has('status') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Status</th>}
+                  {colVis.has('expected') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Expected</th>}
+                  {colVis.has('actions') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Actions</th>}
                 </tr>
               </thead>
               <tbody className="bg-card divide-y divide-border-s">
                 {loadingOrders ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-16 text-center">
+                    <td colSpan={colVis.size} className="px-4 py-16 text-center">
                       <Spinner size={24} className="animate-spin text-t3 mx-auto" />
                     </td>
                   </tr>
                 ) : filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-16 text-center text-t3 text-sm">
+                    <td colSpan={colVis.size} className="px-4 py-16 text-center text-t3 text-sm">
                       {orders.length === 0 ? (
                         <div className="flex flex-col items-center gap-3">
                           <Package size={40} weight="duotone" className="text-t3/40" />
@@ -1154,46 +1177,52 @@ export default function PurchaseOrdersPage() {
                       className="hover:bg-surface transition-colors cursor-pointer"
                       onClick={() => setModal({ mode: 'view', order })}
                     >
-                      <td className="px-4 py-3.5 text-sm font-semibold text-accent whitespace-nowrap">{order.poRef}</td>
-                      <td className="px-4 py-3.5 text-sm font-medium text-t1 max-w-[150px] truncate">{order.supplierName}</td>
-                      <td className="px-4 py-3.5 text-sm text-t2 max-w-[130px] truncate">{order.deliverToClientName || '—'}</td>
-                      <td className="px-4 py-3.5 text-sm text-t2">{order.contractRef || '—'}</td>
-                      <td className="px-4 py-3.5 text-sm text-t2">{order.currency}</td>
-                      <td className="px-4 py-3.5 text-sm font-bold text-t1 whitespace-nowrap">{formatCurrency(order.totalValueWithTax, order.currency)}</td>
-                      <td className="px-4 py-3.5">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[order.status] || STATUS_STYLES.draft}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[order.status] || STATUS_DOT.draft}`} />
-                          {STATUS_LABEL[order.status] || order.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">
-                        {order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toLocaleDateString() : '—'}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={e => { e.stopPropagation(); setModal({ mode: 'view', order }); }}
-                            className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"
-                            title="View"
-                          >
-                            <Eye size={14} weight="duotone" />
-                          </button>
-                          <button
-                            onClick={e => { e.stopPropagation(); handleEdit(order); }}
-                            className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <PencilSimple size={14} weight="duotone" />
-                          </button>
-                          <button
-                            onClick={e => { e.stopPropagation(); setDeleteTarget(order); }}
-                            className="p-1.5 text-t3 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <Trash size={14} weight="duotone" />
-                          </button>
-                        </div>
-                      </td>
+                      {colVis.has('poRef') && <td className="px-4 py-3.5 text-sm font-semibold text-accent whitespace-nowrap">{order.poRef}</td>}
+                      {colVis.has('supplier') && <td className="px-4 py-3.5 text-sm font-medium text-t1 max-w-[150px] truncate">{order.supplierName}</td>}
+                      {colVis.has('deliverTo') && <td className="px-4 py-3.5 text-sm text-t2 max-w-[130px] truncate">{order.deliverToClientName || '—'}</td>}
+                      {colVis.has('contract') && <td className="px-4 py-3.5 text-sm text-t2">{order.contractRef || '—'}</td>}
+                      {colVis.has('currency') && <td className="px-4 py-3.5 text-sm text-t2">{order.currency}</td>}
+                      {colVis.has('total') && <td className="px-4 py-3.5 text-sm font-bold text-t1 whitespace-nowrap">{formatCurrency(order.totalValueWithTax, order.currency)}</td>}
+                      {colVis.has('status') && (
+                        <td className="px-4 py-3.5">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[order.status] || STATUS_STYLES.draft}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[order.status] || STATUS_DOT.draft}`} />
+                            {STATUS_LABEL[order.status] || order.status}
+                          </span>
+                        </td>
+                      )}
+                      {colVis.has('expected') && (
+                        <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">
+                          {order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toLocaleDateString() : '—'}
+                        </td>
+                      )}
+                      {colVis.has('actions') && (
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={e => { e.stopPropagation(); setModal({ mode: 'view', order }); }}
+                              className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"
+                              title="View"
+                            >
+                              <Eye size={14} weight="duotone" />
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); handleEdit(order); }}
+                              className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <PencilSimple size={14} weight="duotone" />
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); setDeleteTarget(order); }}
+                              className="p-1.5 text-t3 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash size={14} weight="duotone" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

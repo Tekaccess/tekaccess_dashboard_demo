@@ -185,6 +185,9 @@ export type Supplier = {
   creditTermsDays: number;
   status: string;
   supplierType: string[];
+  hasCrusher?: boolean | null;
+  extraFeesNote?: string | null;
+  isCritical?: boolean;
 };
 
 export type Contract = {
@@ -937,6 +940,10 @@ export type StockMovement = {
   remark: string | null;
   linkedPoId: string | null;
   linkedPoRef: string | null;
+  crusherCost: number | null;
+  samplingCost: number | null;
+  otherProcessingCost: number | null;
+  otherProcessingDescription: string | null;
 };
 
 export async function apiListMovements(params: Record<string, string> = {}) {
@@ -971,6 +978,10 @@ export async function apiCreateMovement(data: {
   remark?: string;
   linkedPoId?: string;
   linkedPoRef?: string;
+  crusherCost?: number;
+  samplingCost?: number;
+  otherProcessingCost?: number;
+  otherProcessingDescription?: string;
 }) {
   return request<{ movement: StockMovement }>('/inventory/movements', { method: 'POST', body: JSON.stringify(data) });
 }
@@ -1136,7 +1147,7 @@ export type Trip = {
   loadDescription: string | null;
   plannedTons: number | null;
   actualTons: number | null;
-  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'scheduled' | 'in_progress' | 'shunting' | 'completed' | 'cancelled';
   departureDate: string | null;
   arrivalDate: string | null;
   distanceKm: number | null;
@@ -1200,7 +1211,7 @@ export async function apiUpdateTruck(id: string, data: Partial<Truck>) {
 
 export async function apiGetTransportSummary() {
   return request<{
-    summary: { totalTrucks: number; operating: number; idle: number; inMaintenance: number; activeTrips: number; totalFuelCost: number };
+    summary: { totalTrucks: number; operating: number; idle: number; inMaintenance: number; activeTrips: number; shuntingTrips: number; totalFuelCost: number };
   }>('/transport/summary');
 }
 

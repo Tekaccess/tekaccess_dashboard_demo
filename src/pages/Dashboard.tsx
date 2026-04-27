@@ -3,7 +3,7 @@ import {
   Truck, Lightning, Wrench, MapPin, GasPump,
   ShoppingCart, Handshake, Boat, Gear, Warning,
   FileText, Checks, Package, Buildings, ArrowUp, ArrowDown,
-  Spinner, ChartBar,
+  Spinner, ChartBar, ArrowsClockwise, Hourglass,
 } from '@phosphor-icons/react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -13,8 +13,8 @@ import {
   apiGetTransportSummary, apiListTrips, apiListFuelLogs, apiListMaintenanceRecords,
   apiGetProcurementSummary, apiGetShipmentsSummary, apiGetSparePartsSummary,
   apiGetContractsSummary, apiGetDeliveriesSummary,
-  apiGetInventorySummary,
-  Trip, FuelLog, MaintenanceRecord,
+  apiGetInventorySummary, apiListSites,
+  Trip, FuelLog, MaintenanceRecord, Site,
 } from '../lib/api';
 
 interface DashboardProps {
@@ -161,7 +161,7 @@ function TransportDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <KpiCard label="Total Fleet" value={s.totalTrucks ?? 0} Icon={Truck} bg="bg-accent-glow" color="text-accent" />
         <KpiCard label="Operating" value={s.operating ?? 0} Icon={Lightning} bg="bg-emerald-500/10" color="text-emerald-400" />
         <KpiCard label="In Maintenance" value={s.inMaintenance ?? 0} Icon={Wrench}
@@ -170,6 +170,11 @@ function TransportDashboard() {
           sub={maintPct > 20 ? `${maintPct}% — high!` : `${maintPct}%`}
         />
         <KpiCard label="Active Trips" value={s.activeTrips ?? 0} Icon={MapPin} bg="bg-blue-500/10" color="text-blue-400" />
+        <KpiCard label="Shunting" value={s.shuntingTrips ?? 0} Icon={ArrowsClockwise}
+          bg={(s.shuntingTrips ?? 0) > 0 ? 'bg-orange-500/10' : 'bg-surface'}
+          color={(s.shuntingTrips ?? 0) > 0 ? 'text-orange-400' : 'text-t3'}
+          sub="on-site moves"
+        />
         <KpiCard label="Total Fuel Cost" value={
           (s.totalFuelCost ?? 0) >= 1_000_000
             ? `${((s.totalFuelCost ?? 0) / 1_000_000).toFixed(1)}M`
@@ -427,14 +432,22 @@ function OperationsDashboard() {
   const [loading, setLoading] = useState(true);
   const [contractSum, setContractSum] = useState<any>(null);
   const [delivSum, setDelivSum] = useState<any>(null);
+  const [sites, setSites] = useState<Site[]>([]);
+  const [activeTrips, setActiveTrips] = useState<Trip[]>([]);
 
   useEffect(() => {
     Promise.all([
       apiGetContractsSummary(),
       apiGetDeliveriesSummary(),
-    ]).then(([cRes, dRes]) => {
+      apiListSites({ limit: '200' }),
+      apiListTrips({ limit: '200' }),
+    ]).then(([cRes, dRes, sRes, tRes]) => {
       if (cRes.success) setContractSum(cRes.data);
       if (dRes.success) setDelivSum(dRes.data.summary);
+      if (sRes.success) setSites(sRes.data.sites);
+      if (tRes.success) setActiveTrips(
+        tRes.data.trips.filter(t => t.status === 'shunting' || t.status === 'in_progress')
+      );
       setLoading(false);
     });
   }, []);
@@ -443,6 +456,24 @@ function OperationsDashboard() {
 
   const cs = contractSum?.summary ?? {};
   const ds = delivSum ?? {};
+
+  const activeSites = sites.filter(s => s.isActive && s.liveStatus);
+  const siteTotals = activeSites.reduce(
+    (acc, s) => {
+      acc.waiting += s.liveStatus.trucksWaiting ?? 0;
+      acc.loading += s.liveStatus.trucksLoading ?? 0;
+      acc.offloading += s.liveStatus.trucksOffloading ?? 0;
+      acc.processedToday += s.liveStatus.loadsProcessedToday ?? 0;
+      return acc;
+    },
+    { waiting: 0, loading: 0, offloading: 0, processedToday: 0 }
+  );
+  const shuntingTrips = activeTrips.filter(t => t.status === 'shunting');
+  const inProgressTrips = activeTrips.filter(t => t.status === 'in_progress');
+  const sitesByLoad = [...activeSites].sort((a, b) =>
+    ((b.liveStatus.trucksWaiting ?? 0) + (b.liveStatus.trucksLoading ?? 0) + (b.liveStatus.trucksOffloading ?? 0)) -
+    ((a.liveStatus.trucksWaiting ?? 0) + (a.liveStatus.trucksLoading ?? 0) + (a.liveStatus.trucksOffloading ?? 0))
+  );
 
   const contractDonut = [
     { name: 'Active', value: cs.active ?? 0 },
@@ -461,6 +492,32 @@ function OperationsDashboard() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Live Site Activity</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <KpiCard label="Trucks Waiting" value={siteTotals.waiting} Icon={Hourglass}
+            bg={siteTotals.waiting > 0 ? 'bg-amber-500/10' : 'bg-surface'}
+            color={siteTotals.waiting > 0 ? 'text-amber-500' : 'text-t3'}
+            sub="across sites"
+          />
+          <KpiCard label="Loading" value={siteTotals.loading} Icon={Truck}
+            bg={siteTotals.loading > 0 ? 'bg-blue-500/10' : 'bg-surface'}
+            color={siteTotals.loading > 0 ? 'text-blue-400' : 'text-t3'}
+          />
+          <KpiCard label="Offloading" value={siteTotals.offloading} Icon={Truck}
+            bg={siteTotals.offloading > 0 ? 'bg-emerald-500/10' : 'bg-surface'}
+            color={siteTotals.offloading > 0 ? 'text-emerald-400' : 'text-t3'}
+          />
+          <KpiCard label="Shunting" value={shuntingTrips.length} Icon={ArrowsClockwise}
+            bg={shuntingTrips.length > 0 ? 'bg-orange-500/10' : 'bg-surface'}
+            color={shuntingTrips.length > 0 ? 'text-orange-400' : 'text-t3'}
+            sub="on-site moves"
+          />
+          <KpiCard label="In Transit" value={inProgressTrips.length} Icon={MapPin} bg="bg-purple-500/10" color="text-purple-400" />
+          <KpiCard label="Loads Today" value={siteTotals.processedToday} Icon={Checks} bg="bg-emerald-500/10" color="text-emerald-400" />
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <KpiCard label="Active Contracts" value={cs.active ?? 0} Icon={FileText} bg="bg-emerald-500/10" color="text-emerald-400" />
         <KpiCard label="Disputed" value={cs.disputed ?? 0} Icon={Warning}
@@ -505,7 +562,7 @@ function OperationsDashboard() {
         </ChartCard>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="bg-card rounded-xl border border-border p-5">
           <p className="text-sm font-semibold text-t1 mb-4">Active Contract Value</p>
           <p className="text-4xl font-bold text-accent">
@@ -519,6 +576,64 @@ function OperationsDashboard() {
             <p className="text-2xl font-bold text-t1">{(cs.totalActiveTons ?? 0).toLocaleString()}</p>
             <p className="text-xs text-t3 mt-1">Contracted tonnage across active contracts</p>
           </div>
+        </div>
+
+        <div className="bg-card rounded-xl border border-border p-5">
+          <p className="text-sm font-semibold text-t1 mb-4">Site Activity Now</p>
+          {sitesByLoad.length === 0 ? (
+            <div className="flex items-center gap-2 text-t3 py-6">
+              <Buildings size={16} className="opacity-40" />
+              <p className="text-sm">No active sites</p>
+            </div>
+          ) : (
+            <div className="space-y-2 mb-4">
+              {sitesByLoad.slice(0, 5).map(site => {
+                const total = (site.liveStatus.trucksWaiting ?? 0) + (site.liveStatus.trucksLoading ?? 0) + (site.liveStatus.trucksOffloading ?? 0);
+                return (
+                  <div key={site._id} className="flex items-center justify-between py-2 border-b border-border last:border-0 gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-t1 truncate">{site.name}</p>
+                      <p className="text-xs text-t3 truncate">{site.siteCode} · {site.region || site.country}</p>
+                    </div>
+                    <div className="flex gap-3 text-xs shrink-0">
+                      <div className="text-center">
+                        <p className="font-bold text-amber-500">{site.liveStatus.trucksWaiting ?? 0}</p>
+                        <p className="text-t3 text-[10px]">wait</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-bold text-blue-400">{site.liveStatus.trucksLoading ?? 0}</p>
+                        <p className="text-t3 text-[10px]">load</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-bold text-emerald-400">{site.liveStatus.trucksOffloading ?? 0}</p>
+                        <p className="text-t3 text-[10px]">off</p>
+                      </div>
+                      <div className={`text-center min-w-[28px] ${total > 0 ? 'text-t1' : 'text-t3'}`}>
+                        <p className="font-bold">{total}</p>
+                        <p className="text-t3 text-[10px]">total</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {shuntingTrips.length > 0 && (
+            <div className="pt-3 border-t border-border">
+              <p className="text-xs font-semibold text-orange-400 mb-2 flex items-center gap-1.5">
+                <ArrowsClockwise size={12} weight="bold" />
+                Currently Shunting ({shuntingTrips.length})
+              </p>
+              <div className="space-y-1">
+                {shuntingTrips.slice(0, 4).map(t => (
+                  <div key={t._id} className="flex items-center justify-between text-xs py-1">
+                    <span className="font-mono text-orange-400">{t.plateNumber}</span>
+                    <span className="text-t3 truncate ml-2">{t.originSite} → {t.destinationSite}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-card rounded-xl border border-border p-5">

@@ -7,6 +7,7 @@ import {
 import { apiGetSparePartsSummary, apiListSpareParts, apiCreateSparePart, apiUpdateSparePart, apiDeleteSparePart, SparePart } from '../lib/api';
 import { motion, AnimatePresence } from 'motion/react';
 import DocumentSidePanel from '../components/DocumentSidePanel';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../components/ui/ColumnSelector';
 
 const CATEGORIES = ['engine', 'transmission', 'brakes', 'suspension', 'electrical', 'tyres_wheels', 'body_panel', 'filters', 'belts_hoses', 'fluids_lubricants', 'other'];
 const UNITS = ['units', 'litres', 'kg', 'metres', 'boxes'];
@@ -44,6 +45,18 @@ function emptyDraft(): DraftPart {
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
 
+const SP_COLS: ColDef[] = [
+  { key: 'code',     label: 'Code',          defaultVisible: true },
+  { key: 'name',     label: 'Name',          defaultVisible: true },
+  { key: 'category', label: 'Category',      defaultVisible: true },
+  { key: 'onHand',   label: 'On Hand',       defaultVisible: true },
+  { key: 'reorder',  label: 'Reorder Point', defaultVisible: false },
+  { key: 'cost',     label: 'Unit Cost',     defaultVisible: false },
+  { key: 'value',    label: 'Total Value',   defaultVisible: true },
+  { key: 'status',   label: 'Status',        defaultVisible: true },
+  { key: 'actions',  label: 'Actions',       defaultVisible: true },
+];
+
 export default function SparePartsPage() {
   const [parts, setParts] = useState<SparePart[]>([]);
   const [summary, setSummary] = useState({ totalParts: 0, totalValue: 0, lowStock: 0, categories: [] as any[] });
@@ -59,6 +72,7 @@ export default function SparePartsPage() {
   const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SparePart | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('spare-parts', SP_COLS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -325,6 +339,9 @@ export default function SparePartsPage() {
               <input type="checkbox" checked={alertOnly} onChange={e => setAlertOnly(e.target.checked)} />
               Low stock only
             </label>
+            <div className="ml-auto">
+              <ColumnSelector cols={SP_COLS} visible={colVis} onToggle={colToggle} />
+            </div>
           </div>
 
           {/* Table */}
@@ -339,15 +356,15 @@ export default function SparePartsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Code</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Category</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">On Hand</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Reorder Point</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Unit Cost</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Total Value</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Status</th>
-                    <th className="px-4 py-3"></th>
+                    {colVis.has('code') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Code</th>}
+                    {colVis.has('name') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Name</th>}
+                    {colVis.has('category') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Category</th>}
+                    {colVis.has('onHand') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">On Hand</th>}
+                    {colVis.has('reorder') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Reorder Point</th>}
+                    {colVis.has('cost') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Unit Cost</th>}
+                    {colVis.has('value') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Total Value</th>}
+                    {colVis.has('status') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Status</th>}
+                    {colVis.has('actions') && <th className="px-4 py-3"></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -355,38 +372,44 @@ export default function SparePartsPage() {
                     <tr key={p._id}
                       className={`hover:bg-surface transition-colors cursor-pointer ${i < parts.length - 1 ? 'border-b border-border' : ''}`}
                       onClick={() => { setSelected(p); setModalMode('view'); }}>
-                      <td className="px-4 py-3.5 font-mono text-xs text-accent">{p.partCode}</td>
-                      <td className="px-4 py-3.5 font-medium text-t1">{p.name}</td>
-                      <td className="px-4 py-3.5">
-                        <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium ${CAT_STYLES[p.category] ?? ''}`}>
-                          {p.category.replace(/_/g, ' ')}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-right text-t1 font-medium">{p.onHandQty.toLocaleString()} <span className="text-xs text-t3">{p.unit}</span></td>
-                      <td className="px-4 py-3.5 text-right text-t2">{p.reorderPoint.toLocaleString()} <span className="text-xs text-t3">{p.unit}</span></td>
-                      <td className="px-4 py-3.5 text-right text-t2">{p.weightedAvgCost.toLocaleString()} <span className="text-xs text-t3">{p.currency}</span></td>
-                      <td className="px-4 py-3.5 text-right font-bold text-t1">{p.totalStockValue.toLocaleString()}</td>
-                      <td className="px-4 py-3.5">
-                        {p.belowReorderPoint ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs text-rose-400 border border-rose-500/20 bg-rose-500/10 rounded-full px-2.5 py-0.5 font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400" /> Low
+                      {colVis.has('code') && <td className="px-4 py-3.5 font-mono text-xs text-accent">{p.partCode}</td>}
+                      {colVis.has('name') && <td className="px-4 py-3.5 font-medium text-t1">{p.name}</td>}
+                      {colVis.has('category') && (
+                        <td className="px-4 py-3.5">
+                          <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium ${CAT_STYLES[p.category] ?? ''}`}>
+                            {p.category.replace(/_/g, ' ')}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 border border-emerald-500/20 bg-emerald-500/10 rounded-full px-2.5 py-0.5 font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> OK
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex gap-1">
-                          <button onClick={e => { e.stopPropagation(); setSelected(p); setModalMode('view'); }}
-                            className="p-1 hover:text-t1 text-t3"><Eye size={14} /></button>
-                          <button onClick={e => { e.stopPropagation(); openEdit(p); }}
-                            className="p-1 hover:text-t1 text-t3"><PencilSimple size={14} /></button>
-                          <button onClick={e => { e.stopPropagation(); setDeleteTarget(p); }}
-                            className="p-1 hover:text-red-500 text-t3"><Trash size={14} /></button>
-                        </div>
-                      </td>
+                        </td>
+                      )}
+                      {colVis.has('onHand') && <td className="px-4 py-3.5 text-right text-t1 font-medium">{p.onHandQty.toLocaleString()} <span className="text-xs text-t3">{p.unit}</span></td>}
+                      {colVis.has('reorder') && <td className="px-4 py-3.5 text-right text-t2">{p.reorderPoint.toLocaleString()} <span className="text-xs text-t3">{p.unit}</span></td>}
+                      {colVis.has('cost') && <td className="px-4 py-3.5 text-right text-t2">{p.weightedAvgCost.toLocaleString()} <span className="text-xs text-t3">{p.currency}</span></td>}
+                      {colVis.has('value') && <td className="px-4 py-3.5 text-right font-bold text-t1">{p.totalStockValue.toLocaleString()}</td>}
+                      {colVis.has('status') && (
+                        <td className="px-4 py-3.5">
+                          {p.belowReorderPoint ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-rose-400 border border-rose-500/20 bg-rose-500/10 rounded-full px-2.5 py-0.5 font-medium">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-400" /> Low
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 border border-emerald-500/20 bg-emerald-500/10 rounded-full px-2.5 py-0.5 font-medium">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> OK
+                            </span>
+                          )}
+                        </td>
+                      )}
+                      {colVis.has('actions') && (
+                        <td className="px-4 py-3.5">
+                          <div className="flex gap-1">
+                            <button onClick={e => { e.stopPropagation(); setSelected(p); setModalMode('view'); }}
+                              className="p-1 hover:text-t1 text-t3"><Eye size={14} /></button>
+                            <button onClick={e => { e.stopPropagation(); openEdit(p); }}
+                              className="p-1 hover:text-t1 text-t3"><PencilSimple size={14} /></button>
+                            <button onClick={e => { e.stopPropagation(); setDeleteTarget(p); }}
+                              className="p-1 hover:text-red-500 text-t3"><Trash size={14} /></button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

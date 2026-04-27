@@ -11,6 +11,7 @@ import {
   FinanceApproval, ApprovalsSummary,
 } from '../../lib/api';
 import DocumentSidePanel from '../../components/DocumentSidePanel';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
 const STATUS_TABS = [
   { id: '', label: 'All' },
@@ -42,6 +43,17 @@ function formatMoney(n: number, currency = 'RWF') {
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors';
 
+const APP_COLS: ColDef[] = [
+  { key: 'ref',       label: 'Ref',       defaultVisible: true },
+  { key: 'product',   label: 'Product',   defaultVisible: true },
+  { key: 'warehouse', label: 'Warehouse', defaultVisible: true },
+  { key: 'sourcePo',  label: 'Source PO', defaultVisible: true },
+  { key: 'requested', label: 'Requested', defaultVisible: true },
+  { key: 'approved',  label: 'Approved',  defaultVisible: true },
+  { key: 'status',    label: 'Status',    defaultVisible: true },
+  { key: 'date',      label: 'Date',      defaultVisible: true },
+];
+
 export default function ApprovalsPage() {
   const [approvals, setApprovals] = useState<FinanceApproval[]>([]);
   const [summary, setSummary] = useState<ApprovalsSummary | null>(null);
@@ -58,6 +70,7 @@ export default function ApprovalsPage() {
   const [actionNotes, setActionNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('finance-approvals', APP_COLS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -251,6 +264,7 @@ export default function ApprovalsPage() {
               value={search}
               onChange={e => setSearch(e.target.value)} />
           </div>
+          <ColumnSelector cols={APP_COLS} visible={colVis} onToggle={colToggle} />
         </div>
 
         {loading ? (
@@ -267,56 +281,70 @@ export default function ApprovalsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface">
-                  <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Ref</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Product</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Source PO</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Requested</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Approved</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Date</th>
+                  {colVis.has('ref') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Ref</th>}
+                  {colVis.has('product') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Product</th>}
+                  {colVis.has('warehouse') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse</th>}
+                  {colVis.has('sourcePo') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Source PO</th>}
+                  {colVis.has('requested') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Requested</th>}
+                  {colVis.has('approved') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Approved</th>}
+                  {colVis.has('status') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Status</th>}
+                  {colVis.has('date') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Date</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {approvals.filter(a => !search || [a.approvalRef, a.productName, a.warehouseName, a.linkedPoRef || ''].some(v => v.toLowerCase().includes(search.toLowerCase()))).map(a => (
                   <tr key={a._id} className="hover:bg-surface cursor-pointer transition-colors" onClick={() => openView(a)}>
-                    <td className="px-4 py-3.5 font-mono text-xs text-accent font-semibold whitespace-nowrap">{a.approvalRef}</td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <Warning size={13} className={a.status === 'pending' ? 'text-amber-400' : 'text-t3/30'} weight="duotone" />
-                        <span className="text-t1 font-medium">{a.productName}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 text-t2 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <Warehouse size={12} className="text-t3" weight="duotone" />
-                        {a.warehouseName}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">
-                      {a.linkedPoRef ? (
-                        <div className="flex items-center gap-1">
-                          <Receipt size={11} weight="duotone" className="text-accent" />
-                          <span className="text-accent">{a.linkedPoRef}</span>
+                    {colVis.has('ref') && <td className="px-4 py-3.5 font-mono text-xs text-accent font-semibold whitespace-nowrap">{a.approvalRef}</td>}
+                    {colVis.has('product') && (
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <Warning size={13} className={a.status === 'pending' ? 'text-amber-400' : 'text-t3/30'} weight="duotone" />
+                          <span className="text-t1 font-medium">{a.productName}</span>
                         </div>
-                      ) : '—'}
-                    </td>
-                    <td className="px-4 py-3.5 text-right font-bold text-amber-400 whitespace-nowrap">
-                      {formatMoney(a.requestedAmount, a.currency)}
-                    </td>
-                    <td className="px-4 py-3.5 text-right font-bold whitespace-nowrap">
-                      {a.approvedAmount != null
-                        ? <span className="text-emerald-400">{formatMoney(a.approvedAmount, a.currency)}</span>
-                        : <span className="text-t3">—</span>}
-                    </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[a.status] || ''}`}>
-                        {STATUS_ICONS[a.status]} {a.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">
-                      {new Date(a.createdAt).toLocaleDateString()}
-                    </td>
+                      </td>
+                    )}
+                    {colVis.has('warehouse') && (
+                      <td className="px-4 py-3.5 text-t2 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <Warehouse size={12} className="text-t3" weight="duotone" />
+                          {a.warehouseName}
+                        </div>
+                      </td>
+                    )}
+                    {colVis.has('sourcePo') && (
+                      <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">
+                        {a.linkedPoRef ? (
+                          <div className="flex items-center gap-1">
+                            <Receipt size={11} weight="duotone" className="text-accent" />
+                            <span className="text-accent">{a.linkedPoRef}</span>
+                          </div>
+                        ) : '—'}
+                      </td>
+                    )}
+                    {colVis.has('requested') && (
+                      <td className="px-4 py-3.5 text-right font-bold text-amber-400 whitespace-nowrap">
+                        {formatMoney(a.requestedAmount, a.currency)}
+                      </td>
+                    )}
+                    {colVis.has('approved') && (
+                      <td className="px-4 py-3.5 text-right font-bold whitespace-nowrap">
+                        {a.approvedAmount != null
+                          ? <span className="text-emerald-400">{formatMoney(a.approvedAmount, a.currency)}</span>
+                          : <span className="text-t3">—</span>}
+                      </td>
+                    )}
+                    {colVis.has('status') && (
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[a.status] || ''}`}>
+                          {STATUS_ICONS[a.status]} {a.status}
+                        </span>
+                      </td>
+                    )}
+                    {colVis.has('date') && (
+                      <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">
+                        {new Date(a.createdAt).toLocaleDateString()}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

@@ -11,6 +11,14 @@ import {
 } from '../../lib/api';
 import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSelect';
 import DocumentSidePanel from '../../components/DocumentSidePanel';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
+
+const SC_COLS: ColDef[] = [
+  { key: 'item',      label: 'Item',      defaultVisible: true },
+  { key: 'warehouse', label: 'Warehouse', defaultVisible: true },
+  { key: 'onHand',    label: 'On Hand',   defaultVisible: true },
+  { key: 'value',     label: 'Value',     defaultVisible: true },
+];
 
 interface CountEntry {
   stockItemId: string;
@@ -36,6 +44,7 @@ export default function StockCountsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedCount, setSavedCount] = useState(0);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('stock-counts', SC_COLS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -206,6 +215,7 @@ export default function StockCountsPage() {
               placeholder="All warehouses"
             />
           </div>
+          <ColumnSelector cols={SC_COLS} visible={colVis} onToggle={colToggle} />
         </div>
 
         {/* Inventory Snapshot */}
@@ -222,26 +232,32 @@ export default function StockCountsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Item</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">On Hand</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Value</th>
+                    {colVis.has('item') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Item</th>}
+                    {colVis.has('warehouse') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse</th>}
+                    {colVis.has('onHand') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">On Hand</th>}
+                    {colVis.has('value') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Value</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {stockItems.map((si, i) => (
                     <tr key={si._id} className={`hover:bg-surface transition-colors ${i < stockItems.length - 1 ? 'border-b border-border' : ''}`}>
-                      <td className="px-4 py-3.5">
-                        <p className="font-medium text-t1">{si.name}</p>
-                        <p className="text-xs text-t3">{si.itemCode}</p>
-                      </td>
-                      <td className="px-4 py-3.5 text-t2">{si.warehouseName}</td>
-                      <td className="px-4 py-3.5 text-right font-medium text-t1">
-                        {si.onHandQty.toLocaleString()} <span className="text-xs text-t3">{si.stockUnit}</span>
-                      </td>
-                      <td className="px-4 py-3.5 text-right text-t2">
-                        {(si.onHandQty * si.weightedAvgCost).toLocaleString()} {si.currency}
-                      </td>
+                      {colVis.has('item') && (
+                        <td className="px-4 py-3.5">
+                          <p className="font-medium text-t1">{si.name}</p>
+                          <p className="text-xs text-t3">{si.itemCode}</p>
+                        </td>
+                      )}
+                      {colVis.has('warehouse') && <td className="px-4 py-3.5 text-t2">{si.warehouseName}</td>}
+                      {colVis.has('onHand') && (
+                        <td className="px-4 py-3.5 text-right font-medium text-t1">
+                          {si.onHandQty.toLocaleString()} <span className="text-xs text-t3">{si.stockUnit}</span>
+                        </td>
+                      )}
+                      {colVis.has('value') && (
+                        <td className="px-4 py-3.5 text-right text-t2">
+                          {(si.onHandQty * si.weightedAvgCost).toLocaleString()} {si.currency}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

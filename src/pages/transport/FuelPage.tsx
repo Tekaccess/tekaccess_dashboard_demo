@@ -10,11 +10,26 @@ import {
 } from 'recharts';
 import { apiListFuelLogs, apiCreateFuelLog, apiUpdateFuelLog, FuelLog } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
 type ViewMode = 'table' | 'bar' | 'trend';
 type ActiveTab = 'All' | 'Fuel Logs' | 'Anomaly Flags';
 
 const CHART_COLORS = ['#4285f4', '#93bbfa', '#bfd0fc', '#d5e4ff'];
+
+const FUEL_COLS: ColDef[] = [
+  { key: 'ref',      label: 'Ref',        defaultVisible: false },
+  { key: 'truck',    label: 'Truck',      defaultVisible: true },
+  { key: 'driver',   label: 'Driver',     defaultVisible: true },
+  { key: 'date',     label: 'Date',       defaultVisible: true },
+  { key: 'litres',   label: 'Litres',     defaultVisible: true },
+  { key: 'costPerL', label: 'Cost/L',     defaultVisible: false },
+  { key: 'total',    label: 'Total Cost', defaultVisible: true },
+  { key: 'odometer', label: 'Odometer',   defaultVisible: false },
+  { key: 'station',  label: 'Station',    defaultVisible: true },
+  { key: 'flag',     label: 'Flag',       defaultVisible: true },
+  { key: 'actions',  label: 'Actions',    defaultVisible: true },
+];
 
 interface DraftFuelLog {
   plateNumber: string;
@@ -52,6 +67,7 @@ export default function FuelPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [logs, setLogs] = useState<FuelLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('fuel-logs', FUEL_COLS);
 
   const loadLogs = useCallback(async () => {
     setLoading(true);
@@ -440,6 +456,7 @@ export default function FuelPage() {
           <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
             <DownloadSimple size={14} weight="duotone" /> Export
           </button>
+          <ColumnSelector cols={FUEL_COLS} visible={colVis} onToggle={colToggle} />
           <div className="flex border border-border rounded-lg overflow-hidden ml-auto">
             {([
               { mode: 'table', Icon: ListDashes, label: 'Table' },
@@ -460,16 +477,24 @@ export default function FuelPage() {
             <table className="min-w-full divide-y divide-border">
               <thead className="bg-surface">
                 <tr>
-                  {['Ref', 'Truck', 'Driver', 'Date', 'Litres', 'Cost/L', 'Total Cost', 'Odometer', 'Station', 'Flag', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                  ))}
+                  {colVis.has('ref') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Ref</th>}
+                  {colVis.has('truck') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Truck</th>}
+                  {colVis.has('driver') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Driver</th>}
+                  {colVis.has('date') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Date</th>}
+                  {colVis.has('litres') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Litres</th>}
+                  {colVis.has('costPerL') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Cost/L</th>}
+                  {colVis.has('total') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Total Cost</th>}
+                  {colVis.has('odometer') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Odometer</th>}
+                  {colVis.has('station') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Station</th>}
+                  {colVis.has('flag') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Flag</th>}
+                  {colVis.has('actions') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Actions</th>}
                 </tr>
               </thead>
               <tbody className="bg-card divide-y divide-border-s">
                 {loading ? (
-                  <tr><td colSpan={11} className="px-4 py-16 text-center"><Spinner size={24} className="animate-spin text-t3 mx-auto" /></td></tr>
+                  <tr><td colSpan={colVis.size} className="px-4 py-16 text-center"><Spinner size={24} className="animate-spin text-t3 mx-auto" /></td></tr>
                 ) : filteredLogs.length === 0 ? (
-                  <tr><td colSpan={11} className="px-4 py-16 text-center text-t3 text-sm">
+                  <tr><td colSpan={colVis.size} className="px-4 py-16 text-center text-t3 text-sm">
                     {logs.length === 0 ? (
                       <div className="flex flex-col items-center gap-3">
                         <Warning size={40} weight="duotone" className="text-t3/40" />
@@ -480,28 +505,32 @@ export default function FuelPage() {
                   </td></tr>
                 ) : filteredLogs.map(log => (
                   <tr key={log._id} className="hover:bg-surface transition-colors cursor-pointer" onClick={() => setModal({ mode: 'view', log })}>
-                    <td className="px-4 py-3.5 text-sm font-semibold text-accent whitespace-nowrap">{log.logRef}</td>
-                    <td className="px-4 py-3.5 text-sm font-medium text-t1">{log.plateNumber}</td>
-                    <td className="px-4 py-3.5 text-sm text-t2">{log.driverName || '—'}</td>
-                    <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">{new Date(log.logDate).toLocaleDateString()}</td>
-                    <td className="px-4 py-3.5 text-sm text-t2">{log.litresFilled} L</td>
-                    <td className="px-4 py-3.5 text-sm text-t2">{log.costPerLitre.toLocaleString()}</td>
-                    <td className="px-4 py-3.5 text-sm font-bold text-t1 whitespace-nowrap">{log.totalCost.toLocaleString()} {log.currency}</td>
-                    <td className="px-4 py-3.5 text-sm text-t2">{log.odometerReading ? `${log.odometerReading.toLocaleString()} km` : '—'}</td>
-                    <td className="px-4 py-3.5 text-sm text-t2 max-w-[100px] truncate">{log.fuelStation || '—'}</td>
-                    <td className="px-4 py-3.5">
-                      {log.isAnomalyFlag ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-500 border border-red-500/20">
-                          <Warning size={11} weight="fill" /> Flagged
-                        </span>
-                      ) : <span className="text-t3 text-xs">—</span>}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={e => { e.stopPropagation(); setModal({ mode: 'view', log }); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"><Eye size={14} weight="duotone" /></button>
-                        <button onClick={e => { e.stopPropagation(); handleEdit(log); }} className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"><PencilSimple size={14} weight="duotone" /></button>
-                      </div>
-                    </td>
+                    {colVis.has('ref') && <td className="px-4 py-3.5 text-sm font-semibold text-accent whitespace-nowrap">{log.logRef}</td>}
+                    {colVis.has('truck') && <td className="px-4 py-3.5 text-sm font-medium text-t1">{log.plateNumber}</td>}
+                    {colVis.has('driver') && <td className="px-4 py-3.5 text-sm text-t2">{log.driverName || '—'}</td>}
+                    {colVis.has('date') && <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">{new Date(log.logDate).toLocaleDateString()}</td>}
+                    {colVis.has('litres') && <td className="px-4 py-3.5 text-sm text-t2">{log.litresFilled} L</td>}
+                    {colVis.has('costPerL') && <td className="px-4 py-3.5 text-sm text-t2">{log.costPerLitre.toLocaleString()}</td>}
+                    {colVis.has('total') && <td className="px-4 py-3.5 text-sm font-bold text-t1 whitespace-nowrap">{log.totalCost.toLocaleString()} {log.currency}</td>}
+                    {colVis.has('odometer') && <td className="px-4 py-3.5 text-sm text-t2">{log.odometerReading ? `${log.odometerReading.toLocaleString()} km` : '—'}</td>}
+                    {colVis.has('station') && <td className="px-4 py-3.5 text-sm text-t2 max-w-[100px] truncate">{log.fuelStation || '—'}</td>}
+                    {colVis.has('flag') && (
+                      <td className="px-4 py-3.5">
+                        {log.isAnomalyFlag ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-500 border border-red-500/20">
+                            <Warning size={11} weight="fill" /> Flagged
+                          </span>
+                        ) : <span className="text-t3 text-xs">—</span>}
+                      </td>
+                    )}
+                    {colVis.has('actions') && (
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={e => { e.stopPropagation(); setModal({ mode: 'view', log }); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"><Eye size={14} weight="duotone" /></button>
+                          <button onClick={e => { e.stopPropagation(); handleEdit(log); }} className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"><PencilSimple size={14} weight="duotone" /></button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

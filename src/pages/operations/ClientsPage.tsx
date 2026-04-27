@@ -6,6 +6,15 @@ import {
 } from '@phosphor-icons/react';
 import { apiListClients, apiCreateClient, apiUpdateClient, apiDeleteClient, apiListContracts, apiInstantiateContract, Client, OperationsContract } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
+
+const CLIENT_COLS: ColDef[] = [
+  { key: 'ref',      label: 'Ref' },
+  { key: 'name',     label: 'Name' },
+  { key: 'type',     label: 'Type' },
+  { key: 'contact',  label: 'Contact' },
+  { key: 'location', label: 'Location' },
+];
 
 const CLIENT_TYPES = ['mining', 'construction', 'government', 'logistics', 'agriculture', 'retail', 'other'];
 const CURRENCIES = ['USD', 'RWF', 'EUR', 'KES', 'UGX', 'TZS', 'BIF'];

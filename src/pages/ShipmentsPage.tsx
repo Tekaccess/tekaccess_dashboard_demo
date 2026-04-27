@@ -13,6 +13,7 @@ import {
 } from '../lib/api';
 import DocumentSidePanel from '../components/DocumentSidePanel';
 import SearchSelect, { SearchSelectOption } from '../components/ui/SearchSelect';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../components/ui/ColumnSelector';
 
 const SHIPMENT_STATUSES = ['in_transit', 'at_customs', 'out_for_delivery', 'received', 'delayed', 'lost', 'cancelled'];
 const TRANSPORT_MODES = ['road', 'sea', 'air', 'rail', 'multimodal'];
@@ -78,6 +79,18 @@ function fmtDate(d: string | null) {
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
 
+const SHIP_COLS: ColDef[] = [
+  { key: 'ref',         label: 'Ref',         defaultVisible: true },
+  { key: 'supplier',    label: 'Supplier',    defaultVisible: true },
+  { key: 'description', label: 'Description', defaultVisible: true },
+  { key: 'mode',        label: 'Mode',        defaultVisible: true },
+  { key: 'qty',         label: 'Qty',         defaultVisible: true },
+  { key: 'route',       label: 'Route',       defaultVisible: true },
+  { key: 'eta',         label: 'ETA',         defaultVisible: true },
+  { key: 'status',      label: 'Status',      defaultVisible: true },
+  { key: 'actions',     label: 'Actions',     defaultVisible: true },
+];
+
 export default function ShipmentsPage() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -96,6 +109,7 @@ export default function ShipmentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Shipment | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const PAGE_LIMIT = 50;
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('shipments', SHIP_COLS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -414,6 +428,7 @@ export default function ShipmentsPage() {
                 placeholder="Search ref, supplier, PO..." value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }} />
             </div>
+            <ColumnSelector cols={SHIP_COLS} visible={colVis} onToggle={colToggle} />
           </div>
 
           {/* Table */}
@@ -428,15 +443,15 @@ export default function ShipmentsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Ref</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Supplier</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Description</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Mode</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Qty</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Route</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">ETA</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Status</th>
-                    <th className="px-4 py-3"></th>
+                    {colVis.has('ref') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Ref</th>}
+                    {colVis.has('supplier') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Supplier</th>}
+                    {colVis.has('description') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Description</th>}
+                    {colVis.has('mode') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Mode</th>}
+                    {colVis.has('qty') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Qty</th>}
+                    {colVis.has('route') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Route</th>}
+                    {colVis.has('eta') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">ETA</th>}
+                    {colVis.has('status') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Status</th>}
+                    {colVis.has('actions') && <th className="px-4 py-3"></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -446,33 +461,39 @@ export default function ShipmentsPage() {
                       <tr key={s._id}
                         className={`hover:bg-surface transition-colors cursor-pointer ${i < shipments.length - 1 ? 'border-b border-border' : ''}`}
                         onClick={() => { setSelected(s); setModalMode('view'); }}>
-                        <td className="px-4 py-3.5 font-mono text-xs text-accent">{s.shipmentRef}</td>
-                        <td className="px-4 py-3.5 text-t1 font-medium">{s.supplierName}</td>
-                        <td className="px-4 py-3.5 text-t2 max-w-[140px] truncate">{s.description}</td>
-                        <td className="px-4 py-3.5">
-                          <span className="flex items-center gap-1 text-t2 text-xs">
-                            <ModeIcon size={13} className="text-t3" />{s.mode}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5 text-right text-t1">{s.quantity.toLocaleString()} <span className="text-xs text-t3">{s.unit}</span></td>
-                        <td className="px-4 py-3.5 text-xs text-t2">{s.originLocation} → {s.destinationLocation}</td>
-                        <td className="px-4 py-3.5 text-xs text-t2 whitespace-nowrap">{fmtDate(s.estimatedArrivalDate)}</td>
-                        <td className="px-4 py-3.5">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[s.status] ?? ''}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[s.status] ?? 'bg-t3'}`} />
-                            {s.status.replace(/_/g, ' ')}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <div className="flex gap-1">
-                            <button onClick={e => { e.stopPropagation(); setSelected(s); setModalMode('view'); }}
-                              className="p-1 hover:text-t1 text-t3"><Eye size={14} /></button>
-                            <button onClick={e => { e.stopPropagation(); openEdit(s); }}
-                              className="p-1 hover:text-t1 text-t3"><PencilSimple size={14} /></button>
-                            <button onClick={e => { e.stopPropagation(); setDeleteTarget(s); }}
-                              className="p-1 hover:text-red-500 text-t3"><Trash size={14} /></button>
-                          </div>
-                        </td>
+                        {colVis.has('ref') && <td className="px-4 py-3.5 font-mono text-xs text-accent">{s.shipmentRef}</td>}
+                        {colVis.has('supplier') && <td className="px-4 py-3.5 text-t1 font-medium">{s.supplierName}</td>}
+                        {colVis.has('description') && <td className="px-4 py-3.5 text-t2 max-w-[140px] truncate">{s.description}</td>}
+                        {colVis.has('mode') && (
+                          <td className="px-4 py-3.5">
+                            <span className="flex items-center gap-1 text-t2 text-xs">
+                              <ModeIcon size={13} className="text-t3" />{s.mode}
+                            </span>
+                          </td>
+                        )}
+                        {colVis.has('qty') && <td className="px-4 py-3.5 text-right text-t1">{s.quantity.toLocaleString()} <span className="text-xs text-t3">{s.unit}</span></td>}
+                        {colVis.has('route') && <td className="px-4 py-3.5 text-xs text-t2">{s.originLocation} → {s.destinationLocation}</td>}
+                        {colVis.has('eta') && <td className="px-4 py-3.5 text-xs text-t2 whitespace-nowrap">{fmtDate(s.estimatedArrivalDate)}</td>}
+                        {colVis.has('status') && (
+                          <td className="px-4 py-3.5">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[s.status] ?? ''}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[s.status] ?? 'bg-t3'}`} />
+                              {s.status.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                        )}
+                        {colVis.has('actions') && (
+                          <td className="px-4 py-3.5">
+                            <div className="flex gap-1">
+                              <button onClick={e => { e.stopPropagation(); setSelected(s); setModalMode('view'); }}
+                                className="p-1 hover:text-t1 text-t3"><Eye size={14} /></button>
+                              <button onClick={e => { e.stopPropagation(); openEdit(s); }}
+                                className="p-1 hover:text-t1 text-t3"><PencilSimple size={14} /></button>
+                              <button onClick={e => { e.stopPropagation(); setDeleteTarget(s); }}
+                                className="p-1 hover:text-red-500 text-t3"><Trash size={14} /></button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}

@@ -2,32 +2,36 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, DownloadSimple, ListDashes, ChartBar,
-  Eye, PencilSimple, Spinner, MapPin, CheckCircle, Warning, X,
+  Eye, PencilSimple, Spinner, MapPin, CheckCircle, Warning, X, ArrowsClockwise,
 } from '@phosphor-icons/react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import { apiListTrips, apiCreateTrip, apiUpdateTrip, Trip } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
 type ViewMode = 'table' | 'bar';
-type ActiveTab = 'All' | 'Active Trips' | 'Trip History' | 'Schedule';
+type ActiveTab = 'All' | 'Active Trips' | 'Shunting' | 'Trip History' | 'Schedule';
 
 const STATUS_STYLES: Record<string, string> = {
   scheduled: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   in_progress: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  shunting: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
   completed: 'bg-surface text-t3 border-border',
   cancelled: 'bg-red-500/10 text-red-500 border-red-500/20',
 };
 const STATUS_DOT: Record<string, string> = {
   scheduled: 'bg-blue-400',
   in_progress: 'bg-emerald-500',
+  shunting: 'bg-orange-400',
   completed: 'bg-t3',
   cancelled: 'bg-red-500',
 };
 const STATUS_LABEL: Record<string, string> = {
   scheduled: 'Scheduled',
   in_progress: 'In Progress',
+  shunting: 'Shunting',
   completed: 'Completed',
   cancelled: 'Cancelled',
 };
@@ -69,9 +73,22 @@ type ModalState =
 const TAB_STATUS: Record<ActiveTab, Trip['status'][] | null> = {
   All: null,
   'Active Trips': ['in_progress'],
+  'Shunting': ['shunting'],
   'Trip History': ['completed', 'cancelled'],
   Schedule: ['scheduled'],
 };
+
+const TRIP_COLS: ColDef[] = [
+  { key: 'tripRef',    label: 'Trip Ref',    defaultVisible: true },
+  { key: 'truck',      label: 'Truck',       defaultVisible: true },
+  { key: 'driver',     label: 'Driver',      defaultVisible: true },
+  { key: 'route',      label: 'Route',       defaultVisible: true },
+  { key: 'client',     label: 'Client',      defaultVisible: true },
+  { key: 'tons',       label: 'Tons',        defaultVisible: true },
+  { key: 'status',     label: 'Status',      defaultVisible: true },
+  { key: 'departure',  label: 'Departure',   defaultVisible: true },
+  { key: 'actions',    label: 'Actions',     defaultVisible: true },
+];
 
 export default function TripsPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('All');
@@ -82,6 +99,7 @@ export default function TripsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('trips', TRIP_COLS);
 
   const loadTrips = useCallback(async () => {
     setLoading(true);
@@ -109,6 +127,7 @@ export default function TripsPage() {
   const stats = useMemo(() => ({
     total: trips.length,
     active: trips.filter(t => t.status === 'in_progress').length,
+    shunting: trips.filter(t => t.status === 'shunting').length,
     scheduled: trips.filter(t => t.status === 'scheduled').length,
     completed: trips.filter(t => t.status === 'completed').length,
     totalTons: trips.reduce((s, t) => s + (t.actualTons || t.plannedTons || 0), 0),
@@ -233,6 +252,7 @@ export default function TripsPage() {
           <select className={inputClass} value={draft.status} onChange={e => updateDraft({ status: e.target.value as Trip['status'] })}>
             <option value="scheduled">Scheduled</option>
             <option value="in_progress">In Progress</option>
+            <option value="shunting">Shunting (on-site)</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
@@ -406,7 +426,7 @@ export default function TripsPage() {
     </div>
   );
 
-  const tabs: ActiveTab[] = ['All', 'Active Trips', 'Schedule', 'Trip History'];
+  const tabs: ActiveTab[] = ['All', 'Active Trips', 'Shunting', 'Schedule', 'Trip History'];
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -420,10 +440,11 @@ export default function TripsPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { label: 'Total Trips', value: stats.total, Icon: MapPin, color: 'text-accent', bg: 'bg-accent-glow' },
           { label: 'In Progress', value: stats.active, Icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+          { label: 'Shunting', value: stats.shunting, Icon: ArrowsClockwise, color: 'text-orange-400', bg: 'bg-orange-500/10' },
           { label: 'Scheduled', value: stats.scheduled, Icon: Warning, color: 'text-blue-400', bg: 'bg-blue-500/10' },
           { label: 'Completed', value: stats.completed, Icon: CheckCircle, color: 'text-t3', bg: 'bg-surface' },
         ].map(card => (
@@ -458,6 +479,7 @@ export default function TripsPage() {
           <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
             <DownloadSimple size={14} weight="duotone" /> Export
           </button>
+          <ColumnSelector cols={TRIP_COLS} visible={colVis} onToggle={colToggle} />
           <div className="flex border border-border rounded-lg overflow-hidden ml-auto">
             {([{ mode: 'table', Icon: ListDashes, label: 'Table' }, { mode: 'bar', Icon: ChartBar, label: 'Chart' }] as { mode: ViewMode; Icon: any; label: string }[]).map(v => (
               <button key={v.mode} onClick={() => setViewMode(v.mode)}
@@ -474,9 +496,15 @@ export default function TripsPage() {
             <table className="min-w-full divide-y divide-border">
               <thead className="bg-surface">
                 <tr>
-                  {['Trip Ref', 'Truck', 'Driver', 'Route', 'Client', 'Tons', 'Status', 'Departure', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                  ))}
+                  {colVis.has('tripRef') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Trip Ref</th>}
+                  {colVis.has('truck') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Truck</th>}
+                  {colVis.has('driver') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Driver</th>}
+                  {colVis.has('route') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Route</th>}
+                  {colVis.has('client') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Client</th>}
+                  {colVis.has('tons') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Tons</th>}
+                  {colVis.has('status') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Status</th>}
+                  {colVis.has('departure') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Departure</th>}
+                  {colVis.has('actions') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Actions</th>}
                 </tr>
               </thead>
               <tbody className="bg-card divide-y divide-border-s">
@@ -494,25 +522,29 @@ export default function TripsPage() {
                   </td></tr>
                 ) : filteredTrips.map(trip => (
                   <tr key={trip._id} className="hover:bg-surface transition-colors cursor-pointer" onClick={() => setModal({ mode: 'view', trip })}>
-                    <td className="px-4 py-3.5 text-sm font-semibold text-accent whitespace-nowrap">{trip.tripRef}</td>
-                    <td className="px-4 py-3.5 text-sm font-medium text-t1">{trip.plateNumber}</td>
-                    <td className="px-4 py-3.5 text-sm text-t2">{trip.driverName}</td>
-                    <td className="px-4 py-3.5 text-sm text-t2 max-w-[150px] truncate">{trip.originSite} → {trip.destinationSite}</td>
-                    <td className="px-4 py-3.5 text-sm text-t2">{trip.clientName || '—'}</td>
-                    <td className="px-4 py-3.5 text-sm text-t2">{trip.actualTons ?? trip.plannedTons ?? '—'} t</td>
-                    <td className="px-4 py-3.5">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[trip.status]}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[trip.status]}`} />
-                        {STATUS_LABEL[trip.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">{trip.departureDate ? new Date(trip.departureDate).toLocaleDateString() : '—'}</td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={e => { e.stopPropagation(); setModal({ mode: 'view', trip }); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"><Eye size={14} weight="duotone" /></button>
-                        <button onClick={e => { e.stopPropagation(); handleEdit(trip); }} className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"><PencilSimple size={14} weight="duotone" /></button>
-                      </div>
-                    </td>
+                    {colVis.has('tripRef') && <td className="px-4 py-3.5 text-sm font-semibold text-accent whitespace-nowrap">{trip.tripRef}</td>}
+                    {colVis.has('truck') && <td className="px-4 py-3.5 text-sm font-medium text-t1">{trip.plateNumber}</td>}
+                    {colVis.has('driver') && <td className="px-4 py-3.5 text-sm text-t2">{trip.driverName}</td>}
+                    {colVis.has('route') && <td className="px-4 py-3.5 text-sm text-t2 max-w-[150px] truncate">{trip.originSite} → {trip.destinationSite}</td>}
+                    {colVis.has('client') && <td className="px-4 py-3.5 text-sm text-t2">{trip.clientName || '—'}</td>}
+                    {colVis.has('tons') && <td className="px-4 py-3.5 text-sm text-t2">{trip.actualTons ?? trip.plannedTons ?? '—'} t</td>}
+                    {colVis.has('status') && (
+                      <td className="px-4 py-3.5">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[trip.status] ?? ''}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[trip.status] ?? 'bg-t3'}`} />
+                          {STATUS_LABEL[trip.status] ?? trip.status}
+                        </span>
+                      </td>
+                    )}
+                    {colVis.has('departure') && <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">{trip.departureDate ? new Date(trip.departureDate).toLocaleDateString() : '—'}</td>}
+                    {colVis.has('actions') && (
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={e => { e.stopPropagation(); setModal({ mode: 'view', trip }); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"><Eye size={14} weight="duotone" /></button>
+                          <button onClick={e => { e.stopPropagation(); handleEdit(trip); }} className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"><PencilSimple size={14} weight="duotone" /></button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

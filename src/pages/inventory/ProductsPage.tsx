@@ -9,6 +9,7 @@ import {
   Product,
 } from '../../lib/api';
 import DocumentSidePanel from '../../components/DocumentSidePanel';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
 const TYPE_STYLES: Record<string, string> = {};
 
@@ -28,6 +29,13 @@ function emptyDraft(): DraftProduct {
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors';
 
+const PROD_COLS: ColDef[] = [
+  { key: 'name',     label: 'Name',      defaultVisible: true },
+  { key: 'cost',     label: 'Unit Cost', defaultVisible: true },
+  { key: 'currency', label: 'Currency',  defaultVisible: true },
+  { key: 'actions',  label: 'Actions',   defaultVisible: true },
+];
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +47,7 @@ export default function ProductsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('products', PROD_COLS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -198,22 +207,24 @@ export default function ProductsPage() {
             <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
             <input type="text" placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-border rounded-lg text-sm bg-surface text-t1 placeholder-t3 outline-none focus:border-accent transition-colors" />
           </div>
+          <ColumnSelector cols={PROD_COLS} visible={colVis} onToggle={colToggle} />
         </div>
 
         <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'never' } }} defer>
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-surface">
               <tr>
-                {['Name', 'Unit Cost', 'Currency', ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                ))}
+                {colVis.has('name') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Name</th>}
+                {colVis.has('cost') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Unit Cost</th>}
+                {colVis.has('currency') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Currency</th>}
+                {colVis.has('actions') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap"></th>}
               </tr>
             </thead>
             <tbody className="bg-card divide-y divide-border-s">
               {loading ? (
-                <tr><td colSpan={5} className="px-4 py-16 text-center"><Spinner size={24} className="animate-spin text-t3 mx-auto" /></td></tr>
+                <tr><td colSpan={colVis.size} className="px-4 py-16 text-center"><Spinner size={24} className="animate-spin text-t3 mx-auto" /></td></tr>
               ) : products.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-16 text-center text-sm text-t3">
+                <tr><td colSpan={colVis.size} className="px-4 py-16 text-center text-sm text-t3">
                   <div className="flex flex-col items-center gap-3">
                     <Package size={40} weight="duotone" className="text-t3/40" />
                     <p>No products found.</p>
@@ -222,23 +233,25 @@ export default function ProductsPage() {
                 </td></tr>
               ) : products.map(p => (
                 <tr key={p._id} className="hover:bg-surface cursor-pointer transition-colors" onClick={() => openView(p)}>
-                  <td className="px-4 py-3 text-sm font-medium text-t1">{p.name}</td>
-                  <td className="px-4 py-3 text-sm font-bold text-t1">{p.cost_per_unit.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-t3">{p.currency}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <button onClick={e => { e.stopPropagation(); openView(p); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"><Eye size={14} weight="duotone" /></button>
-                      <button onClick={e => { e.stopPropagation(); openEdit(p); }} className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"><PencilSimple size={14} weight="duotone" /></button>
-                      {deleteConfirm === p._id ? (
-                        <>
-                          <button onClick={e => { e.stopPropagation(); handleDelete(p._id); }} className="text-[10px] font-bold px-2 py-1 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors">Yes</button>
-                          <button onClick={e => { e.stopPropagation(); setDeleteConfirm(null); }} className="text-[10px] px-2 py-1 border border-border rounded-lg text-t3 hover:bg-surface transition-colors">No</button>
-                        </>
-                      ) : (
-                        <button onClick={e => { e.stopPropagation(); setDeleteConfirm(p._id); }} className="p-1.5 text-t3 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"><Trash size={14} weight="duotone" /></button>
-                      )}
-                    </div>
-                  </td>
+                  {colVis.has('name') && <td className="px-4 py-3 text-sm font-medium text-t1">{p.name}</td>}
+                  {colVis.has('cost') && <td className="px-4 py-3 text-sm font-bold text-t1">{p.cost_per_unit.toLocaleString()}</td>}
+                  {colVis.has('currency') && <td className="px-4 py-3 text-sm text-t3">{p.currency}</td>}
+                  {colVis.has('actions') && (
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={e => { e.stopPropagation(); openView(p); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"><Eye size={14} weight="duotone" /></button>
+                        <button onClick={e => { e.stopPropagation(); openEdit(p); }} className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"><PencilSimple size={14} weight="duotone" /></button>
+                        {deleteConfirm === p._id ? (
+                          <>
+                            <button onClick={e => { e.stopPropagation(); handleDelete(p._id); }} className="text-[10px] font-bold px-2 py-1 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors">Yes</button>
+                            <button onClick={e => { e.stopPropagation(); setDeleteConfirm(null); }} className="text-[10px] px-2 py-1 border border-border rounded-lg text-t3 hover:bg-surface transition-colors">No</button>
+                          </>
+                        ) : (
+                          <button onClick={e => { e.stopPropagation(); setDeleteConfirm(p._id); }} className="p-1.5 text-t3 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"><Trash size={14} weight="duotone" /></button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

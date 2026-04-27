@@ -10,6 +10,7 @@ import {
   StockMovement, Warehouse,
 } from '../../lib/api';
 import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSelect';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
 const TYPE_LABELS: Record<string, string> = {
   INBOUND: 'Inbound',
@@ -43,6 +44,19 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 
 const MOVEMENT_TYPES = ['INBOUND', 'OUTBOUND', 'TRANSFER_OUT', 'TRANSFER_IN', 'ADJUSTMENT', 'STOCK_COUNT', 'RETURN'];
 
+const SH_COLS: ColDef[] = [
+  { key: 'ref',       label: 'Ref',           defaultVisible: true },
+  { key: 'type',      label: 'Type',          defaultVisible: true },
+  { key: 'item',      label: 'Item',          defaultVisible: true },
+  { key: 'warehouse', label: 'Warehouse',     defaultVisible: true },
+  { key: 'qty',       label: 'Qty Change',    defaultVisible: true },
+  { key: 'balance',   label: 'Before → After', defaultVisible: false },
+  { key: 'source',    label: 'Source',        defaultVisible: true },
+  { key: 'datetime',  label: 'Date & Time',   defaultVisible: true },
+  { key: 'by',        label: 'By',            defaultVisible: false },
+  { key: 'actions',   label: 'Actions',       defaultVisible: true },
+];
+
 export default function StockHistoryPage() {
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -53,6 +67,7 @@ export default function StockHistoryPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('stock-history', SH_COLS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -133,6 +148,7 @@ export default function StockHistoryPage() {
             placeholder="All warehouses"
           />
         </div>
+        <ColumnSelector cols={SH_COLS} visible={colVis} onToggle={colToggle} />
       </div>
 
       {/* History Table */}
@@ -151,77 +167,93 @@ export default function StockHistoryPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface/30">
-                  <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Ref</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Item</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Qty Change</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Before → After</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Source</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Date & Time</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">By</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider"></th>
+                  {colVis.has('ref') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Ref</th>}
+                  {colVis.has('type') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Type</th>}
+                  {colVis.has('item') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Item</th>}
+                  {colVis.has('warehouse') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse</th>}
+                  {colVis.has('qty') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Qty Change</th>}
+                  {colVis.has('balance') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Before → After</th>}
+                  {colVis.has('source') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Source</th>}
+                  {colVis.has('datetime') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Date & Time</th>}
+                  {colVis.has('by') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">By</th>}
+                  {colVis.has('actions') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider"></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {movements.map(m => (
                   <tr key={m._id} className="hover:bg-surface/50 transition-colors">
-                    <td className="px-4 py-3.5 font-mono text-xs text-accent whitespace-nowrap">{m.movementRef}</td>
-                    <td className="px-4 py-3.5">
-                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${TYPE_STYLES[m.movementType] ?? 'bg-surface text-t3 border-border'}`}>
-                        {TYPE_ICONS[m.movementType]}
-                        {TYPE_LABELS[m.movementType] ?? m.movementType}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <p className="font-medium text-t1">{m.itemName}</p>
-                      <p className="text-xs text-t3">{m.itemCode}</p>
-                    </td>
-                    <td className="px-4 py-3.5 text-t2 text-xs whitespace-nowrap">{m.warehouseName}</td>
-                    <td className="px-4 py-3.5 text-right">
-                      <span className={`inline-flex items-center gap-0.5 font-bold text-sm ${m.qty >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {m.qty >= 0 ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
-                        {m.qty >= 0 ? '+' : ''}{m.qty.toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-right text-xs text-t3 whitespace-nowrap font-mono">
-                      {m.qtyBefore.toLocaleString()} → {m.qtyAfter.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-t2 max-w-[140px] truncate" title={m.sourceRef ?? ''}>
-                      {m.sourceRef ?? '—'}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">
-                      {formatDateTime(m.postedAt)}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-t3">
-                      {m.postedBy?.fullName ?? '—'}
-                    </td>
-                    <td className="px-4 py-3.5 text-right">
-                      {deleteConfirm === m._id ? (
-                        <div className="flex items-center justify-end gap-1">
+                    {colVis.has('ref') && <td className="px-4 py-3.5 font-mono text-xs text-accent whitespace-nowrap">{m.movementRef}</td>}
+                    {colVis.has('type') && (
+                      <td className="px-4 py-3.5">
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${TYPE_STYLES[m.movementType] ?? 'bg-surface text-t3 border-border'}`}>
+                          {TYPE_ICONS[m.movementType]}
+                          {TYPE_LABELS[m.movementType] ?? m.movementType}
+                        </span>
+                      </td>
+                    )}
+                    {colVis.has('item') && (
+                      <td className="px-4 py-3.5">
+                        <p className="font-medium text-t1">{m.itemName}</p>
+                        <p className="text-xs text-t3">{m.itemCode}</p>
+                      </td>
+                    )}
+                    {colVis.has('warehouse') && <td className="px-4 py-3.5 text-t2 text-xs whitespace-nowrap">{m.warehouseName}</td>}
+                    {colVis.has('qty') && (
+                      <td className="px-4 py-3.5 text-right">
+                        <span className={`inline-flex items-center gap-0.5 font-bold text-sm ${m.qty >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {m.qty >= 0 ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
+                          {m.qty >= 0 ? '+' : ''}{m.qty.toLocaleString()}
+                        </span>
+                      </td>
+                    )}
+                    {colVis.has('balance') && (
+                      <td className="px-4 py-3.5 text-right text-xs text-t3 whitespace-nowrap font-mono">
+                        {m.qtyBefore.toLocaleString()} → {m.qtyAfter.toLocaleString()}
+                      </td>
+                    )}
+                    {colVis.has('source') && (
+                      <td className="px-4 py-3.5 text-xs text-t2 max-w-[140px] truncate" title={m.sourceRef ?? ''}>
+                        {m.sourceRef ?? '—'}
+                      </td>
+                    )}
+                    {colVis.has('datetime') && (
+                      <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">
+                        {formatDateTime(m.postedAt)}
+                      </td>
+                    )}
+                    {colVis.has('by') && (
+                      <td className="px-4 py-3.5 text-xs text-t3">
+                        {m.postedBy?.fullName ?? '—'}
+                      </td>
+                    )}
+                    {colVis.has('actions') && (
+                      <td className="px-4 py-3.5 text-right">
+                        {deleteConfirm === m._id ? (
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleDelete(m._id)}
+                              disabled={deleting === m._id}
+                              className="text-[10px] font-bold px-2 py-1 bg-rose-500 text-white rounded-lg hover:bg-rose-600 disabled:opacity-60 transition-colors"
+                            >
+                              {deleting === m._id ? <Spinner size={10} className="animate-spin" /> : 'Yes'}
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirm(null)}
+                              className="text-[10px] px-2 py-1 border border-border rounded-lg text-t3 hover:bg-surface transition-colors"
+                            >
+                              No
+                            </button>
+                          </div>
+                        ) : (
                           <button
-                            onClick={() => handleDelete(m._id)}
-                            disabled={deleting === m._id}
-                            className="text-[10px] font-bold px-2 py-1 bg-rose-500 text-white rounded-lg hover:bg-rose-600 disabled:opacity-60 transition-colors"
+                            onClick={() => setDeleteConfirm(m._id)}
+                            className="text-t3 hover:text-rose-400 p-1 transition-colors"
                           >
-                            {deleting === m._id ? <Spinner size={10} className="animate-spin" /> : 'Yes'}
+                            <Trash size={14} />
                           </button>
-                          <button
-                            onClick={() => setDeleteConfirm(null)}
-                            className="text-[10px] px-2 py-1 border border-border rounded-lg text-t3 hover:bg-surface transition-colors"
-                          >
-                            No
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setDeleteConfirm(m._id)}
-                          className="text-t3 hover:text-rose-400 p-1 transition-colors"
-                        >
-                          <Trash size={14} />
-                        </button>
-                      )}
-                    </td>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

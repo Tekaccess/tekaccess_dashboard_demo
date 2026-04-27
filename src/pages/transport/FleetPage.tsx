@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { apiListTrucks, apiCreateTruck, apiUpdateTruck, Truck as TruckType } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
 type ViewMode = 'table' | 'bar' | 'pie';
 type ActiveTab = 'All' | 'Operating' | 'Idle' | 'In Maintenance';
@@ -65,6 +66,17 @@ type ModalState =
   | { mode: 'view' | 'edit'; truck: TruckType; draft?: DraftTruck }
   | null;
 
+const FLEET_COLS: ColDef[] = [
+  { key: 'plate',    label: 'Plate',       defaultVisible: true },
+  { key: 'makeModel', label: 'Make / Model', defaultVisible: true },
+  { key: 'year',     label: 'Year',        defaultVisible: true },
+  { key: 'fleetType', label: 'Fleet Type', defaultVisible: true },
+  { key: 'status',   label: 'Status',      defaultVisible: true },
+  { key: 'driver',   label: 'Driver',      defaultVisible: true },
+  { key: 'odometer', label: 'Odometer',    defaultVisible: true },
+  { key: 'actions',  label: 'Actions',     defaultVisible: true },
+];
+
 export default function FleetPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('All');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
@@ -74,6 +86,7 @@ export default function FleetPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [trucks, setTrucks] = useState<TruckType[]>([]);
   const [loading, setLoading] = useState(true);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('fleet', FLEET_COLS);
 
   const loadTrucks = useCallback(async () => {
     setLoading(true);
@@ -476,6 +489,7 @@ export default function FleetPage() {
           <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
             <DownloadSimple size={14} weight="duotone" /> Export
           </button>
+          <ColumnSelector cols={FLEET_COLS} visible={colVis} onToggle={colToggle} />
           <div className="flex border border-border rounded-lg overflow-hidden ml-auto">
             {([
               { mode: 'table', Icon: ListDashes, label: 'Table' },
@@ -496,9 +510,14 @@ export default function FleetPage() {
             <table className="min-w-full divide-y divide-border">
               <thead className="bg-surface">
                 <tr>
-                  {['Plate', 'Make / Model', 'Year', 'Fleet Type', 'Status', 'Driver', 'Odometer', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                  ))}
+                  {colVis.has('plate') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Plate</th>}
+                  {colVis.has('makeModel') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Make / Model</th>}
+                  {colVis.has('year') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Year</th>}
+                  {colVis.has('fleetType') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Fleet Type</th>}
+                  {colVis.has('status') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Status</th>}
+                  {colVis.has('driver') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Driver</th>}
+                  {colVis.has('odometer') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Odometer</th>}
+                  {colVis.has('actions') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Actions</th>}
                 </tr>
               </thead>
               <tbody className="bg-card divide-y divide-border-s">
@@ -516,24 +535,28 @@ export default function FleetPage() {
                   </td></tr>
                 ) : filteredTrucks.map(truck => (
                   <tr key={truck._id} className="hover:bg-surface transition-colors cursor-pointer" onClick={() => setModal({ mode: 'view', truck })}>
-                    <td className="px-4 py-3.5 text-sm font-semibold text-accent whitespace-nowrap">{truck.plateNumber}</td>
-                    <td className="px-4 py-3.5 text-sm font-medium text-t1">{`${truck.make} ${truck.model}`.trim() || '—'}</td>
-                    <td className="px-4 py-3.5 text-sm text-t2">{truck.year || '—'}</td>
-                    <td className="px-4 py-3.5 text-sm text-t2 capitalize">{truck.fleetType}</td>
-                    <td className="px-4 py-3.5">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[truck.status]}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[truck.status]}`} />
-                        {STATUS_LABEL[truck.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-sm text-t2">{truck.assignedDriverName || '—'}</td>
-                    <td className="px-4 py-3.5 text-sm text-t2">{truck.currentOdometer ? `${truck.currentOdometer.toLocaleString()} km` : '—'}</td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={e => { e.stopPropagation(); setModal({ mode: 'view', truck }); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors" title="View"><Eye size={14} weight="duotone" /></button>
-                        <button onClick={e => { e.stopPropagation(); handleEdit(truck); }} className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors" title="Edit"><PencilSimple size={14} weight="duotone" /></button>
-                      </div>
-                    </td>
+                    {colVis.has('plate') && <td className="px-4 py-3.5 text-sm font-semibold text-accent whitespace-nowrap">{truck.plateNumber}</td>}
+                    {colVis.has('makeModel') && <td className="px-4 py-3.5 text-sm font-medium text-t1">{`${truck.make} ${truck.model}`.trim() || '—'}</td>}
+                    {colVis.has('year') && <td className="px-4 py-3.5 text-sm text-t2">{truck.year || '—'}</td>}
+                    {colVis.has('fleetType') && <td className="px-4 py-3.5 text-sm text-t2 capitalize">{truck.fleetType}</td>}
+                    {colVis.has('status') && (
+                      <td className="px-4 py-3.5">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[truck.status]}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[truck.status]}`} />
+                          {STATUS_LABEL[truck.status]}
+                        </span>
+                      </td>
+                    )}
+                    {colVis.has('driver') && <td className="px-4 py-3.5 text-sm text-t2">{truck.assignedDriverName || '—'}</td>}
+                    {colVis.has('odometer') && <td className="px-4 py-3.5 text-sm text-t2">{truck.currentOdometer ? `${truck.currentOdometer.toLocaleString()} km` : '—'}</td>}
+                    {colVis.has('actions') && (
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={e => { e.stopPropagation(); setModal({ mode: 'view', truck }); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors" title="View"><Eye size={14} weight="duotone" /></button>
+                          <button onClick={e => { e.stopPropagation(); handleEdit(truck); }} className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors" title="Edit"><PencilSimple size={14} weight="duotone" /></button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
