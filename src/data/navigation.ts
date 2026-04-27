@@ -239,6 +239,11 @@ export const departmentsData = [
             subItems: [],
           },
           {
+            name: "Projects",
+            icon: BriefcaseMetal,
+            subItems: [],
+          },
+          {
             name: "Suppliers",
             icon: Handshake,
             subItems: [],

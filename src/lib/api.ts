@@ -670,9 +670,10 @@ export type Site = {
 };
 
 // Projects
-export async function apiListProjects(search?: string) {
+export async function apiListProjects(search?: string, status?: string) {
   const params = new URLSearchParams();
   if (search) params.set('search', search);
+  if (status) params.set('status', status);
   return request<{ projects: Project[] }>(`/operations/projects?${params}`);
 }
 
@@ -682,6 +683,10 @@ export async function apiCreateProject(data: Partial<Project>) {
 
 export async function apiUpdateProject(id: string, data: Partial<Project>) {
   return request<{ project: Project }>(`/operations/projects/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function apiDeleteProject(id: string) {
+  return request<{ message: string }>(`/operations/projects/${id}`, { method: 'DELETE' });
 }
 
 // Clients

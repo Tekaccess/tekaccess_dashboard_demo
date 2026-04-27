@@ -18,6 +18,7 @@ import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import AdminPage from "./pages/AdminPage";
 import PurchaseOrdersPage from "./pages/PurchaseOrdersPage";
+import ProjectsPage from "./pages/ProjectsPage";
 import SuppliersPage from "./pages/SuppliersPage";
 import ShipmentsPage from "./pages/ShipmentsPage";
 import SparePartsPage from "./pages/SparePartsPage";
@@ -138,6 +139,12 @@ const purchaseOrdersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/procurement/purchase-orders",
   component: PurchaseOrdersPage,
+});
+
+const projectsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/procurement/projects",
+  component: ProjectsPage,
 });
 
 const suppliersRoute = createRoute({
@@ -290,6 +297,7 @@ const routeTree = rootRoute.addChildren([
   maintenanceRoute,
   // Procurement explicit pages
   purchaseOrdersRoute,
+  projectsRoute,
   suppliersRoute,
   shipmentsRoute,
   sparePartsRoute,
