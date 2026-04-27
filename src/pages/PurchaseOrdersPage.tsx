@@ -19,7 +19,9 @@ import {
   apiListSuppliers, apiListContractsForPO, apiListCurrencies,
   apiListProjects, apiListClients, apiListStockItems,
   apiListPurchaseOrders, apiCreatePurchaseOrder, apiUpdatePurchaseOrder, apiDeletePurchaseOrder,
+  apiListProducts, apiListWarehouses,
   Supplier, Contract, Currency, Project, Client, StockItem, PurchaseOrder, POLineItem,
+  Product, Warehouse,
 } from '../lib/api';
 
 type ViewMode = 'table' | 'bar' | 'trend' | 'pie';
@@ -87,6 +89,8 @@ function emptyLineItem(): DraftLineItem {
   return {
     _key: crypto.randomUUID(),
     stockItemId: null,
+    productId: null,
+    productName: null,
     description: '',
     analyticProjectId: null,
     analyticProjectName: null,
@@ -103,6 +107,8 @@ interface DraftLineItem {
   _key: string;
   stockItemId: string | null;
   itemCode?: string | null;
+  productId?: string | null;
+  productName?: string | null;
   description: string;
   analyticProjectId: string | null;
   analyticProjectName: string | null;
@@ -127,6 +133,8 @@ interface DraftPO {
   deliverToClientId: string;
   deliverToClientName: string;
   procurementType: string;
+  destinationWarehouseId: string;
+  destinationWarehouseName: string;
   lineItems: DraftLineItem[];
   notes: string;
 }
@@ -145,6 +153,8 @@ function emptyDraft(): DraftPO {
     deliverToClientId: '',
     deliverToClientName: '',
     procurementType: 'general',
+    destinationWarehouseId: '',
+    destinationWarehouseName: '',
     lineItems: [emptyLineItem()],
     notes: '',
   };
@@ -185,6 +195,8 @@ export default function PurchaseOrdersPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
 
   // Load reference data
   useEffect(() => {
@@ -195,6 +207,8 @@ export default function PurchaseOrdersPage() {
       apiListProjects().then(r => r.success && setProjects(r.data.projects)),
       apiListClients().then(r => r.success && setClients(r.data.clients)),
       apiListStockItems().then(r => r.success && setStockItems(r.data.items)),
+      apiListProducts().then(r => r.success && setProducts(r.data.products)),
+      apiListWarehouses().then(r => r.success && setWarehouses(r.data.warehouses)),
     ]);
   }, []);
 
@@ -238,6 +252,16 @@ export default function PurchaseOrdersPage() {
   const stockOptions = useMemo<SearchSelectOption[]>(() =>
     stockItems.map(s => ({ value: s._id, label: s.name, sublabel: s.itemCode, meta: `${s.availableQty} ${s.stockUnit}` })),
     [stockItems]
+  );
+
+  const productOptions = useMemo<SearchSelectOption[]>(() =>
+    products.map(p => ({ value: p._id, label: p.name, sublabel: p.type, meta: `${p.cost_per_unit.toLocaleString()} ${p.currency}` })),
+    [products]
+  );
+
+  const warehouseOptions = useMemo<SearchSelectOption[]>(() =>
+    warehouses.map(w => ({ value: w._id, label: w.name, sublabel: w.warehouseCode })),
+    [warehouses]
   );
 
   // Filter orders
@@ -342,10 +366,14 @@ export default function PurchaseOrdersPage() {
       deliverToClientId: order.deliverToClientId || '',
       deliverToClientName: order.deliverToClientName || '',
       procurementType: order.procurementType,
+      destinationWarehouseId: order.destinationWarehouseId || '',
+      destinationWarehouseName: order.destinationWarehouseName || '',
       lineItems: order.lineItems.map(li => ({
         _key: crypto.randomUUID(),
         stockItemId: li.stockItemId || null,
         itemCode: li.itemCode || null,
+        productId: li.productId || null,
+        productName: li.productName || null,
         description: li.description,
         analyticProjectId: li.analyticProjectId || null,
         analyticProjectName: li.analyticProjectName || null,
@@ -364,6 +392,8 @@ export default function PurchaseOrdersPage() {
   async function handleSave() {
     if (!draft) return;
     if (!draft.supplierId) { setSaveError('Please select a supplier.'); return; }
+    if (draft.procurementType === 'trading' && !draft.destinationWarehouseId) { setSaveError('A destination warehouse is required for trading POs.'); return; }
+    if (draft.procurementType === 'trading' && draft.lineItems.some(i => !i.productId)) { setSaveError('All line items on a trading PO must have a product selected.'); return; }
     if (draft.lineItems.some(i => !i.description.trim())) { setSaveError('All line items must have a description.'); return; }
     if (draft.lineItems.some(i => i.orderedQty <= 0)) { setSaveError('All quantities must be greater than 0.'); return; }
 
@@ -381,6 +411,8 @@ export default function PurchaseOrdersPage() {
       deliverToClientName: draft.deliverToClientName || null,
       currency: draft.currency,
       procurementType: draft.procurementType,
+      destinationWarehouseId: draft.destinationWarehouseId || null,
+      destinationWarehouseName: draft.destinationWarehouseName || null,
       orderDeadline: draft.orderDeadline ? draft.orderDeadline.toISOString() : null,
       expectedDeliveryDate: draft.expectedDeliveryDate ? draft.expectedDeliveryDate.toISOString() : null,
       notes: draft.notes || null,
@@ -391,6 +423,8 @@ export default function PurchaseOrdersPage() {
           description: item.description,
           stockItemId: item.stockItemId || null,
           itemCode: item.itemCode || null,
+          productId: item.productId || null,
+          productName: item.productName || null,
           analyticProjectId: item.analyticProjectId || null,
           analyticProjectName: item.analyticProjectName || null,
           unit: item.unit,
@@ -514,6 +548,17 @@ export default function PurchaseOrdersPage() {
           </div>
         </div>
 
+        {draft.procurementType === 'trading' && (
+          <SearchSelect
+            label="Destination Warehouse *"
+            options={warehouseOptions}
+            value={draft.destinationWarehouseId || null}
+            onChange={(val, opt) => updateDraft({ destinationWarehouseId: val || '', destinationWarehouseName: opt?.label || '' })}
+            placeholder="Select destination warehouse..."
+            clearable={false}
+          />
+        )}
+
         <div className="grid grid-cols-2 gap-3">
           <DatePicker
             label="Order Deadline"
@@ -581,24 +626,44 @@ export default function PurchaseOrdersPage() {
                 )}
               </div>
 
-              <SearchSelect
-                options={stockOptions}
-                value={item.stockItemId}
-                onChange={(val, opt) => {
-                  const si = stockItems.find(s => s._id === val);
-                  updateLineItem(item._key, {
-                    stockItemId: val || null,
-                    itemCode: si?.itemCode || null,
-                    description: opt?.label || item.description,
-                    unit: (si?.stockUnit as any) || item.unit,
-                    unitPrice: si?.weightedAvgCost || item.unitPrice,
-                    taxRateId: si?.taxRateId || null,
-                    taxRateName: si?.taxRateName || null,
-                    taxRatePercentage: si?.taxRatePercentage || 0,
-                  });
-                }}
-                placeholder="Select from inventory..."
-              />
+              {draft.procurementType === 'trading' ? (
+                <SearchSelect
+                  label="Product *"
+                  options={productOptions}
+                  value={item.productId || null}
+                  onChange={(val, opt) => {
+                    const prod = products.find(p => p._id === val);
+                    updateLineItem(item._key, {
+                      productId: val || null,
+                      productName: opt?.label || null,
+                      description: opt?.label || item.description,
+                      unitPrice: prod?.cost_per_unit ?? item.unitPrice,
+                      unit: 'kg',
+                    });
+                  }}
+                  placeholder="Select product..."
+                  clearable={false}
+                />
+              ) : (
+                <SearchSelect
+                  options={stockOptions}
+                  value={item.stockItemId}
+                  onChange={(val, opt) => {
+                    const si = stockItems.find(s => s._id === val);
+                    updateLineItem(item._key, {
+                      stockItemId: val || null,
+                      itemCode: si?.itemCode || null,
+                      description: opt?.label || item.description,
+                      unit: (si?.stockUnit as any) || item.unit,
+                      unitPrice: si?.weightedAvgCost || item.unitPrice,
+                      taxRateId: si?.taxRateId || null,
+                      taxRateName: si?.taxRateName || null,
+                      taxRatePercentage: si?.taxRatePercentage || 0,
+                    });
+                  }}
+                  placeholder="Select from inventory..."
+                />
+              )}
 
               <input
                 type="text"
@@ -731,6 +796,7 @@ export default function PurchaseOrdersPage() {
           ['Contract', previewOrder.contractRef || '—'],
           ['Currency', previewOrder.currency],
           ['Deliver To', previewOrder.deliverToClientName || '—'],
+          ...(previewOrder.destinationWarehouseName ? [['Destination Warehouse', previewOrder.destinationWarehouseName]] : []),
           ['Order Deadline', previewOrder.orderDeadline ? new Date(previewOrder.orderDeadline).toLocaleDateString() : '—'],
           ['Expected Arrival', previewOrder.expectedDeliveryDate ? new Date(previewOrder.expectedDeliveryDate).toLocaleDateString() : '—'],
           ['Status', STATUS_LABEL[previewOrder.status] || previewOrder.status],

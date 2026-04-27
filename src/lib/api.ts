@@ -202,6 +202,8 @@ export type Contract = {
 export type POLineItem = {
   lineNumber: number;
   description: string;
+  productId?: string | null;
+  productName?: string | null;
   stockItemId?: string | null;
   itemCode?: string | null;
   analyticProjectId?: string | null;
@@ -230,6 +232,8 @@ export type PurchaseOrder = {
   contractTitle: string | null;
   deliverToClientId: string | null;
   deliverToClientName: string | null;
+  destinationWarehouseId: string | null;
+  destinationWarehouseName: string | null;
   lineItems: POLineItem[];
   totalOrderedQty: number;
   totalValue: number;
@@ -450,6 +454,57 @@ export async function apiListCurrencies() {
 
 export async function apiCreateCurrency(data: Partial<Currency>) {
   return request<{ currency: Currency }>('/finance/currencies', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export type FinanceApproval = {
+  _id: string;
+  approvalRef: string;
+  linkedPoId: string | null;
+  linkedPoRef: string | null;
+  linkedRecordId: string | null;
+  productName: string;
+  warehouseName: string;
+  requestedAmount: number;
+  approvedAmount: number | null;
+  currency: string;
+  status: 'pending' | 'approved' | 'rejected' | 'partial';
+  reviewedBy: { userId: string; fullName: string } | null;
+  reviewedAt: string | null;
+  notes: string | null;
+  createdAt: string;
+};
+
+export type ApprovalsSummary = {
+  totalPending: number;
+  pendingAmount: number;
+  approvedTodayCount: number;
+  approvedTodayAmount: number;
+  byStatus: { _id: string; count: number; total: number }[];
+};
+
+export async function apiListFinanceApprovals(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ approvals: FinanceApproval[]; pagination: { page: number; limit: number; total: number; pages: number } }>(
+    `/finance/approvals${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function apiGetFinanceApprovalsSummary() {
+  return request<{ summary: ApprovalsSummary }>('/finance/approvals/summary');
+}
+
+export async function apiApproveFinanceApproval(id: string, data: { approvedAmount: number; notes?: string }) {
+  return request<{ approval: FinanceApproval }>(`/finance/approvals/${id}/approve`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiRejectFinanceApproval(id: string, data: { notes?: string }) {
+  return request<{ approval: FinanceApproval }>(`/finance/approvals/${id}/reject`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -954,6 +1009,8 @@ export type StockRecord = {
   status: 'Complete' | 'Pending';
   deadline: string | null;
   supporting_doc: string | null;
+  source_po_id: string | null;
+  source_po_ref: string | null;
 };
 
 export async function apiListStockRecords(params: Record<string, string> = {}) {
@@ -987,7 +1044,7 @@ export type InventoryDoc = {
   _id: string;
   movement_id: string;
   movement_ref?: string;
-  doc_type: 'Invoice' | 'Receipt' | 'Waybill';
+  doc_type: 'Invoice' | 'Receipt' | 'Waybill' | 'Weighbridge';
   image_path: string;
   uploaded_at?: string;
 };

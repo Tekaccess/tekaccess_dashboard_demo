@@ -31,6 +31,7 @@ import WarehousesPage from "./pages/inventory/WarehousesPage";
 import MovementsPage from "./pages/inventory/MovementsPage";
 import StockHistoryPage from "./pages/inventory/StockHistoryPage";
 import DocumentsPage from "./pages/inventory/DocumentsPage";
+import ApprovalsPage from "./pages/finance/ApprovalsPage";
 import ProcurementReportsPage from "./pages/ProcurementReportsPage";
 import FleetPage from "./pages/transport/FleetPage";
 import TripsPage from "./pages/transport/TripsPage";
@@ -213,6 +214,13 @@ const opClientsRoute = createRoute({
   component: ClientsPage,
 });
 
+// ── Finance Routes ─────────────────────────────────────────────────────────
+const financeApprovalsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/finance/approvals",
+  component: ApprovalsPage,
+});
+
 // ── Explicit Inventory Routes ───────────────────────────────────────────────
 const productsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -291,6 +299,8 @@ const routeTree = rootRoute.addChildren([
   deliveriesRoute,
   sitesRoute,
   opClientsRoute,
+  // Finance explicit pages
+  financeApprovalsRoute,
   // Inventory explicit pages
   productsRoute,
   stockItemsRoute,

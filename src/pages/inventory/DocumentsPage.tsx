@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, Trash, Spinner, FileText, Receipt,
-  Invoice, Truck, Eye, ArrowUp,
+  Invoice, Truck, Eye, ArrowUp, Scales,
 } from '@phosphor-icons/react';
 import {
   apiListInventoryDocs, apiCreateInventoryDoc, apiDeleteInventoryDoc,
@@ -11,18 +11,20 @@ import {
 import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSelect';
 import DocumentSidePanel from '../../components/DocumentSidePanel';
 
-const DOC_TYPES: InventoryDoc['doc_type'][] = ['Invoice', 'Receipt', 'Waybill'];
+const DOC_TYPES: InventoryDoc['doc_type'][] = ['Invoice', 'Receipt', 'Waybill', 'Weighbridge'];
 
 const DOC_STYLES: Record<string, string> = {
-  Invoice: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  Receipt: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  Waybill: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  Invoice:     'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  Receipt:     'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  Waybill:     'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  Weighbridge: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
 };
 
 const DOC_ICONS: Record<string, React.ReactNode> = {
-  Invoice: <Invoice size={12} />,
-  Receipt: <Receipt size={12} />,
-  Waybill: <Truck size={12} />,
+  Invoice:     <Invoice size={12} />,
+  Receipt:     <Receipt size={12} />,
+  Waybill:     <Truck size={12} />,
+  Weighbridge: <Scales size={12} />,
 };
 
 type ModalMode = 'new' | null;
@@ -97,9 +99,10 @@ export default function DocumentsPage() {
     load();
   }
 
-  const invoiceCount = docs.filter(d => d.doc_type === 'Invoice').length;
-  const receiptCount = docs.filter(d => d.doc_type === 'Receipt').length;
-  const waybillCount = docs.filter(d => d.doc_type === 'Waybill').length;
+  const invoiceCount     = docs.filter(d => d.doc_type === 'Invoice').length;
+  const receiptCount     = docs.filter(d => d.doc_type === 'Receipt').length;
+  const waybillCount     = docs.filter(d => d.doc_type === 'Waybill').length;
+  const weighbridgeCount = docs.filter(d => d.doc_type === 'Weighbridge').length;
 
   const formContent = (
     <div className="space-y-5 pb-10">
@@ -170,12 +173,13 @@ export default function DocumentsPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
-          { label: 'Total Docs', value: docs.length, Icon: FileText, color: 'text-accent', bg: 'bg-accent-glow' },
-          { label: 'Invoices', value: invoiceCount, Icon: Invoice, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-          { label: 'Receipts', value: receiptCount, Icon: Receipt, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-          { label: 'Waybills', value: waybillCount, Icon: Truck, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+          { label: 'Total Docs',   value: docs.length,      Icon: FileText, color: 'text-accent',       bg: 'bg-accent-glow' },
+          { label: 'Invoices',     value: invoiceCount,     Icon: Invoice,  color: 'text-blue-400',     bg: 'bg-blue-500/10' },
+          { label: 'Receipts',     value: receiptCount,     Icon: Receipt,  color: 'text-emerald-500',  bg: 'bg-emerald-500/10' },
+          { label: 'Waybills',     value: waybillCount,     Icon: Truck,    color: 'text-purple-400',   bg: 'bg-purple-500/10' },
+          { label: 'Weighbridges', value: weighbridgeCount, Icon: Scales,   color: 'text-amber-400',    bg: 'bg-amber-500/10' },
         ].map(c => (
           <div key={c.label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
             <div className={`p-2.5 rounded-xl ${c.bg}`}><c.Icon size={18} weight="duotone" className={c.color} /></div>
@@ -259,7 +263,7 @@ export default function DocumentsPage() {
         isOpen={panelOpen}
         onClose={() => { setPanelOpen(false); setError(null); }}
         title="Upload Document"
-        footerInfo="Invoice · Receipt · Waybill"
+        footerInfo="Invoice · Receipt · Waybill · Weighbridge"
         formContent={formContent}
         previewContent={null}
       />

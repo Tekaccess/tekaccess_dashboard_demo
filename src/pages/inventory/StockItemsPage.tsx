@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
-  Plus, MagnifyingGlass, Eye, PencilSimple, Trash, Spinner,
+  MagnifyingGlass, Eye, PencilSimple, Trash, Spinner,
   CheckCircle, Timer, Warning, CurrencyCircleDollar, Cube,
-  Package, CalendarDots, Columns,
+  Package, CalendarDots, Columns, Receipt,
 } from '@phosphor-icons/react';
 import {
-  apiListStockRecords, apiCreateStockRecord, apiUpdateStockRecord,
+  apiListStockRecords, apiUpdateStockRecord,
   apiDeleteStockRecord, apiGetStockRecordsSummary,
   apiListProducts, apiListWarehouses,
   StockRecord, Product, Warehouse,
@@ -38,7 +39,7 @@ const ALL_COLS = [
 
 type ColKey = typeof ALL_COLS[number]['key'];
 
-type ModalMode = 'new' | 'edit' | 'view' | null;
+type ModalMode = 'edit' | 'view' | null;
 
 interface Draft {
   item_code: string;
@@ -67,6 +68,67 @@ function formatVal(n: number, currency = 'RWF') {
 }
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors';
+
+const DEFICIT_STEPS: Record<'stock' | 'cash', string[]> = {
+  stock: [
+    'Raise a Purchase Order for the missing units via Procurement.',
+    'Check if surplus stock can be transferred from another warehouse.',
+    'Notify the Procurement team to source the goods urgently.',
+  ],
+  cash: [
+    'Submit a payment request to the Finance team for the outstanding amount.',
+    'Update the Paid Amount on this record once payment is confirmed.',
+    'Attach a supporting invoice or receipt as proof of payment.',
+  ],
+};
+
+function DeficitTooltip({ type, children }: { type: 'stock' | 'cash'; children: React.ReactNode }) {
+  const [visible, setVisible] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const steps = DEFICIT_STEPS[type];
+  const title = type === 'stock' ? 'Stock Deficit' : 'Cash Deficit';
+
+  function handleMouseEnter() {
+    if (anchorRef.current) {
+      const r = anchorRef.current.getBoundingClientRect();
+      setPos({ x: r.left + r.width / 2, y: r.top });
+    }
+    setVisible(true);
+  }
+
+  return (
+    <div ref={anchorRef} className="inline-block" onMouseEnter={handleMouseEnter} onMouseLeave={() => setVisible(false)}>
+      {children}
+      {visible && createPortal(
+        <div
+          style={{ position: 'fixed', left: pos.x, top: pos.y, transform: 'translate(-50%, calc(-100% - 10px))', zIndex: 9999 }}
+          className="w-64 pointer-events-none"
+        >
+          <div className="bg-card border border-rose-500/30 rounded-xl shadow-2xl overflow-hidden">
+            <div className="px-3 py-2 bg-rose-500/10 border-b border-rose-500/20">
+              <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest">
+                {title} · How to resolve
+              </p>
+            </div>
+            <ol className="px-3 py-2.5 space-y-2">
+              {steps.map((step, i) => (
+                <li key={i} className="flex gap-2 text-xs text-t2 leading-snug">
+                  <span className="shrink-0 w-4 h-4 rounded-full bg-rose-500/15 text-rose-400 text-[9px] font-black flex items-center justify-center mt-0.5">
+                    {i + 1}
+                  </span>
+                  {step}
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div className="w-0 h-0 mx-auto border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-rose-500/30" />
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
 
 export default function StockItemsPage() {
   const [records, setRecords] = useState<StockRecord[]>([]);
@@ -120,7 +182,6 @@ export default function StockItemsPage() {
   const computedTotalValue = draft.demand * (selectedProduct?.cost_per_unit ?? 0);
   const computedCashDeficit = Math.max(0, computedTotalValue - draft.paid_amount);
 
-  function openNew() { setDraft(emptyDraft()); setSelected(null); setError(null); setModalMode('new'); }
   function openEdit(r: StockRecord) {
     setDraft({
       item_code: r.item_code, product_id: r.product_id, warehouse_id: r.warehouse_id,
@@ -149,9 +210,8 @@ export default function StockItemsPage() {
       deadline: draft.deadline || null,
       supporting_doc: draft.supporting_doc || null,
     };
-    const res = modalMode === 'edit' && selected
-      ? await apiUpdateStockRecord(selected._id, payload)
-      : await apiCreateStockRecord(payload as any);
+    if (!selected) return;
+    const res = await apiUpdateStockRecord(selected._id, payload);
     setSaving(false);
     if (!res.success) { setError((res as any).message || 'Failed to save.'); return; }
     await load(); setModalMode(null);
@@ -177,6 +237,15 @@ export default function StockItemsPage() {
             ) : <span className="font-medium text-t1">{v}</span>}
           </div>
         ))}
+        {selected.source_po_ref && (
+          <div className="flex justify-between text-sm">
+            <span className="text-t3">Source PO</span>
+            <span className="inline-flex items-center gap-1 font-medium text-accent">
+              <Receipt size={12} weight="duotone" />
+              {selected.source_po_ref}
+            </span>
+          </div>
+        )}
         {selected.deadline && (
           <div className="flex justify-between text-sm">
             <span className="text-t3">Deadline</span>
@@ -190,13 +259,24 @@ export default function StockItemsPage() {
         {([
           ['On Hand', `${selected.on_hand.toLocaleString()} units`],
           ['Demand', `${selected.demand.toLocaleString()} units`],
-          ['Stock Deficit', `${selected.stock_deficit.toLocaleString()} units`],
         ] as [string, string][]).map(([l, v]) => (
           <div key={l} className="flex justify-between text-sm">
             <span className="text-t3">{l}</span>
-            <span className={`font-semibold ${l === 'Stock Deficit' && selected.stock_deficit > 0 ? 'text-rose-400' : 'text-t1'}`}>{v}</span>
+            <span className="font-semibold text-t1">{v}</span>
           </div>
         ))}
+        <div className="flex justify-between text-sm">
+          <span className="text-t3">Stock Deficit</span>
+          {selected.stock_deficit > 0 ? (
+            <DeficitTooltip type="stock">
+              <span className="font-semibold text-rose-400 underline decoration-dotted underline-offset-2 cursor-help">
+                {selected.stock_deficit.toLocaleString()} units
+              </span>
+            </DeficitTooltip>
+          ) : (
+            <span className="font-semibold text-t1">0 units</span>
+          )}
+        </div>
       </section>
 
       <section className="space-y-2">
@@ -205,13 +285,24 @@ export default function StockItemsPage() {
           ['Unit Cost', `${selected.cost_per_unit.toLocaleString()} ${selected.currency}`],
           ['Total Value', formatVal(selected.total_value, selected.currency)],
           ['Paid Amount', formatVal(selected.paid_amount, selected.currency)],
-          ['Cash Deficit', formatVal(selected.cash_deficit, selected.currency)],
         ] as [string, string][]).map(([l, v]) => (
           <div key={l} className="flex justify-between text-sm">
             <span className="text-t3">{l}</span>
-            <span className={`font-bold ${l === 'Cash Deficit' && selected.cash_deficit > 0 ? 'text-rose-400' : 'text-accent'}`}>{v}</span>
+            <span className="font-bold text-accent">{v}</span>
           </div>
         ))}
+        <div className="flex justify-between text-sm">
+          <span className="text-t3">Cash Deficit</span>
+          {selected.cash_deficit > 0 ? (
+            <DeficitTooltip type="cash">
+              <span className="font-bold text-rose-400 underline decoration-dotted underline-offset-2 cursor-help">
+                {formatVal(selected.cash_deficit, selected.currency)}
+              </span>
+            </DeficitTooltip>
+          ) : (
+            <span className="font-bold text-accent">{formatVal(selected.cash_deficit, selected.currency)}</span>
+          )}
+        </div>
       </section>
 
       {selected.supporting_doc && (
@@ -309,7 +400,7 @@ export default function StockItemsPage() {
       {error && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-500">{error}</div>}
       <button onClick={handleSave} disabled={saving} className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
         {saving && <Spinner size={14} className="animate-spin" />}
-        {saving ? 'Saving...' : modalMode === 'edit' ? 'Update Record' : 'Add Stock Record'}
+        {saving ? 'Saving...' : 'Update Record'}
       </button>
     </div>
   );
@@ -356,14 +447,9 @@ export default function StockItemsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-t1">Stock</h1>
-          <p className="text-sm text-t3 mt-0.5">Monitor inventory levels, demand gaps, and cash deficits</p>
-        </div>
-        <button onClick={openNew} className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-h transition-colors">
-          <Plus size={15} weight="bold" /> Add Stock Record
-        </button>
+      <div>
+        <h1 className="text-2xl font-bold text-t1">Stock</h1>
+        <p className="text-sm text-t3 mt-0.5">Monitor inventory levels, demand gaps, and cash deficits</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -452,8 +538,7 @@ export default function StockItemsPage() {
                 <tr><td colSpan={ALL_COLS.filter(c => visibleCols[c.key]).length + 2} className="px-4 py-16 text-center text-sm text-t3">
                   <div className="flex flex-col items-center gap-3">
                     <Cube size={40} weight="duotone" className="text-t3/40" />
-                    <p>No stock records found.</p>
-                    <button onClick={openNew} className="text-accent font-semibold hover:underline">Add first record</button>
+                    <p>No stock records found. Create a Purchase Order in Procurement to generate records automatically.</p>
                   </div>
                 </td></tr>
               ) : records.map(r => (
@@ -470,17 +555,29 @@ export default function StockItemsPage() {
                   {visibleCols.demand && <td className="px-4 py-3 text-sm text-t2 whitespace-nowrap">{r.demand.toLocaleString()}</td>}
                   {visibleCols.stock_deficit && (
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`text-sm font-bold ${r.stock_deficit > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                        {r.stock_deficit > 0 ? `-${r.stock_deficit.toLocaleString()}` : '0'}
-                      </span>
+                      {r.stock_deficit > 0 ? (
+                        <DeficitTooltip type="stock">
+                          <span className="text-sm font-bold text-rose-400 underline decoration-dotted underline-offset-2 cursor-help">
+                            -{r.stock_deficit.toLocaleString()}
+                          </span>
+                        </DeficitTooltip>
+                      ) : (
+                        <span className="text-sm font-bold text-emerald-400">0</span>
+                      )}
                     </td>
                   )}
                   {visibleCols.total_value && <td className="px-4 py-3 text-sm font-bold text-t1 whitespace-nowrap">{formatVal(r.total_value, r.currency)}</td>}
                   {visibleCols.cash_deficit && (
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`text-sm font-bold ${r.cash_deficit > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                        {r.cash_deficit > 0 ? formatVal(r.cash_deficit, r.currency) : '—'}
-                      </span>
+                      {r.cash_deficit > 0 ? (
+                        <DeficitTooltip type="cash">
+                          <span className="text-sm font-bold text-rose-400 underline decoration-dotted underline-offset-2 cursor-help">
+                            {formatVal(r.cash_deficit, r.currency)}
+                          </span>
+                        </DeficitTooltip>
+                      ) : (
+                        <span className="text-sm font-bold text-emerald-400">—</span>
+                      )}
                     </td>
                   )}
                   {visibleCols.status && (
@@ -522,8 +619,8 @@ export default function StockItemsPage() {
       <DocumentSidePanel
         isOpen={modalMode !== null}
         onClose={() => { setModalMode(null); setSelected(null); setError(null); }}
-        title={modalMode === 'new' ? 'Add Stock Record' : modalMode === 'edit' ? `Edit — ${selected?.item_code}` : selected?.item_code || ''}
-        footerInfo={selected ? `${selected.product_name} · ${selected.warehouse_name}` : 'New record'}
+        title={modalMode === 'edit' ? `Edit — ${selected?.item_code}` : selected?.item_code || ''}
+        footerInfo={selected ? `${selected.product_name} · ${selected.warehouse_name}` : ''}
         formContent={formContent}
         previewContent={previewContent}
       />

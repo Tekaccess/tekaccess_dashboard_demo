@@ -122,6 +122,11 @@ export const departmentsData = [
             icon: CheckSquare,
             subItems: ["Tax Periods", "Filing Status"],
           },
+          {
+            name: "Approvals",
+            icon: CheckFatIcon,
+            path: "/finance/approvals",
+          },
         ],
       },
     ],
@@ -211,36 +216,11 @@ export const departmentsData = [
       {
         title: "Inventory Department",
         items: [
-          {
-            name: "Products",
-            icon: Package,
-            subItems: ["All Products", "Bagged", "Unbagged"],
-          },
-          {
-            name: "Stock",
-            icon: Cube,
-            subItems: [
-              "All Stock Records",
-              "Pending",
-              "Complete",
-              "By Warehouse",
-            ],
-          },
-          {
-            name: "Movements",
-            icon: ArrowsCounterClockwise,
-            subItems: ["Inbound", "Outbound", "Transfers", "Adjustments"],
-          },
-          {
-            name: "Documents",
-            icon: ClipboardText,
-            subItems: ["All Documents", "Invoices", "Receipts", "Waybills"],
-          },
-          {
-            name: "Warehouses",
-            icon: Buildings,
-            subItems: ["Warehouse List", "Capacity Usage"],
-          },
+          { name: "Products", icon: Package },
+          { name: "Stock", icon: Cube },
+          { name: "Movements", icon: ArrowsCounterClockwise },
+          { name: "Documents", icon: ClipboardText },
+          { name: "Warehouses", icon: Buildings },
         ],
       },
     ],

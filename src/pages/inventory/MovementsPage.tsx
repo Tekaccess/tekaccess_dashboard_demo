@@ -17,8 +17,6 @@ const MOVEMENT_TABS = [
   { id: 'INBOUND', label: 'Inbound' },
   { id: 'OUTBOUND', label: 'Outbound' },
   { id: 'TRANSFER_IN,TRANSFER_OUT', label: 'Transfers' },
-  { id: 'ADJUSTMENT', label: 'Adjustments' },
-  { id: 'RETURN', label: 'Returns' },
 ];
 
 const TYPE_META: Record<string, { label: string; style: string; dot: string; Icon: React.ComponentType<any> }> = {
@@ -31,7 +29,7 @@ const TYPE_META: Record<string, { label: string; style: string; dot: string; Ico
   RETURN:       { label: 'Return',      style: 'bg-orange-500/10 text-orange-400 border-orange-500/20',    dot: 'bg-orange-400',  Icon: ArrowDown },
 };
 
-const DIRECT_TYPES = ['INBOUND', 'OUTBOUND', 'ADJUSTMENT', 'RETURN'];
+const DIRECT_TYPES = ['INBOUND', 'OUTBOUND'];
 
 interface NewMovementDraft {
   mode: 'direct' | 'transfer';
@@ -137,9 +135,9 @@ export default function MovementsPage() {
       <div>
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Movement Type</p>
         <div className="flex gap-2">
-          <button onClick={() => updateDraft({ mode: 'direct' })}
+          <button onClick={() => updateDraft({ mode: 'direct', movementType: 'INBOUND' })}
             className={`flex-1 py-2 text-sm rounded-lg border transition-colors ${draft.mode === 'direct' ? 'border-accent bg-accent/10 text-accent' : 'border-border text-t2 hover:text-t1'}`}>
-            Direct
+            Inbound / Outbound
           </button>
           <button onClick={() => updateDraft({ mode: 'transfer' })}
             className={`flex-1 py-2 text-sm rounded-lg border transition-colors ${draft.mode === 'transfer' ? 'border-accent bg-accent/10 text-accent' : 'border-border text-t2 hover:text-t1'}`}>
@@ -149,7 +147,7 @@ export default function MovementsPage() {
 
         {draft.mode === 'direct' && (
           <div className="mt-3">
-            <label className="block text-xs text-t3 mb-1.5">Movement Sub-type</label>
+            <label className="block text-xs text-t3 mb-1.5">Direction</label>
             <select className={inp}
               value={draft.movementType} onChange={e => updateDraft({ movementType: e.target.value })}>
               {DIRECT_TYPES.map(t => <option key={t} value={t}>{TYPE_META[t]?.label ?? t}</option>)}
@@ -213,12 +211,12 @@ export default function MovementsPage() {
                 value={draft.sourceRef} onChange={e => updateDraft({ sourceRef: e.target.value })}
                 placeholder="e.g. PO-0042" />
             </div>
-            {['OUTBOUND', 'ADJUSTMENT', 'RETURN'].includes(draft.movementType) && (
+            {draft.movementType === 'OUTBOUND' && (
               <div>
                 <label className="block text-xs text-t3 mb-1.5">Reason</label>
                 <input className={inp}
                   value={draft.reason} onChange={e => updateDraft({ reason: e.target.value })}
-                  placeholder="e.g. Issued to site, Damaged, etc." />
+                  placeholder="e.g. Issued to site" />
               </div>
             )}
           </div>
