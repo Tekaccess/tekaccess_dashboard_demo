@@ -171,7 +171,7 @@ export default function StockItemsPage() {
   useEffect(() => { load(); }, [load]);
 
   const productOptions = useMemo<SearchSelectOption[]>(() =>
-    products.map(p => ({ value: p._id, label: p.name, sublabel: p.type })), [products]);
+    products.map(p => ({ value: p._id, label: p.name })), [products]);
 
   const warehouseOptions = useMemo<SearchSelectOption[]>(() =>
     warehouses.map(w => ({ value: w._id, label: w.name, sublabel: w.warehouseCode })), [warehouses]);
@@ -224,7 +224,6 @@ export default function StockItemsPage() {
         {([
           ['Item Code', selected.item_code],
           ['Product', selected.product_name],
-          ['Type', selected.product_type],
           ['Warehouse', selected.warehouse_name],
           ['Status', selected.status],
         ] as [string, string][]).map(([l, v]) => (
@@ -547,7 +546,6 @@ export default function StockItemsPage() {
                   {visibleCols.product && (
                     <td className="px-4 py-3">
                       <p className="text-sm font-medium text-t1">{r.product_name}</p>
-                      <p className="text-xs text-t3">{r.product_type}</p>
                     </td>
                   )}
                   {visibleCols.warehouse && <td className="px-4 py-3 text-sm text-t2 whitespace-nowrap">{r.warehouse_name}</td>}

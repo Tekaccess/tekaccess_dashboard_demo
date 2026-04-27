@@ -56,16 +56,18 @@ interface NewMovementDraft {
   pickupCode: string;
   deliveryTime: string;
   remark: string;
+  selectedPoLineIdx?: number;
 }
 
 function emptyDraft(): NewMovementDraft {
   return {
-    mode: 'inbound', stockItemId: '', qty: 0, unitCost: 0,
+    mode: 'inbound', stockItemId: '', qty: 0,
     reason: '', notes: '', destinationWarehouseId: '',
     linkedPoId: '', linkedPoRef: '', supplierName: '', supplierTin: '',
     supplierVrn: '', supplierPhone: '', grossWeight: '', tareWeight: '',
     deductionWeight: '0', transportMethod: '', truckPlate: '', driverName: '',
     pickupCode: '', deliveryTime: new Date().toISOString().slice(0, 16), remark: '',
+    unitCost: 0,
   };
 }
 
@@ -265,17 +267,47 @@ export default function MovementsPage() {
               options={poOptions}
               value={draft.linkedPoId || null}
               onChange={(val, opt) => {
-                if (!val) { upd({ linkedPoId: '', linkedPoRef: '', supplierName: '' }); return; }
+                if (!val) { upd({ linkedPoId: '', linkedPoRef: '', supplierName: '', selectedPoLineIdx: undefined }); return; }
                 const po = purchaseOrders.find(p => p._id === val);
                 upd({
                   linkedPoId: val,
                   linkedPoRef: opt?.label || '',
                   supplierName: po?.supplierName || '',
                   supplierPhone: '',
+                  selectedPoLineIdx: po?.lineItems && po.lineItems.length > 0 ? 0 : undefined,
                 });
+                
+                // Auto-select stock item if possible
+                if (po?.lineItems && po.lineItems.length > 0) {
+                  const li = po.lineItems[0];
+                  if (li.stockItemId) upd({ stockItemId: String(li.stockItemId) });
+                }
               }}
               placeholder="Search PO reference..."
             />
+
+            {draft.linkedPoId && purchaseOrders.find(p => p._id === draft.linkedPoId)?.lineItems.length! > 1 && (
+              <div>
+                <label className="block text-[10px] text-t3 mb-1">Select PO Item</label>
+                <select 
+                  className={inp}
+                  value={draft.selectedPoLineIdx}
+                  onChange={e => {
+                    const idx = Number(e.target.value);
+                    const po = purchaseOrders.find(p => p._id === draft.linkedPoId);
+                    const li = po?.lineItems[idx];
+                    upd({ 
+                      selectedPoLineIdx: idx,
+                      stockItemId: li?.stockItemId ? String(li.stockItemId) : draft.stockItemId
+                    });
+                  }}
+                >
+                  {purchaseOrders.find(p => p._id === draft.linkedPoId)?.lineItems.map((li, idx) => (
+                    <option key={idx} value={idx}>{li.description} ({li.orderedQty} {li.unit})</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </section>
 
           {/* Supplier */}
@@ -316,17 +348,11 @@ export default function MovementsPage() {
               options={stockOptions}
               value={draft.stockItemId || null}
               onChange={v => {
-                const si = stockItems.find(s => s._id === v);
-                upd({ stockItemId: v ?? '', unitCost: si?.weightedAvgCost ?? 0 });
+                upd({ stockItemId: v ?? '' });
               }}
               placeholder="Search stock items..."
               clearable={false}
             />
-            <div>
-              <label className="block text-[10px] text-t3 mb-1">Unit Cost</label>
-              <input type="number" min={0} className={inp} value={draft.unitCost}
-                onChange={e => upd({ unitCost: Number(e.target.value) })} />
-            </div>
           </section>
 
           {/* Weight */}
@@ -469,11 +495,6 @@ export default function MovementsPage() {
                 <input type="number" min={0.001} step={0.001} className={inp}
                   value={draft.qty || ''}
                   onChange={e => upd({ qty: Number(e.target.value) })} />
-              </div>
-              <div>
-                <label className="block text-[10px] text-t3 mb-1">Unit Cost</label>
-                <input type="number" min={0} className={inp} value={draft.unitCost}
-                  onChange={e => upd({ unitCost: Number(e.target.value) })} />
               </div>
             </div>
           </section>

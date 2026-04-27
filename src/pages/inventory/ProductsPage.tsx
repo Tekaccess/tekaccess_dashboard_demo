@@ -10,10 +10,7 @@ import {
 } from '../../lib/api';
 import DocumentSidePanel from '../../components/DocumentSidePanel';
 
-const TYPE_STYLES: Record<string, string> = {
-  Bagged:   'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  Unbagged: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-};
+const TYPE_STYLES: Record<string, string> = {};
 
 const CURRENCIES = ['RWF', 'USD', 'EUR', 'KES', 'UGX', 'TZS', 'BIF'];
 
@@ -21,13 +18,12 @@ type ModalMode = 'new' | 'edit' | 'view' | null;
 
 interface DraftProduct {
   name: string;
-  type: 'Bagged' | 'Unbagged';
   cost_per_unit: number;
   currency: string;
 }
 
 function emptyDraft(): DraftProduct {
-  return { name: '', type: 'Bagged', cost_per_unit: 0, currency: 'RWF' };
+  return { name: '', cost_per_unit: 0, currency: 'RWF' };
 }
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors';
@@ -58,7 +54,7 @@ export default function ProductsPage() {
 
   function openNew() { setDraft(emptyDraft()); setSelected(null); setError(null); setModalMode('new'); }
   function openEdit(p: Product) {
-    setDraft({ name: p.name, type: p.type, cost_per_unit: p.cost_per_unit, currency: p.currency });
+    setDraft({ name: p.name, cost_per_unit: p.cost_per_unit, currency: p.currency });
     setSelected(p); setError(null); setModalMode('edit');
   }
   function openView(p: Product) { setSelected(p); setModalMode('view'); }
@@ -88,15 +84,12 @@ export default function ProductsPage() {
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Product Details</p>
         {([
           ['Name', selected.name],
-          ['Type', selected.type],
           ['Unit Cost', `${selected.cost_per_unit.toLocaleString()} ${selected.currency}`],
           ['Currency', selected.currency],
         ] as [string, string][]).map(([l, v]) => (
           <div key={l} className="flex justify-between text-sm">
             <span className="text-t3">{l}</span>
-            <span className="font-medium text-t1">{l === 'Type' ? (
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${TYPE_STYLES[v] || 'bg-surface text-t3 border-border'}`}>{v}</span>
-            ) : v}</span>
+            <span className="font-medium text-t1">{v}</span>
           </div>
         ))}
       </section>
@@ -121,13 +114,6 @@ export default function ProductsPage() {
         <div>
           <label className="block text-[10px] text-t3 mb-1">Name *</label>
           <input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="e.g. Portland Cement" className={inp} />
-        </div>
-        <div>
-          <label className="block text-[10px] text-t3 mb-1">Type *</label>
-          <select value={draft.type} onChange={e => setDraft(d => ({ ...d, type: e.target.value as 'Bagged' | 'Unbagged' }))} className={inp}>
-            <option value="Bagged">Bagged</option>
-            <option value="Unbagged">Unbagged</option>
-          </select>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -161,10 +147,9 @@ export default function ProductsPage() {
       </div>
       <div>
         <h2 className="text-xl font-bold text-[#4285f4]">{selected.name}</h2>
-        <p className="text-sm text-gray-500 mt-1">{selected.type}</p>
       </div>
       <div className="grid grid-cols-2 gap-4 border-y border-gray-100 py-5 text-[12px]">
-        {([['Type', selected.type], ['Unit Cost', `${selected.cost_per_unit.toLocaleString()} ${selected.currency}`], ['Currency', selected.currency]] as [string, string][]).map(([l, v]) => (
+        {([['Unit Cost', `${selected.cost_per_unit.toLocaleString()} ${selected.currency}`], ['Currency', selected.currency]] as [string, string][]).map(([l, v]) => (
           <div key={l}>
             <p className="text-[10px] font-black text-gray-400 uppercase mb-0.5">{l}</p>
             <p className="font-bold text-gray-800">{v}</p>
@@ -179,8 +164,7 @@ export default function ProductsPage() {
     </div>
   );
 
-  const bagged = products.filter(p => p.type === 'Bagged').length;
-  const unbagged = products.filter(p => p.type === 'Unbagged').length;
+  const totalProducts = products.length;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -196,9 +180,7 @@ export default function ProductsPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {[
-          { label: 'Total Products', value: products.length, Icon: Package, color: 'text-accent', bg: 'bg-accent-glow' },
-          { label: 'Bagged', value: bagged, Icon: Package, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-          { label: 'Unbagged', value: unbagged, Icon: CurrencyCircleDollar, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+          { label: 'Total Products', value: totalProducts, Icon: Package, color: 'text-accent', bg: 'bg-accent-glow' },
         ].map(c => (
           <div key={c.label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
             <div className={`p-2.5 rounded-xl ${c.bg}`}><c.Icon size={18} weight="duotone" className={c.color} /></div>
@@ -216,18 +198,13 @@ export default function ProductsPage() {
             <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
             <input type="text" placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-border rounded-lg text-sm bg-surface text-t1 placeholder-t3 outline-none focus:border-accent transition-colors" />
           </div>
-          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="px-3 py-2 border border-border rounded-lg text-sm bg-surface text-t2 outline-none focus:border-accent transition-colors">
-            <option value="">All Types</option>
-            <option value="Bagged">Bagged</option>
-            <option value="Unbagged">Unbagged</option>
-          </select>
         </div>
 
         <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'never' } }} defer>
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-surface">
               <tr>
-                {['Name', 'Type', 'Unit Cost', 'Currency', ''].map(h => (
+                {['Name', 'Unit Cost', 'Currency', ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -246,9 +223,6 @@ export default function ProductsPage() {
               ) : products.map(p => (
                 <tr key={p._id} className="hover:bg-surface cursor-pointer transition-colors" onClick={() => openView(p)}>
                   <td className="px-4 py-3 text-sm font-medium text-t1">{p.name}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${TYPE_STYLES[p.type] || 'bg-surface text-t3 border-border'}`}>{p.type}</span>
-                  </td>
                   <td className="px-4 py-3 text-sm font-bold text-t1">{p.cost_per_unit.toLocaleString()}</td>
                   <td className="px-4 py-3 text-sm text-t3">{p.currency}</td>
                   <td className="px-4 py-3">

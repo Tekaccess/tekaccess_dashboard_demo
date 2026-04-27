@@ -996,7 +996,6 @@ export async function apiGetInventorySummary() {
 export type Product = {
   _id: string;
   name: string;
-  type: 'Bagged' | 'Unbagged';
   cost_per_unit: number;
   currency: string;
 };
@@ -1027,7 +1026,6 @@ export type StockRecord = {
   item_code: string;
   product_id: string;
   product_name: string;
-  product_type: 'Bagged' | 'Unbagged';
   warehouse_id: string;
   warehouse_name: string;
   on_hand: number;
