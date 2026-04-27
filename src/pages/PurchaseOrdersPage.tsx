@@ -547,19 +547,6 @@ export default function PurchaseOrdersPage() {
             placeholder="Select currency..."
             clearable={false}
           />
-          {/* <div>
-            <label className="block text-[10px] text-t3 mb-1">PO Type</label>
-            <select
-              value={draft.procurementType}
-              onChange={e => updateDraft({ procurementType: e.target.value })}
-              className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
-            >
-              <option value="general">General</option>
-              <option value="trading">Trading</option>
-              <option value="fleet_fuel">Fleet Fuel</option>
-              <option value="fleet_parts">Fleet Parts</option>
-            </select>
-          </div> */}
         </div>
 
         {draft.procurementType === 'trading' && (
@@ -580,13 +567,6 @@ export default function PurchaseOrdersPage() {
             onChange={d => updateDraft({ orderDeadline: d })}
             placeholder="dd/mm/yyyy"
           />
-          {/* <DatePicker
-            label="Expected Arrival"
-            value={draft.expectedDeliveryDate}
-            onChange={d => updateDraft({ expectedDeliveryDate: d })}
-            placeholder="dd/mm/yyyy"
-            fromDate={draft.orderDeadline || undefined}
-          /> */}
         </div>
 
         <div>
