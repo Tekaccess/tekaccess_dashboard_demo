@@ -408,7 +408,7 @@ export default function PurchaseOrdersPage() {
     if (!draft.supplierId) { setSaveError('Please select a supplier.'); return; }
     if (draft.procurementType === 'trading' && !draft.destinationWarehouseId) { setSaveError('A destination warehouse is required for trading POs.'); return; }
     if (draft.procurementType === 'trading' && draft.lineItems.some(i => !i.productId)) { setSaveError('All line items on a trading PO must have a product selected.'); return; }
-    if (draft.lineItems.some(i => !i.description.trim())) { setSaveError('All line items must have a description.'); return; }
+    if (draft.lineItems.some(i => !i.productId)) { setSaveError('All line items must have a product selected.'); return; }
     if (draft.lineItems.some(i => i.orderedQty <= 0)) { setSaveError('All quantities must be greater than 0.'); return; }
 
     setSaving(true);
@@ -486,7 +486,7 @@ export default function PurchaseOrdersPage() {
   const previewOrder = modal && modal.mode !== 'new' ? (modal as any).order as PurchaseOrder : null;
 
   // ─── Form Content ───────────────────────────────────────────────────────────
-  
+
   const manualForm = draft && (
     <div className="space-y-7">
 
@@ -547,7 +547,7 @@ export default function PurchaseOrdersPage() {
             placeholder="Select currency..."
             clearable={false}
           />
-          <div>
+          {/* <div>
             <label className="block text-[10px] text-t3 mb-1">PO Type</label>
             <select
               value={draft.procurementType}
@@ -559,7 +559,7 @@ export default function PurchaseOrdersPage() {
               <option value="fleet_fuel">Fleet Fuel</option>
               <option value="fleet_parts">Fleet Parts</option>
             </select>
-          </div>
+          </div> */}
         </div>
 
         {draft.procurementType === 'trading' && (
@@ -580,13 +580,13 @@ export default function PurchaseOrdersPage() {
             onChange={d => updateDraft({ orderDeadline: d })}
             placeholder="dd/mm/yyyy"
           />
-          <DatePicker
+          {/* <DatePicker
             label="Expected Arrival"
             value={draft.expectedDeliveryDate}
             onChange={d => updateDraft({ expectedDeliveryDate: d })}
             placeholder="dd/mm/yyyy"
             fromDate={draft.orderDeadline || undefined}
-          />
+          /> */}
         </div>
 
         <div>
@@ -656,14 +656,6 @@ export default function PurchaseOrdersPage() {
                 }}
                 placeholder="Select product..."
                 clearable={false}
-              />
-
-              <input
-                type="text"
-                placeholder="Product description *"
-                value={item.description}
-                onChange={e => updateLineItem(item._key, { description: e.target.value })}
-                className="w-full bg-card border border-border px-3 py-1.5 rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors"
               />
 
               <SearchSelect
@@ -1097,9 +1089,8 @@ export default function PurchaseOrdersPage() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`whitespace-nowrap py-3.5 px-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab ? 'border-accent text-accent' : 'border-transparent text-t3 hover:text-t2 hover:border-border'
-                }`}
+                className={`whitespace-nowrap py-3.5 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === tab ? 'border-accent text-accent' : 'border-transparent text-t3 hover:text-t2 hover:border-border'
+                  }`}
               >
                 {tab}
               </button>
@@ -1136,9 +1127,8 @@ export default function PurchaseOrdersPage() {
                 key={v.mode}
                 onClick={() => setViewMode(v.mode)}
                 title={v.label}
-                className={`px-3 py-2 flex items-center gap-1.5 text-xs font-medium transition-colors ${
-                  viewMode === v.mode ? 'bg-accent text-white' : 'bg-card text-t3 hover:bg-surface hover:text-t2'
-                }`}
+                className={`px-3 py-2 flex items-center gap-1.5 text-xs font-medium transition-colors ${viewMode === v.mode ? 'bg-accent text-white' : 'bg-card text-t3 hover:bg-surface hover:text-t2'
+                  }`}
               >
                 <v.Icon size={15} weight={viewMode === v.mode ? 'fill' : 'regular'} />
                 <span className="hidden sm:inline">{v.label}</span>
@@ -1308,8 +1298,8 @@ export default function PurchaseOrdersPage() {
         onClose={() => { setModal(null); setSaveError(null); }}
         title={
           modal?.mode === 'new' ? 'New Purchase Order' :
-          modal?.mode === 'edit' ? `Edit — ${(modal as any).order?.poRef}` :
-          `PO — ${(modal as any)?.order?.poRef}`
+            modal?.mode === 'edit' ? `Edit — ${(modal as any).order?.poRef}` :
+              `PO — ${(modal as any)?.order?.poRef}`
         }
         currentIndex={
           modal && modal.mode !== 'new'
