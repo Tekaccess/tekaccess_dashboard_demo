@@ -5,11 +5,10 @@ import {
   Spinner, Phone, Envelope, Globe, Warning, Star, Trash,
 } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'motion/react';
-import { apiListSuppliers, apiCreateSupplier, apiUpdateSupplier, apiDeleteSupplier, Supplier } from '../lib/api';
+import { apiListSuppliers, apiCreateSupplier, apiUpdateSupplier, apiDeleteSupplier, apiListWarehouses, Supplier, Warehouse } from '../lib/api';
 import ModernModal from '../components/ui/ModernModal';
 import ColumnSelector, { useColumnVisibility, ColDef } from '../components/ui/ColumnSelector';
 
-const SUPPLIER_TYPES = ['raw_material', 'fuel', 'spare_parts', 'transport_contractor', 'service_provider', 'utility', 'other'];
 const SUPPLIER_STATUSES = ['active', 'on_hold', 'blacklisted', 'inactive'];
 const CURRENCIES = ['USD', 'RWF', 'EUR', 'KES', 'UGX', 'TZS'];
 
@@ -26,48 +25,40 @@ const STATUS_DOT: Record<string, string> = {
   inactive:    'bg-t3',
 };
 
-const TYPE_STYLES: Record<string, string> = {
-  raw_material:         'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  fuel:                 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  spare_parts:          'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  transport_contractor: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
-  service_provider:     'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  utility:              'bg-orange-500/10 text-orange-400 border-orange-500/20',
-  other:                'bg-surface text-t3 border-border',
-};
-
 type ModalMode = 'new' | 'edit' | 'view' | null;
 
 interface DraftSupplier {
-  supplierCode: string; name: string; supplierType: string[];
+  supplierCode: string; name: string;
   contactName: string; contactEmail: string; contactPhone: string;
   address: string; country: string; currency: string;
   creditTermsDays: number; taxId: string; isCritical: boolean; notes: string;
   hasCrusher: boolean | null; extraFeesNote: string;
+  defaultWarehouseId: string; defaultWarehouseName: string;
 }
 
 function emptyDraft(): DraftSupplier {
   return {
-    supplierCode: '', name: '', supplierType: ['raw_material'],
+    supplierCode: '', name: '',
     contactName: '', contactEmail: '', contactPhone: '',
     address: '', country: 'Rwanda', currency: 'USD',
     creditTermsDays: 30, taxId: '', isCritical: false, notes: '',
     hasCrusher: null, extraFeesNote: '',
+    defaultWarehouseId: '', defaultWarehouseName: '',
   };
 }
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
 
 const SUPPLIER_COLS: ColDef[] = [
-  { key: 'code',     label: 'Code',     defaultVisible: true },
-  { key: 'name',     label: 'Name',     defaultVisible: true },
-  { key: 'type',     label: 'Type',     defaultVisible: true },
-  { key: 'contact',  label: 'Contact',  defaultVisible: true },
-  { key: 'country',  label: 'Country',  defaultVisible: true },
-  { key: 'currency', label: 'Currency', defaultVisible: false },
-  { key: 'crusher',  label: 'Crusher',  defaultVisible: true },
-  { key: 'status',   label: 'Status',   defaultVisible: true },
-  { key: 'actions',  label: 'Actions',  defaultVisible: true },
+  { key: 'code',      label: 'Code',      defaultVisible: true },
+  { key: 'name',      label: 'Name',      defaultVisible: true },
+  { key: 'warehouse', label: 'Warehouse', defaultVisible: true },
+  { key: 'contact',   label: 'Contact',   defaultVisible: true },
+  { key: 'country',   label: 'Country',   defaultVisible: true },
+  { key: 'currency',  label: 'Currency',  defaultVisible: false },
+  { key: 'crusher',   label: 'Crusher',   defaultVisible: true },
+  { key: 'status',    label: 'Status',    defaultVisible: true },
+  { key: 'actions',   label: 'Actions',   defaultVisible: true },
 ];
 
 export default function SuppliersPage() {
@@ -75,7 +66,7 @@ export default function SuppliersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
-  const [typeFilter, setTypeFilter] = useState('');
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [selected, setSelected] = useState<Supplier | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [draft, setDraft] = useState<DraftSupplier>(emptyDraft());
@@ -88,32 +79,29 @@ export default function SuppliersPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const res = await apiListSuppliers(search || undefined, statusFilter || 'all');
-    if (res.success) {
-      setSuppliers(typeFilter ? res.data.suppliers.filter(s => s.supplierType.includes(typeFilter)) : res.data.suppliers);
-    }
+    if (res.success) setSuppliers(res.data.suppliers);
     setLoading(false);
-  }, [search, statusFilter, typeFilter]);
+  }, [search, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
 
-  function toggleType(t: string) {
-    setDraft(d => {
-      const types = d.supplierType.includes(t) ? d.supplierType.filter(x => x !== t) : [...d.supplierType, t];
-      return { ...d, supplierType: types.length === 0 ? [t] : types };
-    });
-  }
+  useEffect(() => {
+    apiListWarehouses().then(r => r.success && setWarehouses(r.data.warehouses));
+  }, []);
 
   function openNew() { setDraft(emptyDraft()); setSelected(null); setError(null); setModalMode('new'); }
 
   function openEdit(s: Supplier) {
     setDraft({
-      supplierCode: s.supplierCode, name: s.name, supplierType: [...s.supplierType],
+      supplierCode: s.supplierCode, name: s.name,
       contactName: s.contactName || '', contactEmail: s.contactEmail || '',
       contactPhone: s.contactPhone || '', address: (s as any).address || '',
       country: s.country, currency: s.currency, creditTermsDays: s.creditTermsDays,
       taxId: (s as any).taxId || '', isCritical: s.isCritical || false, notes: (s as any).notes || '',
       hasCrusher: s.hasCrusher ?? null,
       extraFeesNote: s.extraFeesNote || '',
+      defaultWarehouseId: s.defaultWarehouseId || '',
+      defaultWarehouseName: s.defaultWarehouseName || '',
     });
     setSelected(s); setError(null); setModalMode('edit');
   }
@@ -131,13 +119,18 @@ export default function SuppliersPage() {
   }
 
   async function handleSave() {
-    if (!draft.supplierCode || !draft.name || draft.supplierType.length === 0) {
-      setError('Code, name and at least one type are required.'); return;
+    if (!draft.supplierCode || !draft.name) {
+      setError('Code and name are required.'); return;
     }
     setSaving(true); setError(null);
+    const payload = {
+      ...draft,
+      defaultWarehouseId: draft.defaultWarehouseId || null,
+      defaultWarehouseName: draft.defaultWarehouseName || null,
+    };
     const res = modalMode === 'new'
-      ? await apiCreateSupplier(draft as any)
-      : await apiUpdateSupplier(selected!._id, draft as any);
+      ? await apiCreateSupplier(payload as any)
+      : await apiUpdateSupplier(selected!._id, payload as any);
     setSaving(false);
     if (!res.success) { setError((res as any).message || 'Save failed.'); return; }
     setModalMode(null); load();
@@ -152,15 +145,17 @@ export default function SuppliersPage() {
   const modalSummary = (
     <div className="space-y-4">
       <div className="aspect-video bg-gradient-to-br from-accent/20 to-surface rounded-xl flex items-center justify-center p-6 border border-border">
-        {draft.supplierType[0] && TYPE_STYLES[draft.supplierType[0]] ? (
+        {draft.name ? (
           <div className="text-center">
-            <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium mb-3 ${TYPE_STYLES[draft.supplierType[0]]}`}>
-              {draft.supplierType[0]?.replace(/_/g, ' ')}
-            </span>
+            {draft.defaultWarehouseName && (
+              <span className="inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium mb-3 bg-accent/10 text-accent border-accent/20">
+                {draft.defaultWarehouseName}
+              </span>
+            )}
             <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-3 text-accent border border-accent/20 shadow-lg shadow-accent/10">
               <Handshake size={32} weight="duotone" />
             </div>
-            {draft.name && <p className="font-semibold text-t1 text-sm truncate max-w-[200px]">{draft.name}</p>}
+            <p className="font-semibold text-t1 text-sm truncate max-w-[200px]">{draft.name}</p>
             {draft.supplierCode && <p className="text-xs text-t3 font-mono mt-1">{draft.supplierCode}</p>}
           </div>
         ) : (
@@ -271,15 +266,19 @@ export default function SuppliersPage() {
       </div>
 
       <div>
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Supplier Type *</p>
-        <div className="flex flex-wrap gap-2">
-          {SUPPLIER_TYPES.map(t => (
-            <button key={t} type="button" onClick={() => toggleType(t)}
-              className={`px-3 py-1.5 text-xs border rounded-lg transition-colors ${draft.supplierType.includes(t) ? 'border-accent bg-accent/10 text-accent' : 'border-border text-t3 hover:text-t1'}`}>
-              {t.replace(/_/g, ' ')}
-            </button>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Default Warehouse</p>
+        <select className={inp} value={draft.defaultWarehouseId}
+          onChange={e => {
+            const id = e.target.value;
+            const wh = warehouses.find(w => w._id === id);
+            setDraft(d => ({ ...d, defaultWarehouseId: id, defaultWarehouseName: wh?.name || '' }));
+          }}>
+          <option value="">— Select warehouse —</option>
+          {warehouses.map(w => (
+            <option key={w._id} value={w._id}>{w.name} ({w.warehouseCode})</option>
           ))}
-        </div>
+        </select>
+        <p className="text-[11px] text-t3 mt-1.5">When this supplier is chosen on a purchase order, this warehouse is auto-filled as the destination.</p>
       </div>
 
       <div>
@@ -377,11 +376,11 @@ export default function SuppliersPage() {
         <div>
           <p className="text-xs text-t3 font-mono">{selected.supplierCode}</p>
           <h3 className="text-base font-semibold text-t1 mt-0.5">{selected.name}</h3>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {selected.supplierType.map(t => (
-              <span key={t} className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium ${TYPE_STYLES[t] ?? ''}`}>{t.replace(/_/g, ' ')}</span>
-            ))}
-          </div>
+          {selected.defaultWarehouseName && (
+            <span className="inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium mt-1 bg-accent/10 text-accent border-accent/20">
+              {selected.defaultWarehouseName}
+            </span>
+          )}
         </div>
         <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-0.5 font-medium ${STATUS_STYLES[selected.status] ?? ''}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[selected.status] ?? 'bg-t3'}`} />
@@ -480,11 +479,6 @@ export default function SuppliersPage() {
               <option value="all">All Statuses</option>
               {SUPPLIER_STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
             </select>
-            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-              className="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-t1 outline-none focus:border-accent transition-colors">
-              <option value="">All Types</option>
-              {SUPPLIER_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
-            </select>
             <ColumnSelector cols={SUPPLIER_COLS} visible={colVis} onToggle={colToggle} />
           </div>
 
@@ -502,7 +496,7 @@ export default function SuppliersPage() {
                   <tr className="border-b border-border">
                     {colVis.has('code') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Code</th>}
                     {colVis.has('name') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Name</th>}
-                    {colVis.has('type') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Type</th>}
+                    {colVis.has('warehouse') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse</th>}
                     {colVis.has('contact') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Contact</th>}
                     {colVis.has('country') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Country</th>}
                     {colVis.has('currency') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Currency</th>}
@@ -518,14 +512,9 @@ export default function SuppliersPage() {
                       onClick={() => { setSelected(s); setModalMode('view'); }}>
                       {colVis.has('code') && <td className="px-4 py-3.5 font-mono text-xs text-accent">{s.supplierCode}</td>}
                       {colVis.has('name') && <td className="px-4 py-3.5 font-medium text-t1">{s.name}</td>}
-                      {colVis.has('type') && (
-                        <td className="px-4 py-3.5">
-                          <div className="flex flex-wrap gap-1">
-                            {s.supplierType.slice(0, 2).map(t => (
-                              <span key={t} className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium ${TYPE_STYLES[t] ?? ''}`}>{t.replace(/_/g, ' ')}</span>
-                            ))}
-                            {s.supplierType.length > 2 && <span className="text-xs text-t3">+{s.supplierType.length - 2}</span>}
-                          </div>
+                      {colVis.has('warehouse') && (
+                        <td className="px-4 py-3.5 text-t2 text-xs">
+                          {s.defaultWarehouseName || <span className="text-t3">—</span>}
                         </td>
                       )}
                       {colVis.has('contact') && (

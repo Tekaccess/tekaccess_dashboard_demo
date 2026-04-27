@@ -184,7 +184,8 @@ export type Supplier = {
   currency: string;
   creditTermsDays: number;
   status: string;
-  supplierType: string[];
+  defaultWarehouseId: string | null;
+  defaultWarehouseName: string | null;
   hasCrusher?: boolean | null;
   extraFeesNote?: string | null;
   isCritical?: boolean;
@@ -263,7 +264,7 @@ export async function apiGetSupplierById(id: string) {
   return request<{ supplier: Supplier }>(`/procurement/suppliers/${id}`);
 }
 
-export async function apiCreateSupplier(data: Partial<Supplier> & { supplierType: string[] }) {
+export async function apiCreateSupplier(data: Partial<Supplier>) {
   return request<{ supplier: Supplier }>('/procurement/suppliers', {
     method: 'POST',
     body: JSON.stringify(data),

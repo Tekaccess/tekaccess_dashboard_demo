@@ -515,12 +515,20 @@ export default function PurchaseOrdersPage() {
           options={supplierOptions}
           value={draft.supplierId || null}
           onChange={(val, opt) => {
-            if (!val || !opt) { updateDraft({ supplierId: '', supplierName: '', vendorReference: '' }); return; }
+            if (!val || !opt) {
+              updateDraft({
+                supplierId: '', supplierName: '', vendorReference: '',
+                destinationWarehouseId: '', destinationWarehouseName: '',
+              });
+              return;
+            }
             const supplier = suppliers.find(s => s._id === val);
             updateDraft({
               supplierId: val,
               supplierName: opt.label,
               vendorReference: supplier?.supplierCode || '',
+              destinationWarehouseId: supplier?.defaultWarehouseId || '',
+              destinationWarehouseName: supplier?.defaultWarehouseName || '',
             });
           }}
           placeholder="Search supplier..."
