@@ -7,7 +7,7 @@ import {
 } from '@phosphor-icons/react';
 import {
   apiListMovements, apiCreateMovement, apiCreateTransfer,
-  apiListStockItems, apiListWarehouses, apiListPurchaseOrders, apiListTrucks,
+  apiListStockItems, apiGetStockItemById, apiListWarehouses, apiListPurchaseOrders, apiListTrucks,
   StockMovement, StockItem, Warehouse, PurchaseOrder, Truck as TruckType,
 } from '../../lib/api';
 import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSelect';
@@ -21,13 +21,13 @@ const MOVEMENT_TABS = [
 ];
 
 const TYPE_META: Record<string, { label: string; style: string; dot: string; Icon: React.ComponentType<any> }> = {
-  INBOUND:      { label: 'Inbound',     style: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', dot: 'bg-emerald-400', Icon: ArrowDown },
-  OUTBOUND:     { label: 'Outbound',    style: 'bg-rose-500/10 text-rose-400 border-rose-500/20',          dot: 'bg-rose-400',    Icon: ArrowUp },
-  TRANSFER_OUT: { label: 'Transfer Out',style: 'bg-blue-500/10 text-blue-400 border-blue-500/20',          dot: 'bg-blue-400',    Icon: ArrowsLeftRight },
-  TRANSFER_IN:  { label: 'Transfer In', style: 'bg-teal-500/10 text-teal-400 border-teal-500/20',          dot: 'bg-teal-400',    Icon: ArrowsLeftRight },
-  ADJUSTMENT:   { label: 'Adjustment',  style: 'bg-amber-500/10 text-amber-500 border-amber-500/20',       dot: 'bg-amber-500',   Icon: ArrowsCounterClockwise },
-  STOCK_COUNT:  { label: 'Stock Count', style: 'bg-purple-500/10 text-purple-400 border-purple-500/20',    dot: 'bg-purple-400',  Icon: Clipboard },
-  RETURN:       { label: 'Return',      style: 'bg-orange-500/10 text-orange-400 border-orange-500/20',    dot: 'bg-orange-400',  Icon: ArrowDown },
+  INBOUND: { label: 'Inbound', style: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', dot: 'bg-emerald-400', Icon: ArrowDown },
+  OUTBOUND: { label: 'Outbound', style: 'bg-rose-500/10 text-rose-400 border-rose-500/20', dot: 'bg-rose-400', Icon: ArrowUp },
+  TRANSFER_OUT: { label: 'Transfer Out', style: 'bg-blue-500/10 text-blue-400 border-blue-500/20', dot: 'bg-blue-400', Icon: ArrowsLeftRight },
+  TRANSFER_IN: { label: 'Transfer In', style: 'bg-teal-500/10 text-teal-400 border-teal-500/20', dot: 'bg-teal-400', Icon: ArrowsLeftRight },
+  ADJUSTMENT: { label: 'Adjustment', style: 'bg-amber-500/10 text-amber-500 border-amber-500/20', dot: 'bg-amber-500', Icon: ArrowsCounterClockwise },
+  STOCK_COUNT: { label: 'Stock Count', style: 'bg-purple-500/10 text-purple-400 border-purple-500/20', dot: 'bg-purple-400', Icon: Clipboard },
+  RETURN: { label: 'Return', style: 'bg-orange-500/10 text-orange-400 border-orange-500/20', dot: 'bg-orange-400', Icon: ArrowDown },
 };
 
 const TRANSPORT_METHODS = ['Factory Delivery', 'Direct Transport', 'Third-Party Logistics', 'Company Fleet', 'Other'];
@@ -123,6 +123,12 @@ export default function MovementsPage() {
     setDraft(d => ({ ...d, ...patch }));
   }
 
+  async function ensureStockItemLoaded(id: string) {
+    if (!id || stockItems.some(si => si._id === id)) return;
+    const res = await apiGetStockItemById(id);
+    if (res.success) setStockItems(prev => [...prev, res.data.item]);
+  }
+
   // Computed net weight from weighbridge inputs
   const gross = parseFloat(draft.grossWeight) || 0;
   const tare = parseFloat(draft.tareWeight) || 0;
@@ -169,54 +175,46 @@ export default function MovementsPage() {
     setSaving(true); setError(null);
     let res: any;
 
+    const qty = weightReady ? netWeight : draft.qty;
+    if (qty <= 0) { setError('Quantity must be greater than 0.'); setSaving(false); return; }
+
+    const commonMovementFields = {
+      stockItemId: draft.stockItemId,
+      qty,
+      unitCost: draft.unitCost || undefined,
+      sourceRef: draft.linkedPoRef || 'Manual entry',
+      reason: draft.reason || undefined,
+      notes: draft.notes || undefined,
+      linkedPoId: draft.linkedPoId || undefined,
+      linkedPoRef: draft.linkedPoRef || undefined,
+      supplierName: draft.supplierName || undefined,
+      supplierTin: draft.supplierTin || undefined,
+      supplierVrn: draft.supplierVrn || undefined,
+      supplierPhone: draft.supplierPhone || undefined,
+      grossWeight: gross || undefined,
+      tareWeight: tare || undefined,
+      deductionWeight: deduction || undefined,
+      netWeight: weightReady ? netWeight : undefined,
+      transportMethod: draft.transportMethod || undefined,
+      truckPlate: draft.truckPlate || undefined,
+      driverName: draft.driverName || undefined,
+      pickupCode: draft.pickupCode || undefined,
+      deliveryTime: draft.deliveryTime || undefined,
+      remark: draft.remark || undefined,
+    };
+
     if (draft.mode === 'transfer') {
       if (!draft.destinationWarehouseId) { setError('Destination warehouse is required.'); setSaving(false); return; }
-      if (draft.qty <= 0) { setError('Quantity must be greater than 0.'); setSaving(false); return; }
       res = await apiCreateTransfer({
         stockItemId: draft.stockItemId,
-        qty: draft.qty,
+        qty,
         destinationWarehouseId: draft.destinationWarehouseId,
         notes: draft.notes || undefined,
       });
     } else if (draft.mode === 'outbound') {
-      if (draft.qty <= 0) { setError('Quantity must be greater than 0.'); setSaving(false); return; }
-      res = await apiCreateMovement({
-        movementType: 'OUTBOUND',
-        stockItemId: draft.stockItemId,
-        qty: draft.qty,
-        unitCost: draft.unitCost || undefined,
-        sourceRef: draft.linkedPoRef || 'Manual entry',
-        reason: draft.reason || undefined,
-        notes: draft.notes || undefined,
-      });
+      res = await apiCreateMovement({ movementType: 'OUTBOUND', ...commonMovementFields });
     } else {
-      // INBOUND — use net weight as qty
-      const qty = weightReady ? netWeight : draft.qty;
-      if (qty <= 0) { setError('Net weight / quantity must be greater than 0.'); setSaving(false); return; }
-      res = await apiCreateMovement({
-        movementType: 'INBOUND',
-        stockItemId: draft.stockItemId,
-        qty,
-        unitCost: draft.unitCost || undefined,
-        sourceRef: draft.linkedPoRef || 'Manual entry',
-        linkedPoId: draft.linkedPoId || undefined,
-        linkedPoRef: draft.linkedPoRef || undefined,
-        supplierName: draft.supplierName || undefined,
-        supplierTin: draft.supplierTin || undefined,
-        supplierVrn: draft.supplierVrn || undefined,
-        supplierPhone: draft.supplierPhone || undefined,
-        grossWeight: gross || undefined,
-        tareWeight: tare || undefined,
-        deductionWeight: deduction || undefined,
-        netWeight: qty,
-        transportMethod: draft.transportMethod || undefined,
-        truckPlate: draft.truckPlate || undefined,
-        driverName: draft.driverName || undefined,
-        pickupCode: draft.pickupCode || undefined,
-        deliveryTime: draft.deliveryTime || undefined,
-        remark: draft.remark || undefined,
-        notes: draft.notes || undefined,
-      });
+      res = await apiCreateMovement({ movementType: 'INBOUND', ...commonMovementFields });
     }
 
     setSaving(false);
@@ -231,11 +229,10 @@ export default function MovementsPage() {
   const modeBtn = (mode: NewMovementDraft['mode'], label: string) => (
     <button
       onClick={() => upd({ mode })}
-      className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
-        draft.mode === mode
-          ? 'border-accent bg-accent/10 text-accent'
-          : 'border-border text-t2 hover:text-t1 hover:border-border'
-      }`}
+      className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${draft.mode === mode
+        ? 'border-accent bg-accent/10 text-accent'
+        : 'border-border text-t2 hover:text-t1 hover:border-border'
+        }`}
     >
       {label}
     </button>
@@ -254,279 +251,150 @@ export default function MovementsPage() {
         {modeBtn('transfer', 'Transfer')}
       </div>
 
-      {/* ── INBOUND ── */}
-      {draft.mode === 'inbound' && (
-        <>
-          {/* Purchase Order */}
-          <section className="space-y-3">
-            <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
-              <Receipt size={11} weight="duotone" /> Purchase Order
-            </p>
-            <SearchSelect
-              label="Link to PO (optional)"
-              options={poOptions}
-              value={draft.linkedPoId || null}
-              onChange={(val, opt) => {
-                if (!val) { upd({ linkedPoId: '', linkedPoRef: '', supplierName: '', selectedPoLineIdx: undefined }); return; }
-                const po = purchaseOrders.find(p => p._id === val);
-                upd({
-                  linkedPoId: val,
-                  linkedPoRef: opt?.label || '',
-                  supplierName: po?.supplierName || '',
-                  supplierPhone: '',
-                  selectedPoLineIdx: po?.lineItems && po.lineItems.length > 0 ? 0 : undefined,
-                });
-                
-                // Auto-select stock item if possible
-                if (po?.lineItems && po.lineItems.length > 0) {
-                  const li = po.lineItems[0];
-                  if (li.stockItemId) upd({ stockItemId: String(li.stockItemId) });
-                }
-              }}
-              placeholder="Search PO reference..."
-            />
+      {/* ── Purchase Order ── */}
+      <section className="space-y-3">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
+          <Receipt size={11} weight="duotone" /> Purchase Order
+        </p>
+        <SearchSelect
+          label="Link to PO (optional)"
+          options={poOptions}
+          value={draft.linkedPoId || null}
+          onChange={(val, opt) => {
+            if (!val) {
+              upd({ linkedPoId: '', linkedPoRef: '', supplierName: '', supplierPhone: '', selectedPoLineIdx: undefined, stockItemId: '', unitCost: 0, qty: 0 });
+              return;
+            }
+            const po = purchaseOrders.find(p => p._id === val);
+            const firstLine = po?.lineItems?.[0];
+            const siId = firstLine?.stockItemId ? String(firstLine.stockItemId) : '';
+            upd({
+              linkedPoId: val,
+              linkedPoRef: opt?.label || '',
+              supplierName: po?.supplierName || '',
+              supplierPhone: '',
+              selectedPoLineIdx: po?.lineItems && po.lineItems.length > 0 ? 0 : undefined,
+              stockItemId: siId,
+              unitCost: firstLine?.unitPrice ?? 0,
+              qty: firstLine?.orderedQty ?? 0,
+            });
+            if (siId) ensureStockItemLoaded(siId);
+          }}
+          placeholder="Search PO reference..."
+        />
 
-            {draft.linkedPoId && purchaseOrders.find(p => p._id === draft.linkedPoId)?.lineItems.length! > 1 && (
-              <div>
-                <label className="block text-[10px] text-t3 mb-1">Select PO Item</label>
-                <select 
-                  className={inp}
-                  value={draft.selectedPoLineIdx}
-                  onChange={e => {
-                    const idx = Number(e.target.value);
-                    const po = purchaseOrders.find(p => p._id === draft.linkedPoId);
-                    const li = po?.lineItems[idx];
-                    upd({ 
-                      selectedPoLineIdx: idx,
-                      stockItemId: li?.stockItemId ? String(li.stockItemId) : draft.stockItemId
-                    });
-                  }}
-                >
-                  {purchaseOrders.find(p => p._id === draft.linkedPoId)?.lineItems.map((li, idx) => (
-                    <option key={idx} value={idx}>{li.description} ({li.orderedQty} {li.unit})</option>
-                  ))}
-                </select>
+        {draft.linkedPoId && (() => {
+          const po = purchaseOrders.find(p => p._id === draft.linkedPoId);
+          if (!po) return null;
+          return (
+            <div className="rounded-lg border border-accent/20 bg-accent/5 px-3 py-2 text-xs space-y-0.5">
+              <div className="flex items-center justify-between">
+                <span className="text-t3">Type</span>
+                <span className="text-t1 capitalize">{po.procurementType.replace('_', ' ')}</span>
               </div>
-            )}
-          </section>
-
-          {/* Supplier */}
-          <section className="space-y-3">
-            <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
-              <UserCircle size={11} weight="duotone" /> Supplier
-            </p>
-            <div>
-              <label className="block text-[10px] text-t3 mb-1">Supplier Name</label>
-              <input className={inp} value={draft.supplierName}
-                onChange={e => upd({ supplierName: e.target.value })}
-                placeholder="Auto-filled from PO or enter manually" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] text-t3 mb-1">TIN</label>
-                <input className={inp} value={draft.supplierTin}
-                  onChange={e => upd({ supplierTin: e.target.value })} placeholder="—" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-t3 mb-1">VRN</label>
-                <input className={inp} value={draft.supplierVrn}
-                  onChange={e => upd({ supplierVrn: e.target.value })} placeholder="—" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-[10px] text-t3 mb-1">Phone</label>
-              <input className={inp} value={draft.supplierPhone}
-                onChange={e => upd({ supplierPhone: e.target.value })} placeholder="—" />
-            </div>
-          </section>
-
-          {/* Product / stock item */}
-          <section className="space-y-3">
-            <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Product</p>
-            <SearchSelect
-              label="Stock Item *"
-              options={stockOptions}
-              value={draft.stockItemId || null}
-              onChange={v => {
-                upd({ stockItemId: v ?? '' });
-              }}
-              placeholder="Search stock items..."
-              clearable={false}
-            />
-          </section>
-
-          {/* Weight */}
-          <section className="space-y-3">
-            <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
-              <Scales size={11} weight="duotone" /> Weighbridge
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] text-t3 mb-1">Gross Weight (tons)</label>
-                <input type="number" min={0} step={0.001} className={inp}
-                  value={draft.grossWeight}
-                  onChange={e => upd({ grossWeight: e.target.value })}
-                  placeholder="e.g. 46.87" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-t3 mb-1">Tare Weight (tons)</label>
-                <input type="number" min={0} step={0.001} className={inp}
-                  value={draft.tareWeight}
-                  onChange={e => upd({ tareWeight: e.target.value })}
-                  placeholder="e.g. 18.89" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] text-t3 mb-1">Deduction (tons)</label>
-                <input type="number" min={0} step={0.001} className={inp}
-                  value={draft.deductionWeight}
-                  onChange={e => upd({ deductionWeight: e.target.value })} />
-              </div>
-              <div>
-                <label className="block text-[10px] text-t3 mb-1">Net Weight (auto)</label>
-                <div className={`${weightReady ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : inpReadonly + ' border'} px-3 py-2 rounded-lg text-sm font-bold`}>
-                  {weightReady ? `${netWeight} tons` : '—'}
+              {po.expectedDeliveryDate && (
+                <div className="flex items-center justify-between">
+                  <span className="text-t3">Expected</span>
+                  <span className="text-t1">{new Date(po.expectedDeliveryDate).toLocaleDateString()}</span>
                 </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-t3">Ordered Qty</span>
+                <span className="text-t1 font-medium">{po.totalOrderedQty} {po.lineItems[0]?.unit ?? ''}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-t3">Value</span>
+                <span className="text-t1 font-medium">{po.currency} {po.totalValueWithTax.toLocaleString()}</span>
               </div>
             </div>
-            {!weightReady && (
-              <div>
-                <label className="block text-[10px] text-t3 mb-1">Manual Quantity (if no weighbridge)</label>
-                <input type="number" min={0.001} step={0.001} className={inp}
-                  value={draft.qty || ''}
-                  onChange={e => upd({ qty: Number(e.target.value) })}
-                  placeholder="Enter quantity directly" />
-              </div>
-            )}
-          </section>
+          );
+        })()}
 
-          {/* Transport */}
-          <section className="space-y-3">
-            <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
-              <Truck size={11} weight="duotone" /> Transport
-            </p>
-            <div>
-              <label className="block text-[10px] text-t3 mb-1">Transport Method</label>
-              <select className={inp} value={draft.transportMethod}
-                onChange={e => upd({ transportMethod: e.target.value })}>
-                <option value="">— Select method —</option>
-                {TRANSPORT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </div>
-            <SearchSelect
-              label="Truck / License Plate"
-              options={truckOptions}
-              value={null}
-              onChange={(val, opt) => {
-                const truck = trucks.find(t => t._id === val);
-                upd({
-                  truckPlate: truck?.plateNumber || opt?.label || '',
-                  driverName: truck?.assignedDriverName || '',
-                });
+        {draft.linkedPoId && purchaseOrders.find(p => p._id === draft.linkedPoId)?.lineItems.length! > 1 && (
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">Select PO Item</label>
+            <select
+              className={inp}
+              value={draft.selectedPoLineIdx}
+              onChange={e => {
+                const idx = Number(e.target.value);
+                const po = purchaseOrders.find(p => p._id === draft.linkedPoId);
+                const li = po?.lineItems[idx];
+                const siId = li?.stockItemId ? String(li.stockItemId) : '';
+                upd({ selectedPoLineIdx: idx, stockItemId: siId, unitCost: li?.unitPrice ?? 0, qty: li?.orderedQty ?? 0 });
+                if (siId) ensureStockItemLoaded(siId);
               }}
-              placeholder="Search plate number..."
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] text-t3 mb-1">License Plate</label>
-                <input className={inp} value={draft.truckPlate}
-                  onChange={e => upd({ truckPlate: e.target.value })}
-                  placeholder="e.g. T841ELA" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-t3 mb-1">Driver Name</label>
-                <input className={inp} value={draft.driverName}
-                  onChange={e => upd({ driverName: e.target.value })}
-                  placeholder="Auto-filled from truck" />
-              </div>
-            </div>
-          </section>
+            >
+              {purchaseOrders.find(p => p._id === draft.linkedPoId)?.lineItems.map((li, idx) => (
+                <option key={idx} value={idx}>{li.description} ({li.orderedQty} {li.unit})</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </section>
 
-          {/* Receipt details */}
-          <section className="space-y-3">
-            <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Receipt Details</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] text-t3 mb-1">Pickup Code</label>
-                <input className={inp} value={draft.pickupCode}
-                  onChange={e => upd({ pickupCode: e.target.value })}
-                  placeholder="e.g. 311D6267" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-t3 mb-1">Delivery Time</label>
-                <input type="datetime-local" className={inp} value={draft.deliveryTime}
-                  onChange={e => upd({ deliveryTime: e.target.value })} />
-              </div>
-            </div>
-            <div>
-              <label className="block text-[10px] text-t3 mb-1">Remark</label>
-              <input className={inp} value={draft.remark}
-                onChange={e => upd({ remark: e.target.value })} placeholder="—" />
-            </div>
-            <div>
-              <label className="block text-[10px] text-t3 mb-1">Notes</label>
-              <textarea rows={2} className={`${inp} resize-none`} value={draft.notes}
-                onChange={e => upd({ notes: e.target.value })} />
-            </div>
-          </section>
-        </>
-      )}
+      {/* ── Supplier ── */}
+      <section className="space-y-3">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
+          <UserCircle size={11} weight="duotone" /> Supplier
+        </p>
+        <div>
+          <label className="block text-[10px] text-t3 mb-1">Supplier Name</label>
+          <input className={inp} value={draft.supplierName}
+            onChange={e => upd({ supplierName: e.target.value })}
+            placeholder="Auto-filled from PO or enter manually" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">TIN</label>
+            <input className={inp} value={draft.supplierTin}
+              onChange={e => upd({ supplierTin: e.target.value })} placeholder="—" />
+          </div>
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">VRN</label>
+            <input className={inp} value={draft.supplierVrn}
+              onChange={e => upd({ supplierVrn: e.target.value })} placeholder="—" />
+          </div>
+        </div>
+        <div>
+          <label className="block text-[10px] text-t3 mb-1">Phone</label>
+          <input className={inp} value={draft.supplierPhone}
+            onChange={e => upd({ supplierPhone: e.target.value })} placeholder="—" />
+        </div>
+      </section>
 
-      {/* ── OUTBOUND ── */}
-      {draft.mode === 'outbound' && (
-        <>
-          <section className="space-y-3">
-            <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Item &amp; Quantity</p>
-            <SearchSelect
-              label="Stock Item *"
-              options={stockOptions}
-              value={draft.stockItemId || null}
-              onChange={v => {
-                const si = stockItems.find(s => s._id === v);
-                upd({ stockItemId: v ?? '', unitCost: si?.weightedAvgCost ?? 0 });
-              }}
-              placeholder="Search stock items..."
-              clearable={false}
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] text-t3 mb-1">Quantity *</label>
-                <input type="number" min={0.001} step={0.001} className={inp}
-                  value={draft.qty || ''}
-                  onChange={e => upd({ qty: Number(e.target.value) })} />
+      {/* ── Product ── */}
+      <section className="space-y-3">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Product</p>
+
+        {draft.linkedPoId && (() => {
+          const po = purchaseOrders.find(p => p._id === draft.linkedPoId);
+          const li = po?.lineItems[draft.selectedPoLineIdx ?? 0];
+          if (!li) return null;
+          return (
+            <div className="rounded-lg border border-border bg-surface/50 px-3 py-2 text-xs space-y-0.5">
+              <p className="text-t2 font-medium">{li.productName || li.description}</p>
+              <div className="flex items-center gap-3 text-t3">
+                {li.itemCode && <span>{li.itemCode}</span>}
+                <span>{li.orderedQty} {li.unit} ordered · {li.unitPrice.toLocaleString()} / {li.unit}</span>
               </div>
             </div>
-          </section>
-          <section className="space-y-3">
-            <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Reference</p>
-            <div>
-              <label className="block text-[10px] text-t3 mb-1">Reason</label>
-              <input className={inp} value={draft.reason}
-                onChange={e => upd({ reason: e.target.value })}
-                placeholder="e.g. Issued to site" />
-            </div>
-            <div>
-              <label className="block text-[10px] text-t3 mb-1">Notes</label>
-              <textarea rows={2} className={`${inp} resize-none`} value={draft.notes}
-                onChange={e => upd({ notes: e.target.value })} />
-            </div>
-          </section>
-        </>
-      )}
+          );
+        })()}
 
-      {/* ── TRANSFER ── */}
-      {draft.mode === 'transfer' && (
-        <section className="space-y-3">
-          <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Transfer Details</p>
-          <SearchSelect
-            label="Stock Item *"
-            options={stockOptions}
-            value={draft.stockItemId || null}
-            onChange={v => { upd({ stockItemId: v ?? '' }); }}
-            placeholder="Search stock items..."
-            clearable={false}
-          />
+        <SearchSelect
+          label="Stock Item *"
+          options={stockOptions}
+          value={draft.stockItemId || null}
+          onChange={v => {
+            const si = stockItems.find(s => s._id === v);
+            upd({ stockItemId: v ?? '', unitCost: draft.linkedPoId ? draft.unitCost : (si?.weightedAvgCost ?? 0) });
+          }}
+          placeholder="Search stock items..."
+          clearable={false}
+        />
+
+        {draft.mode === 'transfer' && (
           <SearchSelect
             label="Destination Warehouse *"
             options={destWhOptions}
@@ -535,19 +403,139 @@ export default function MovementsPage() {
             placeholder="Select destination..."
             clearable={false}
           />
+        )}
+
+        <div>
+          <label className="block text-[10px] text-t3 mb-1">Unit Cost {draft.linkedPoId ? '(from PO)' : ''}</label>
+          <input type="number" min={0} step={0.01} className={inp}
+            value={draft.unitCost || ''}
+            onChange={e => upd({ unitCost: Number(e.target.value) })}
+            placeholder="e.g. 250.00" />
+        </div>
+      </section>
+
+      {/* ── Weighbridge & Quantity ── */}
+      <section className="space-y-3">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
+          <Scales size={11} weight="duotone" /> Weighbridge &amp; Quantity
+        </p>
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[10px] text-t3 mb-1">Quantity *</label>
-            <input type="number" min={0.001} step={0.001} className={inp}
-              value={draft.qty || ''}
-              onChange={e => upd({ qty: Number(e.target.value) })} />
+            <label className="block text-[10px] text-t3 mb-1">Gross Weight (tons)</label>
+            <input type="number" min={0} step={0.001} className={inp}
+              value={draft.grossWeight}
+              onChange={e => upd({ grossWeight: e.target.value })}
+              placeholder="e.g. 46.87" />
           </div>
           <div>
-            <label className="block text-[10px] text-t3 mb-1">Notes</label>
-            <textarea rows={2} className={`${inp} resize-none`} value={draft.notes}
-              onChange={e => upd({ notes: e.target.value })} />
+            <label className="block text-[10px] text-t3 mb-1">Tare Weight (tons)</label>
+            <input type="number" min={0} step={0.001} className={inp}
+              value={draft.tareWeight}
+              onChange={e => upd({ tareWeight: e.target.value })}
+              placeholder="e.g. 18.89" />
           </div>
-        </section>
-      )}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">Deduction (tons)</label>
+            <input type="number" min={0} step={0.001} className={inp}
+              value={draft.deductionWeight}
+              onChange={e => upd({ deductionWeight: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">
+              Quantity *{weightReady && <span className="text-emerald-400 ml-1">· weighbridge</span>}
+            </label>
+            {weightReady ? (
+              <div className="px-3 py-2 rounded-lg text-sm font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                {netWeight} tons
+              </div>
+            ) : (
+              <input type="number" min={0.001} step={0.001} className={inp}
+                value={draft.qty || ''}
+                onChange={e => upd({ qty: Number(e.target.value) })}
+                placeholder="Enter quantity" />
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Transport ── */}
+      <section className="space-y-3">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
+          <Truck size={11} weight="duotone" /> Transport
+        </p>
+        <div>
+          <label className="block text-[10px] text-t3 mb-1">Transport Method</label>
+          <select className={inp} value={draft.transportMethod}
+            onChange={e => upd({ transportMethod: e.target.value })}>
+            <option value="">— Select method —</option>
+            {TRANSPORT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+        <SearchSelect
+          label="Truck / License Plate"
+          options={truckOptions}
+          value={null}
+          onChange={(val, opt) => {
+            const truck = trucks.find(t => t._id === val);
+            upd({ truckPlate: truck?.plateNumber || opt?.label || '', driverName: truck?.assignedDriverName || '' });
+          }}
+          placeholder="Search plate number..."
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">License Plate</label>
+            <input className={inp} value={draft.truckPlate}
+              onChange={e => upd({ truckPlate: e.target.value })}
+              placeholder="e.g. T841ELA" />
+          </div>
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">Driver Name</label>
+            <input className={inp} value={draft.driverName}
+              onChange={e => upd({ driverName: e.target.value })}
+              placeholder="Auto-filled from truck" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Details ── */}
+      <section className="space-y-3">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Details</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">Pickup Code</label>
+            <input className={inp} value={draft.pickupCode}
+              onChange={e => upd({ pickupCode: e.target.value })}
+              placeholder="e.g. 311D6267" />
+          </div>
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">Delivery Time</label>
+            <input type="datetime-local" className={inp} value={draft.deliveryTime}
+              onChange={e => upd({ deliveryTime: e.target.value })} />
+          </div>
+        </div>
+        <div>
+          <label className="block text-[10px] text-t3 mb-1">Reason</label>
+          <input className={inp} value={draft.reason}
+            onChange={e => upd({ reason: e.target.value })}
+            placeholder={
+              draft.mode === 'outbound' ? 'e.g. Issued to site'
+              : draft.mode === 'transfer' ? 'e.g. Stock rebalancing'
+              : 'e.g. Purchase receipt'
+            } />
+        </div>
+        <div>
+          <label className="block text-[10px] text-t3 mb-1">Remark</label>
+          <input className={inp} value={draft.remark}
+            onChange={e => upd({ remark: e.target.value })} placeholder="—" />
+        </div>
+        <div>
+          <label className="block text-[10px] text-t3 mb-1">Notes</label>
+          <textarea rows={2} className={`${inp} resize-none`} value={draft.notes}
+            onChange={e => upd({ notes: e.target.value })} />
+        </div>
+      </section>
 
       <button onClick={handleSave} disabled={saving}
         className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
