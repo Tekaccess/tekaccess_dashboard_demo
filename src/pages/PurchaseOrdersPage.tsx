@@ -4,7 +4,7 @@ import {
   Plus, MagnifyingGlass, DownloadSimple, Funnel,
   ListDashes, ChartBar, TrendUp, CaretDown,
   CheckCircle, Warning, FileText, Eye, PencilSimple, X,
-  Spinner, Package, UserPlus, Trash, Scales,
+  Spinner, Package, UserPlus, Trash,
 } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'motion/react';
 import QuickAddClient from '../components/QuickAddClient';
@@ -200,8 +200,6 @@ export default function PurchaseOrdersPage() {
   const [showAddClient, setShowAddClient] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PurchaseOrder | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [modalTab, setModalTab] = useState<'manual' | 'supporting'>('manual');
-
   // Data from API
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
@@ -352,7 +350,6 @@ export default function PurchaseOrdersPage() {
 
   function handleNewOrder() {
     setSaveError(null);
-    setModalTab('manual');
     setModal({ mode: 'new', draft: emptyDraft() });
   }
 
@@ -770,160 +767,19 @@ export default function PurchaseOrdersPage() {
     </div>
   );
 
-  const supportingForm = draft && (
-    <div className="space-y-6">
-      <div className="p-4 bg-accent/5 border border-accent/20 rounded-xl space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-accent/10 rounded-lg">
-            <Scales size={20} className="text-accent" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-t1">Weighbridge Document</h3>
-            <p className="text-[11px] text-t3">Scan or enter document details to auto-fill the order.</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-[10px] text-t3 mb-1">Gross Weight (kg)</label>
-            <input
-              type="number"
-              value={draft.grossWeight}
-              onChange={e => {
-                const gw = Number(e.target.value);
-                const nw = Math.max(0, gw - (draft.tareWeight || 0) - (draft.deductionWeight || 0));
-                updateDraft({ grossWeight: gw, netWeight: nw });
-                updateLineItem(draft.lineItems[0]._key, { orderedQty: nw });
-              }}
-              className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] text-t3 mb-1">Tare Weight (kg)</label>
-            <input
-              type="number"
-              value={draft.tareWeight}
-              onChange={e => {
-                const tw = Number(e.target.value);
-                const nw = Math.max(0, (draft.grossWeight || 0) - tw - (draft.deductionWeight || 0));
-                updateDraft({ tareWeight: tw, netWeight: nw });
-                updateLineItem(draft.lineItems[0]._key, { orderedQty: nw });
-              }}
-              className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-[10px] text-t3 mb-1">Deduction (kg)</label>
-            <input
-              type="number"
-              value={draft.deductionWeight}
-              onChange={e => {
-                const dw = Number(e.target.value);
-                const nw = Math.max(0, (draft.grossWeight || 0) - (draft.tareWeight || 0) - dw);
-                updateDraft({ deductionWeight: dw, netWeight: nw });
-                updateLineItem(draft.lineItems[0]._key, { orderedQty: nw });
-              }}
-              className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] text-t3 mb-1">Net Weight (Calculated)</label>
-            <div className="w-full px-3 py-2 bg-surface/50 border border-border rounded-lg text-sm text-accent font-bold h-[38px] flex items-center">
-              {draft.netWeight} kg
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Transport Info</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-[10px] text-t3 mb-1">Truck Plate</label>
-            <input
-              type="text"
-              value={draft.truckPlate}
-              onChange={e => updateDraft({ truckPlate: e.target.value })}
-              className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
-              placeholder="e.g. RAD 123 A"
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] text-t3 mb-1">Driver Name</label>
-            <input
-              type="text"
-              value={draft.driverName}
-              onChange={e => updateDraft({ driverName: e.target.value })}
-              className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
-              placeholder="Driver's full name"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block text-[10px] text-t3 mb-1">Pickup Code / Ref</label>
-          <input
-            type="text"
-            value={draft.pickupCode}
-            onChange={e => updateDraft({ pickupCode: e.target.value })}
-            className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
-            placeholder="Document reference"
-          />
-        </div>
-      </div>
-
-      <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
-        <p className="text-[11px] text-blue-400 flex items-center gap-1.5">
-          <FileText size={14} /> The info above will auto-fill the manual input tab. You can still edit it before submitting.
-        </p>
-      </div>
+  const formContent = (
+    <div className="space-y-6 pb-10">
+      {manualForm}
 
       <button
         type="button"
-        onClick={() => setModalTab('manual')}
-        className="w-full py-3 bg-surface border border-border text-t1 rounded-xl text-sm font-bold hover:bg-surface-h transition-all"
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
-        Go to Manual Input &amp; Review
+        {saving && <Spinner size={15} className="animate-spin" />}
+        {saving ? 'Saving...' : modal?.mode === 'edit' ? 'Update Purchase Order' : 'Submit Purchase Order'}
       </button>
-    </div>
-  );
-
-  const formContent = (
-    <div className="space-y-6 pb-10">
-      <div className="flex gap-1 p-1 bg-surface border border-border rounded-xl">
-        <button
-          onClick={() => setModalTab('manual')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
-            modalTab === 'manual' ? 'bg-accent text-white shadow-md' : 'text-t3 hover:text-t2'
-          }`}
-        >
-          <PencilSimple size={14} /> Manual Input
-        </button>
-        <button
-          onClick={() => setModalTab('supporting')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
-            modalTab === 'supporting' ? 'bg-accent text-white shadow-md' : 'text-t3 hover:text-t2'
-          }`}
-        >
-          <Scales size={14} /> Supporting Document
-        </button>
-      </div>
-
-      {modalTab === 'manual' ? manualForm : supportingForm}
-
-      {modalTab === 'manual' && (
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {saving && <Spinner size={15} className="animate-spin" />}
-          {saving ? 'Saving...' : modal?.mode === 'edit' ? 'Update Purchase Order' : 'Submit Purchase Order'}
-        </button>
-      )}
     </div>
   );
 

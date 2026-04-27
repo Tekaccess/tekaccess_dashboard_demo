@@ -133,7 +133,7 @@ export default function MovementsPage() {
   const gross = parseFloat(draft.grossWeight) || 0;
   const tare = parseFloat(draft.tareWeight) || 0;
   const deduction = parseFloat(draft.deductionWeight) || 0;
-  const netWeight = Math.max(0, +(gross - tare - deduction).toFixed(4));
+  const netWeight = Math.max(0, +(gross - tare).toFixed(4));
   const weightReady = gross > 0 && tare > 0;
 
   // Option lists
