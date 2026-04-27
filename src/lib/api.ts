@@ -916,6 +916,22 @@ export type StockMovement = {
   delay_reason: string | null;
   postedBy: { _id: string; fullName: string } | null;
   postedAt: string;
+  grossWeight: number | null;
+  tareWeight: number | null;
+  deductionWeight: number;
+  netWeight: number | null;
+  transportMethod: string | null;
+  truckPlate: string | null;
+  driverName: string | null;
+  pickupCode: string | null;
+  deliveryTime: string | null;
+  supplierName: string | null;
+  supplierTin: string | null;
+  supplierVrn: string | null;
+  supplierPhone: string | null;
+  remark: string | null;
+  linkedPoId: string | null;
+  linkedPoRef: string | null;
 };
 
 export async function apiListMovements(params: Record<string, string> = {}) {
@@ -934,6 +950,22 @@ export async function apiCreateMovement(data: {
   notes?: string;
   countedQty?: number;
   delay_reason?: string;
+  grossWeight?: number;
+  tareWeight?: number;
+  deductionWeight?: number;
+  netWeight?: number;
+  transportMethod?: string;
+  truckPlate?: string;
+  driverName?: string;
+  pickupCode?: string;
+  deliveryTime?: string;
+  supplierName?: string;
+  supplierTin?: string;
+  supplierVrn?: string;
+  supplierPhone?: string;
+  remark?: string;
+  linkedPoId?: string;
+  linkedPoRef?: string;
 }) {
   return request<{ movement: StockMovement }>('/inventory/movements', { method: 'POST', body: JSON.stringify(data) });
 }

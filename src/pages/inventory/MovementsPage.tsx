@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, ArrowDown, ArrowUp, ArrowsLeftRight,
   ArrowsCounterClockwise, Clipboard, Spinner, CaretLeft, CaretRight,
+  Truck, Receipt, UserCircle, Scales,
 } from '@phosphor-icons/react';
 import {
   apiListMovements, apiCreateMovement, apiCreateTransfer,
-  apiListStockItems, apiListWarehouses,
-  StockMovement, StockItem, Warehouse,
+  apiListStockItems, apiListWarehouses, apiListPurchaseOrders, apiListTrucks,
+  StockMovement, StockItem, Warehouse, PurchaseOrder, Truck as TruckType,
 } from '../../lib/api';
 import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSelect';
 import DocumentSidePanel from '../../components/DocumentSidePanel';
@@ -29,35 +30,54 @@ const TYPE_META: Record<string, { label: string; style: string; dot: string; Ico
   RETURN:       { label: 'Return',      style: 'bg-orange-500/10 text-orange-400 border-orange-500/20',    dot: 'bg-orange-400',  Icon: ArrowDown },
 };
 
-const DIRECT_TYPES = ['INBOUND', 'OUTBOUND'];
+const TRANSPORT_METHODS = ['Factory Delivery', 'Direct Transport', 'Third-Party Logistics', 'Company Fleet', 'Other'];
 
 interface NewMovementDraft {
-  mode: 'direct' | 'transfer';
-  movementType: string;
+  mode: 'inbound' | 'outbound' | 'transfer';
   stockItemId: string;
   qty: number;
   unitCost: number;
-  sourceRef: string;
   reason: string;
   notes: string;
-  delay_reason: string;
   destinationWarehouseId: string;
+  // Inbound / weighbridge fields
+  linkedPoId: string;
+  linkedPoRef: string;
+  supplierName: string;
+  supplierTin: string;
+  supplierVrn: string;
+  supplierPhone: string;
+  grossWeight: string;
+  tareWeight: string;
+  deductionWeight: string;
+  transportMethod: string;
+  truckPlate: string;
+  driverName: string;
+  pickupCode: string;
+  deliveryTime: string;
+  remark: string;
 }
 
 function emptyDraft(): NewMovementDraft {
   return {
-    mode: 'direct', movementType: 'INBOUND', stockItemId: '',
-    qty: 1, unitCost: 0, sourceRef: '', reason: '', notes: '',
-    delay_reason: '', destinationWarehouseId: '',
+    mode: 'inbound', stockItemId: '', qty: 0, unitCost: 0,
+    reason: '', notes: '', destinationWarehouseId: '',
+    linkedPoId: '', linkedPoRef: '', supplierName: '', supplierTin: '',
+    supplierVrn: '', supplierPhone: '', grossWeight: '', tareWeight: '',
+    deductionWeight: '0', transportMethod: '', truckPlate: '', driverName: '',
+    pickupCode: '', deliveryTime: new Date().toISOString().slice(0, 16), remark: '',
   };
 }
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
+const inpReadonly = 'w-full px-3 py-2 bg-surface/50 border border-border/50 rounded-lg text-sm text-t2 outline-none cursor-default';
 
 export default function MovementsPage() {
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [trucks, setTrucks] = useState<TruckType[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -87,40 +107,116 @@ export default function MovementsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  function updateDraft(patch: Partial<NewMovementDraft>) {
+  // Load POs and trucks once on mount (for the form)
+  useEffect(() => {
+    Promise.all([
+      apiListPurchaseOrders({ limit: '200' })
+        .then(r => r.success && setPurchaseOrders(r.data.orders)),
+      apiListTrucks()
+        .then(r => r.success && setTrucks(r.data.trucks)),
+    ]);
+  }, []);
+
+  function upd(patch: Partial<NewMovementDraft>) {
     setDraft(d => ({ ...d, ...patch }));
   }
 
-  const stockOptions: SearchSelectOption[] = stockItems.map(si => ({
-    value: si._id, label: si.name, sublabel: si.itemCode, meta: si.warehouseName,
-  }));
+  // Computed net weight from weighbridge inputs
+  const gross = parseFloat(draft.grossWeight) || 0;
+  const tare = parseFloat(draft.tareWeight) || 0;
+  const deduction = parseFloat(draft.deductionWeight) || 0;
+  const netWeight = Math.max(0, +(gross - tare - deduction).toFixed(4));
+  const weightReady = gross > 0 && tare > 0;
+
+  // Option lists
+  const stockOptions = useMemo<SearchSelectOption[]>(() =>
+    stockItems.map(si => ({ value: si._id, label: si.name, sublabel: si.itemCode, meta: si.warehouseName })),
+    [stockItems]
+  );
+
+  const poOptions = useMemo<SearchSelectOption[]>(() =>
+    purchaseOrders.map(po => ({
+      value: po._id,
+      label: po.poRef,
+      sublabel: po.supplierName,
+      meta: po.procurementType,
+    })),
+    [purchaseOrders]
+  );
+
+  const truckOptions = useMemo<SearchSelectOption[]>(() =>
+    trucks.map(t => ({
+      value: t._id,
+      label: t.plateNumber,
+      sublabel: t.assignedDriverName || 'No driver assigned',
+      meta: `${t.make} ${t.model}`,
+    })),
+    [trucks]
+  );
 
   const selectedStock = stockItems.find(s => s._id === draft.stockItemId);
-
-  const destWhOptions: SearchSelectOption[] = warehouses
-    .filter(w => w._id !== (selectedStock as any)?.warehouseId)
-    .map(w => ({ value: w._id, label: w.name, sublabel: w.warehouseCode }));
+  const destWhOptions = useMemo<SearchSelectOption[]>(() =>
+    warehouses
+      .filter(w => w._id !== (selectedStock as any)?.warehouseId)
+      .map(w => ({ value: w._id, label: w.name, sublabel: w.warehouseCode })),
+    [warehouses, selectedStock]
+  );
 
   async function handleSave() {
-    if (!draft.stockItemId || draft.qty <= 0) { setError('Stock item and quantity are required.'); return; }
+    if (!draft.stockItemId) { setError('Stock item is required.'); return; }
     setSaving(true); setError(null);
     let res: any;
+
     if (draft.mode === 'transfer') {
       if (!draft.destinationWarehouseId) { setError('Destination warehouse is required.'); setSaving(false); return; }
+      if (draft.qty <= 0) { setError('Quantity must be greater than 0.'); setSaving(false); return; }
       res = await apiCreateTransfer({
-        stockItemId: draft.stockItemId, qty: draft.qty,
+        stockItemId: draft.stockItemId,
+        qty: draft.qty,
         destinationWarehouseId: draft.destinationWarehouseId,
         notes: draft.notes || undefined,
       });
-    } else {
+    } else if (draft.mode === 'outbound') {
+      if (draft.qty <= 0) { setError('Quantity must be greater than 0.'); setSaving(false); return; }
       res = await apiCreateMovement({
-        movementType: draft.movementType, stockItemId: draft.stockItemId,
-        qty: draft.qty, unitCost: draft.unitCost || undefined,
-        sourceRef: draft.sourceRef || 'Manual entry',
-        reason: draft.reason || undefined, notes: draft.notes || undefined,
-        delay_reason: draft.delay_reason || undefined,
+        movementType: 'OUTBOUND',
+        stockItemId: draft.stockItemId,
+        qty: draft.qty,
+        unitCost: draft.unitCost || undefined,
+        sourceRef: draft.linkedPoRef || 'Manual entry',
+        reason: draft.reason || undefined,
+        notes: draft.notes || undefined,
+      });
+    } else {
+      // INBOUND — use net weight as qty
+      const qty = weightReady ? netWeight : draft.qty;
+      if (qty <= 0) { setError('Net weight / quantity must be greater than 0.'); setSaving(false); return; }
+      res = await apiCreateMovement({
+        movementType: 'INBOUND',
+        stockItemId: draft.stockItemId,
+        qty,
+        unitCost: draft.unitCost || undefined,
+        sourceRef: draft.linkedPoRef || 'Manual entry',
+        linkedPoId: draft.linkedPoId || undefined,
+        linkedPoRef: draft.linkedPoRef || undefined,
+        supplierName: draft.supplierName || undefined,
+        supplierTin: draft.supplierTin || undefined,
+        supplierVrn: draft.supplierVrn || undefined,
+        supplierPhone: draft.supplierPhone || undefined,
+        grossWeight: gross || undefined,
+        tareWeight: tare || undefined,
+        deductionWeight: deduction || undefined,
+        netWeight: qty,
+        transportMethod: draft.transportMethod || undefined,
+        truckPlate: draft.truckPlate || undefined,
+        driverName: draft.driverName || undefined,
+        pickupCode: draft.pickupCode || undefined,
+        deliveryTime: draft.deliveryTime || undefined,
+        remark: draft.remark || undefined,
+        notes: draft.notes || undefined,
       });
     }
+
     setSaving(false);
     if (!res.success) { setError((res as any).message || 'Movement failed.'); return; }
     setPanelOpen(false); setDraft(emptyDraft()); load();
@@ -128,113 +224,309 @@ export default function MovementsPage() {
 
   const totalPages = Math.ceil(total / PAGE_LIMIT);
 
+  // ─── Mode toggle buttons ────────────────────────────────────────────────────
+
+  const modeBtn = (mode: NewMovementDraft['mode'], label: string) => (
+    <button
+      onClick={() => upd({ mode })}
+      className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
+        draft.mode === mode
+          ? 'border-accent bg-accent/10 text-accent'
+          : 'border-border text-t2 hover:text-t1 hover:border-border'
+      }`}
+    >
+      {label}
+    </button>
+  );
+
+  // ─── Form ───────────────────────────────────────────────────────────────────
+
   const formContent = (
-    <div className="space-y-5">
-      {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-2">{error}</p>}
+    <div className="space-y-5 pb-10">
+      {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-3">{error}</p>}
 
-      <div>
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Movement Type</p>
-        <div className="flex gap-2">
-          <button onClick={() => updateDraft({ mode: 'direct', movementType: 'INBOUND' })}
-            className={`flex-1 py-2 text-sm rounded-lg border transition-colors ${draft.mode === 'direct' ? 'border-accent bg-accent/10 text-accent' : 'border-border text-t2 hover:text-t1'}`}>
-            Inbound / Outbound
-          </button>
-          <button onClick={() => updateDraft({ mode: 'transfer' })}
-            className={`flex-1 py-2 text-sm rounded-lg border transition-colors ${draft.mode === 'transfer' ? 'border-accent bg-accent/10 text-accent' : 'border-border text-t2 hover:text-t1'}`}>
-            Transfer
-          </button>
-        </div>
-
-        {draft.mode === 'direct' && (
-          <div className="mt-3">
-            <label className="block text-xs text-t3 mb-1.5">Direction</label>
-            <select className={inp}
-              value={draft.movementType} onChange={e => updateDraft({ movementType: e.target.value })}>
-              {DIRECT_TYPES.map(t => <option key={t} value={t}>{TYPE_META[t]?.label ?? t}</option>)}
-            </select>
-          </div>
-        )}
+      {/* Mode selector */}
+      <div className="flex gap-2">
+        {modeBtn('inbound', 'Inbound')}
+        {modeBtn('outbound', 'Outbound')}
+        {modeBtn('transfer', 'Transfer')}
       </div>
 
-      <div>
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Item &amp; Quantity</p>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs text-t3 mb-1.5">Stock Item *</label>
+      {/* ── INBOUND ── */}
+      {draft.mode === 'inbound' && (
+        <>
+          {/* Purchase Order */}
+          <section className="space-y-3">
+            <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
+              <Receipt size={11} weight="duotone" /> Purchase Order
+            </p>
             <SearchSelect
+              label="Link to PO (optional)"
+              options={poOptions}
+              value={draft.linkedPoId || null}
+              onChange={(val, opt) => {
+                if (!val) { upd({ linkedPoId: '', linkedPoRef: '', supplierName: '' }); return; }
+                const po = purchaseOrders.find(p => p._id === val);
+                upd({
+                  linkedPoId: val,
+                  linkedPoRef: opt?.label || '',
+                  supplierName: po?.supplierName || '',
+                  supplierPhone: '',
+                });
+              }}
+              placeholder="Search PO reference..."
+            />
+          </section>
+
+          {/* Supplier */}
+          <section className="space-y-3">
+            <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
+              <UserCircle size={11} weight="duotone" /> Supplier
+            </p>
+            <div>
+              <label className="block text-[10px] text-t3 mb-1">Supplier Name</label>
+              <input className={inp} value={draft.supplierName}
+                onChange={e => upd({ supplierName: e.target.value })}
+                placeholder="Auto-filled from PO or enter manually" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] text-t3 mb-1">TIN</label>
+                <input className={inp} value={draft.supplierTin}
+                  onChange={e => upd({ supplierTin: e.target.value })} placeholder="—" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-t3 mb-1">VRN</label>
+                <input className={inp} value={draft.supplierVrn}
+                  onChange={e => upd({ supplierVrn: e.target.value })} placeholder="—" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] text-t3 mb-1">Phone</label>
+              <input className={inp} value={draft.supplierPhone}
+                onChange={e => upd({ supplierPhone: e.target.value })} placeholder="—" />
+            </div>
+          </section>
+
+          {/* Product / stock item */}
+          <section className="space-y-3">
+            <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Product</p>
+            <SearchSelect
+              label="Stock Item *"
               options={stockOptions}
-              value={draft.stockItemId}
+              value={draft.stockItemId || null}
               onChange={v => {
                 const si = stockItems.find(s => s._id === v);
-                updateDraft({ stockItemId: v ?? '', unitCost: si?.weightedAvgCost ?? 0 });
+                upd({ stockItemId: v ?? '', unitCost: si?.weightedAvgCost ?? 0 });
               }}
               placeholder="Search stock items..."
+              clearable={false}
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-t3 mb-1.5">Quantity *</label>
-              <input type="number" min={0.001} step={0.001} className={inp}
-                value={draft.qty} onChange={e => updateDraft({ qty: Number(e.target.value) })} />
+              <label className="block text-[10px] text-t3 mb-1">Unit Cost</label>
+              <input type="number" min={0} className={inp} value={draft.unitCost}
+                onChange={e => upd({ unitCost: Number(e.target.value) })} />
             </div>
-            {draft.mode === 'direct' && (
+          </section>
+
+          {/* Weight */}
+          <section className="space-y-3">
+            <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
+              <Scales size={11} weight="duotone" /> Weighbridge
+            </p>
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-t3 mb-1.5">Unit Cost</label>
-                <input type="number" min={0} className={inp}
-                  value={draft.unitCost} onChange={e => updateDraft({ unitCost: Number(e.target.value) })} />
+                <label className="block text-[10px] text-t3 mb-1">Gross Weight (tons)</label>
+                <input type="number" min={0} step={0.001} className={inp}
+                  value={draft.grossWeight}
+                  onChange={e => upd({ grossWeight: e.target.value })}
+                  placeholder="e.g. 46.87" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-t3 mb-1">Tare Weight (tons)</label>
+                <input type="number" min={0} step={0.001} className={inp}
+                  value={draft.tareWeight}
+                  onChange={e => upd({ tareWeight: e.target.value })}
+                  placeholder="e.g. 18.89" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] text-t3 mb-1">Deduction (tons)</label>
+                <input type="number" min={0} step={0.001} className={inp}
+                  value={draft.deductionWeight}
+                  onChange={e => upd({ deductionWeight: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-[10px] text-t3 mb-1">Net Weight (auto)</label>
+                <div className={`${weightReady ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : inpReadonly + ' border'} px-3 py-2 rounded-lg text-sm font-bold`}>
+                  {weightReady ? `${netWeight} tons` : '—'}
+                </div>
+              </div>
+            </div>
+            {!weightReady && (
+              <div>
+                <label className="block text-[10px] text-t3 mb-1">Manual Quantity (if no weighbridge)</label>
+                <input type="number" min={0.001} step={0.001} className={inp}
+                  value={draft.qty || ''}
+                  onChange={e => upd({ qty: Number(e.target.value) })}
+                  placeholder="Enter quantity directly" />
               </div>
             )}
-          </div>
+          </section>
 
-          {draft.mode === 'transfer' && (
+          {/* Transport */}
+          <section className="space-y-3">
+            <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
+              <Truck size={11} weight="duotone" /> Transport
+            </p>
             <div>
-              <label className="block text-xs text-t3 mb-1.5">Destination Warehouse *</label>
-              <SearchSelect
-                options={destWhOptions}
-                value={draft.destinationWarehouseId}
-                onChange={v => updateDraft({ destinationWarehouseId: v ?? '' })}
-                placeholder="Select destination..."
-              />
+              <label className="block text-[10px] text-t3 mb-1">Transport Method</label>
+              <select className={inp} value={draft.transportMethod}
+                onChange={e => upd({ transportMethod: e.target.value })}>
+                <option value="">— Select method —</option>
+                {TRANSPORT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
             </div>
-          )}
-        </div>
-      </div>
-
-      {draft.mode === 'direct' && (
-        <div>
-          <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Reference</p>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs text-t3 mb-1.5">Source / Reference</label>
-              <input className={inp}
-                value={draft.sourceRef} onChange={e => updateDraft({ sourceRef: e.target.value })}
-                placeholder="e.g. PO-0042" />
-            </div>
-            {draft.movementType === 'OUTBOUND' && (
+            <SearchSelect
+              label="Truck / License Plate"
+              options={truckOptions}
+              value={null}
+              onChange={(val, opt) => {
+                const truck = trucks.find(t => t._id === val);
+                upd({
+                  truckPlate: truck?.plateNumber || opt?.label || '',
+                  driverName: truck?.assignedDriverName || '',
+                });
+              }}
+              placeholder="Search plate number..."
+            />
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-t3 mb-1.5">Reason</label>
-                <input className={inp}
-                  value={draft.reason} onChange={e => updateDraft({ reason: e.target.value })}
-                  placeholder="e.g. Issued to site" />
+                <label className="block text-[10px] text-t3 mb-1">License Plate</label>
+                <input className={inp} value={draft.truckPlate}
+                  onChange={e => upd({ truckPlate: e.target.value })}
+                  placeholder="e.g. T841ELA" />
               </div>
-            )}
-          </div>
-        </div>
+              <div>
+                <label className="block text-[10px] text-t3 mb-1">Driver Name</label>
+                <input className={inp} value={draft.driverName}
+                  onChange={e => upd({ driverName: e.target.value })}
+                  placeholder="Auto-filled from truck" />
+              </div>
+            </div>
+          </section>
+
+          {/* Receipt details */}
+          <section className="space-y-3">
+            <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Receipt Details</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] text-t3 mb-1">Pickup Code</label>
+                <input className={inp} value={draft.pickupCode}
+                  onChange={e => upd({ pickupCode: e.target.value })}
+                  placeholder="e.g. 311D6267" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-t3 mb-1">Delivery Time</label>
+                <input type="datetime-local" className={inp} value={draft.deliveryTime}
+                  onChange={e => upd({ deliveryTime: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] text-t3 mb-1">Remark</label>
+              <input className={inp} value={draft.remark}
+                onChange={e => upd({ remark: e.target.value })} placeholder="—" />
+            </div>
+            <div>
+              <label className="block text-[10px] text-t3 mb-1">Notes</label>
+              <textarea rows={2} className={`${inp} resize-none`} value={draft.notes}
+                onChange={e => upd({ notes: e.target.value })} />
+            </div>
+          </section>
+        </>
       )}
 
-      <div>
-        <label className="block text-xs text-t3 mb-1.5">Notes</label>
-        <textarea rows={2} className={`${inp} resize-none`}
-          value={draft.notes} onChange={e => updateDraft({ notes: e.target.value })} />
-      </div>
+      {/* ── OUTBOUND ── */}
+      {draft.mode === 'outbound' && (
+        <>
+          <section className="space-y-3">
+            <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Item &amp; Quantity</p>
+            <SearchSelect
+              label="Stock Item *"
+              options={stockOptions}
+              value={draft.stockItemId || null}
+              onChange={v => {
+                const si = stockItems.find(s => s._id === v);
+                upd({ stockItemId: v ?? '', unitCost: si?.weightedAvgCost ?? 0 });
+              }}
+              placeholder="Search stock items..."
+              clearable={false}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] text-t3 mb-1">Quantity *</label>
+                <input type="number" min={0.001} step={0.001} className={inp}
+                  value={draft.qty || ''}
+                  onChange={e => upd({ qty: Number(e.target.value) })} />
+              </div>
+              <div>
+                <label className="block text-[10px] text-t3 mb-1">Unit Cost</label>
+                <input type="number" min={0} className={inp} value={draft.unitCost}
+                  onChange={e => upd({ unitCost: Number(e.target.value) })} />
+              </div>
+            </div>
+          </section>
+          <section className="space-y-3">
+            <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Reference</p>
+            <div>
+              <label className="block text-[10px] text-t3 mb-1">Reason</label>
+              <input className={inp} value={draft.reason}
+                onChange={e => upd({ reason: e.target.value })}
+                placeholder="e.g. Issued to site" />
+            </div>
+            <div>
+              <label className="block text-[10px] text-t3 mb-1">Notes</label>
+              <textarea rows={2} className={`${inp} resize-none`} value={draft.notes}
+                onChange={e => upd({ notes: e.target.value })} />
+            </div>
+          </section>
+        </>
+      )}
 
-      <div>
-        <label className="block text-xs text-t3 mb-1.5">Delay Reason</label>
-        <input className={inp}
-          value={draft.delay_reason} onChange={e => updateDraft({ delay_reason: e.target.value })}
-          placeholder="Reason for any delay (optional)" />
-      </div>
+      {/* ── TRANSFER ── */}
+      {draft.mode === 'transfer' && (
+        <section className="space-y-3">
+          <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Transfer Details</p>
+          <SearchSelect
+            label="Stock Item *"
+            options={stockOptions}
+            value={draft.stockItemId || null}
+            onChange={v => { upd({ stockItemId: v ?? '' }); }}
+            placeholder="Search stock items..."
+            clearable={false}
+          />
+          <SearchSelect
+            label="Destination Warehouse *"
+            options={destWhOptions}
+            value={draft.destinationWarehouseId || null}
+            onChange={v => upd({ destinationWarehouseId: v ?? '' })}
+            placeholder="Select destination..."
+            clearable={false}
+          />
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">Quantity *</label>
+            <input type="number" min={0.001} step={0.001} className={inp}
+              value={draft.qty || ''}
+              onChange={e => upd({ qty: Number(e.target.value) })} />
+          </div>
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">Notes</label>
+            <textarea rows={2} className={`${inp} resize-none`} value={draft.notes}
+              onChange={e => upd({ notes: e.target.value })} />
+          </div>
+        </section>
+      )}
 
       <button onClick={handleSave} disabled={saving}
         className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
@@ -247,7 +539,6 @@ export default function MovementsPage() {
   return (
     <>
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-t1">Stock Movements</h1>
@@ -259,9 +550,7 @@ export default function MovementsPage() {
           </button>
         </div>
 
-        {/* Table Card */}
         <div className="bg-card rounded-xl border border-border">
-          {/* Tabs */}
           <div className="flex gap-1 px-4 border-b border-border overflow-x-auto">
             {MOVEMENT_TABS.map(tab => (
               <button key={tab.id}
@@ -272,7 +561,6 @@ export default function MovementsPage() {
             ))}
           </div>
 
-          {/* Search */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
             <div className="relative flex-1 max-w-sm">
               <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
@@ -282,7 +570,6 @@ export default function MovementsPage() {
             </div>
           </div>
 
-          {/* Table */}
           {loading ? (
             <div className="flex items-center justify-center h-48">
               <Spinner size={28} className="animate-spin text-accent" />
@@ -296,27 +583,25 @@ export default function MovementsPage() {
             <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'never' } }}>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border">
+                  <tr className="border-b border-border bg-surface">
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Ref</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Type</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Item</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Qty</th>
+                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Net / Qty</th>
                     <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Before → After</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Unit Cost</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Supplier / Truck</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Source</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Delay Reason</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Posted</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {movements.map((m, i) => {
+                <tbody className="divide-y divide-border">
+                  {movements.map(m => {
                     const meta = TYPE_META[m.movementType] ?? { label: m.movementType, style: 'bg-surface text-t3 border-border', dot: 'bg-t3', Icon: ArrowsCounterClockwise };
-                    const MIcon = meta.Icon;
                     return (
-                      <tr key={m._id} className={`hover:bg-surface transition-colors ${i < movements.length - 1 ? 'border-b border-border' : ''}`}>
-                        <td className="px-4 py-3.5 font-mono text-xs text-t2">{m.movementRef}</td>
-                        <td className="px-4 py-3.5">
+                      <tr key={m._id} className="hover:bg-surface transition-colors">
+                        <td className="px-4 py-3.5 font-mono text-xs text-t2 whitespace-nowrap">{m.movementRef}</td>
+                        <td className="px-4 py-3.5 whitespace-nowrap">
                           <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-0.5 font-medium ${meta.style}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
                             {meta.label}
@@ -326,23 +611,37 @@ export default function MovementsPage() {
                           <p className="text-t1 font-medium">{m.itemName}</p>
                           <p className="text-xs text-t3">{m.itemCode}</p>
                         </td>
-                        <td className="px-4 py-3.5 text-t2">{m.warehouseName}</td>
-                        <td className="px-4 py-3.5 text-right font-medium text-t1">
-                          {m.qty > 0 ? '+' : ''}{m.qty.toLocaleString()}
+                        <td className="px-4 py-3.5 text-t2 whitespace-nowrap">{m.warehouseName}</td>
+                        <td className="px-4 py-3.5 text-right font-medium text-t1 whitespace-nowrap">
+                          {m.netWeight != null ? (
+                            <div>
+                              <span className="text-emerald-400 font-bold">{m.netWeight} t</span>
+                              <div className="text-[10px] text-t3">{m.qty > 0 ? '+' : ''}{m.qty}</div>
+                            </div>
+                          ) : (
+                            <span>{m.qty > 0 ? '+' : ''}{m.qty.toLocaleString()}</span>
+                          )}
                         </td>
-                        <td className="px-4 py-3.5 text-right text-xs text-t3">
+                        <td className="px-4 py-3.5 text-right text-xs text-t3 whitespace-nowrap">
                           {m.qtyBefore.toLocaleString()} → {m.qtyAfter.toLocaleString()}
                         </td>
-                        <td className="px-4 py-3.5 text-right text-t2">
-                          {m.unitCost > 0 ? m.unitCost.toLocaleString() : '—'}
+                        <td className="px-4 py-3.5">
+                          {m.supplierName && <p className="text-xs text-t2">{m.supplierName}</p>}
+                          {m.truckPlate && (
+                            <p className="text-xs text-t3 flex items-center gap-1">
+                              <Truck size={10} /> {m.truckPlate}{m.driverName ? ` · ${m.driverName}` : ''}
+                            </p>
+                          )}
+                          {!m.supplierName && !m.truckPlate && <span className="text-t3 text-xs">—</span>}
                         </td>
-                        <td className="px-4 py-3.5 text-t2 text-xs">{m.sourceRef}</td>
-                        <td className="px-4 py-3.5 text-xs text-t3 max-w-[140px] truncate" title={m.delay_reason ?? ''}>
-                          {m.delay_reason || '—'}
+                        <td className="px-4 py-3.5 text-t2 text-xs whitespace-nowrap">
+                          {m.linkedPoRef ? (
+                            <span className="text-accent">{m.linkedPoRef}</span>
+                          ) : m.sourceRef || '—'}
                         </td>
                         <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">
                           <p>{new Date(m.postedAt).toLocaleDateString()}</p>
-                          {m.postedBy && <p>{m.postedBy.fullName}</p>}
+                          {m.postedBy && <p className="text-t3/60">{m.postedBy.fullName}</p>}
                         </td>
                       </tr>
                     );
@@ -352,10 +651,9 @@ export default function MovementsPage() {
             </OverlayScrollbarsComponent>
           )}
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-              <span className="text-xs text-t3">Page {page} of {totalPages}</span>
+              <span className="text-xs text-t3">Page {page} of {totalPages} · {total.toLocaleString()} records</span>
               <div className="flex gap-2">
                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
                   className="p-1.5 border border-border rounded-lg hover:bg-surface disabled:opacity-40 transition-colors">
@@ -374,7 +672,7 @@ export default function MovementsPage() {
       {panelOpen && (
         <DocumentSidePanel
           isOpen={true}
-          onClose={() => setPanelOpen(false)}
+          onClose={() => { setPanelOpen(false); setError(null); }}
           title="New Movement"
           formContent={formContent}
           previewContent={null}
