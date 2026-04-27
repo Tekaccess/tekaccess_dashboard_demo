@@ -7,8 +7,8 @@ import {
 } from '@phosphor-icons/react';
 import {
   apiListMovements, apiCreateMovement, apiCreateTransfer,
-  apiListStockItems, apiGetStockItemById, apiListWarehouses, apiListPurchaseOrders, apiListTrucks,
-  StockMovement, StockItem, Warehouse, PurchaseOrder, Truck as TruckType,
+  apiListWarehouses, apiListPurchaseOrders, apiListTrucks,
+  StockMovement, Warehouse, PurchaseOrder, Truck as TruckType,
 } from '../../lib/api';
 import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSelect';
 import DocumentSidePanel from '../../components/DocumentSidePanel';
@@ -35,7 +35,7 @@ const TRANSPORT_METHODS = ['Factory Delivery', 'Direct Transport', 'Third-Party 
 
 interface NewMovementDraft {
   mode: 'inbound' | 'outbound' | 'transfer';
-  stockItemId: string;
+  warehouseId: string;
   qty: number;
   unitCost: number;
   reason: string;
@@ -67,7 +67,7 @@ interface NewMovementDraft {
 
 function emptyDraft(): NewMovementDraft {
   return {
-    mode: 'inbound', stockItemId: '', qty: 0,
+    mode: 'inbound', warehouseId: '', qty: 0,
     reason: '', notes: '', destinationWarehouseId: '',
     linkedPoId: '', linkedPoRef: '', supplierName: '', supplierTin: '',
     supplierVrn: '', supplierPhone: '', grossWeight: '', tareWeight: '',
@@ -79,15 +79,12 @@ function emptyDraft(): NewMovementDraft {
 }
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
-const inpReadonly = 'w-full px-3 py-2 bg-surface/50 border border-border/50 rounded-lg text-sm text-t2 outline-none cursor-default';
 
 const MOV_COLS: ColDef[] = [
   { key: 'plate',     label: 'Plate No.',    defaultVisible: true },
   { key: 'type',      label: 'Type',         defaultVisible: true },
-  { key: 'item',      label: 'Item',         defaultVisible: true },
   { key: 'warehouse', label: 'Warehouse',    defaultVisible: true },
   { key: 'qty',       label: 'Net / Qty',    defaultVisible: true },
-  { key: 'balance',   label: 'Before → After', defaultVisible: true },
   { key: 'supplier',  label: 'Supplier / Truck', defaultVisible: true },
   { key: 'costs',     label: 'Processing Costs', defaultVisible: true },
   { key: 'source',    label: 'Source',       defaultVisible: true },
@@ -96,7 +93,6 @@ const MOV_COLS: ColDef[] = [
 
 export default function MovementsPage() {
   const [movements, setMovements] = useState<StockMovement[]>([]);
-  const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [trucks, setTrucks] = useState<TruckType[]>([]);
@@ -117,13 +113,11 @@ export default function MovementsPage() {
     const params: Record<string, string> = { page: String(page), limit: String(PAGE_LIMIT) };
     if (search) params.search = search;
     if (activeTab) params.movementType = activeTab;
-    const [movRes, siRes, whRes] = await Promise.all([
+    const [movRes, whRes] = await Promise.all([
       apiListMovements(params),
-      apiListStockItems({ limit: '200' }),
       apiListWarehouses(),
     ]);
     if (movRes.success) { setMovements(movRes.data.movements); setTotal(movRes.data.pagination.total); }
-    if (siRes.success) setStockItems(siRes.data.items);
     if (whRes.success) setWarehouses(whRes.data.warehouses);
     setLoading(false);
   }, [search, activeTab, page]);
@@ -144,12 +138,6 @@ export default function MovementsPage() {
     setDraft(d => ({ ...d, ...patch }));
   }
 
-  async function ensureStockItemLoaded(id: string) {
-    if (!id || stockItems.some(si => si._id === id)) return;
-    const res = await apiGetStockItemById(id);
-    if (res.success) setStockItems(prev => [...prev, res.data.item]);
-  }
-
   // Computed net weight from weighbridge inputs
   const gross = parseFloat(draft.grossWeight) || 0;
   const tare = parseFloat(draft.tareWeight) || 0;
@@ -157,10 +145,9 @@ export default function MovementsPage() {
   const netWeight = Math.max(0, +(gross - tare).toFixed(4));
   const weightReady = gross > 0 && tare > 0;
 
-  // Option lists
-  const stockOptions = useMemo<SearchSelectOption[]>(() =>
-    stockItems.map(si => ({ value: si._id, label: si.name, sublabel: si.itemCode, meta: si.warehouseName })),
-    [stockItems]
+  const warehouseOptions = useMemo<SearchSelectOption[]>(() =>
+    warehouses.map(w => ({ value: w._id, label: w.name, sublabel: w.warehouseCode })),
+    [warehouses]
   );
 
   const poOptions = useMemo<SearchSelectOption[]>(() =>
@@ -183,16 +170,15 @@ export default function MovementsPage() {
     [trucks]
   );
 
-  const selectedStock = stockItems.find(s => s._id === draft.stockItemId);
   const destWhOptions = useMemo<SearchSelectOption[]>(() =>
     warehouses
-      .filter(w => w._id !== (selectedStock as any)?.warehouseId)
+      .filter(w => w._id !== draft.warehouseId)
       .map(w => ({ value: w._id, label: w.name, sublabel: w.warehouseCode })),
-    [warehouses, selectedStock]
+    [warehouses, draft.warehouseId]
   );
 
   async function handleSave() {
-    if (!draft.stockItemId) { setError('Stock item is required.'); return; }
+    if (!draft.warehouseId) { setError('Warehouse is required.'); return; }
     setSaving(true); setError(null);
     let res: any;
 
@@ -200,7 +186,7 @@ export default function MovementsPage() {
     if (qty <= 0) { setError('Quantity must be greater than 0.'); setSaving(false); return; }
 
     const commonMovementFields = {
-      stockItemId: draft.stockItemId,
+      warehouseId: draft.warehouseId,
       qty,
       unitCost: draft.unitCost || undefined,
       sourceRef: draft.linkedPoRef || 'Manual entry',
@@ -231,8 +217,8 @@ export default function MovementsPage() {
     if (draft.mode === 'transfer') {
       if (!draft.destinationWarehouseId) { setError('Destination warehouse is required.'); setSaving(false); return; }
       res = await apiCreateTransfer({
-        stockItemId: draft.stockItemId,
         qty,
+        sourceWarehouseId: draft.warehouseId,
         destinationWarehouseId: draft.destinationWarehouseId,
         notes: draft.notes || undefined,
       });
@@ -269,14 +255,12 @@ export default function MovementsPage() {
     <div className="space-y-5 pb-10">
       {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-3">{error}</p>}
 
-      {/* Mode selector */}
       <div className="flex gap-2">
         {modeBtn('inbound', 'Inbound')}
         {modeBtn('outbound', 'Outbound')}
         {modeBtn('transfer', 'Transfer')}
       </div>
 
-      {/* ── Purchase Order ── */}
       <section className="space-y-3">
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
           <Receipt size={11} weight="duotone" /> Purchase Order
@@ -287,23 +271,21 @@ export default function MovementsPage() {
           value={draft.linkedPoId || null}
           onChange={(val, opt) => {
             if (!val) {
-              upd({ linkedPoId: '', linkedPoRef: '', supplierName: '', supplierPhone: '', selectedPoLineIdx: undefined, stockItemId: '', unitCost: 0, qty: 0 });
+              upd({ linkedPoId: '', linkedPoRef: '', supplierName: '', supplierPhone: '', selectedPoLineIdx: undefined, unitCost: 0, qty: 0 });
               return;
             }
             const po = purchaseOrders.find(p => p._id === val);
             const firstLine = po?.lineItems?.[0];
-            const siId = firstLine?.stockItemId ? String(firstLine.stockItemId) : '';
             upd({
               linkedPoId: val,
               linkedPoRef: opt?.label || '',
               supplierName: po?.supplierName || '',
               supplierPhone: '',
+              warehouseId: po?.destinationWarehouseId || draft.warehouseId,
               selectedPoLineIdx: po?.lineItems && po.lineItems.length > 0 ? 0 : undefined,
-              stockItemId: siId,
               unitCost: firstLine?.unitPrice ?? 0,
               qty: firstLine?.orderedQty ?? 0,
             });
-            if (siId) ensureStockItemLoaded(siId);
           }}
           placeholder="Search PO reference..."
         />
@@ -345,9 +327,7 @@ export default function MovementsPage() {
                 const idx = Number(e.target.value);
                 const po = purchaseOrders.find(p => p._id === draft.linkedPoId);
                 const li = po?.lineItems[idx];
-                const siId = li?.stockItemId ? String(li.stockItemId) : '';
-                upd({ selectedPoLineIdx: idx, stockItemId: siId, unitCost: li?.unitPrice ?? 0, qty: li?.orderedQty ?? 0 });
-                if (siId) ensureStockItemLoaded(siId);
+                upd({ selectedPoLineIdx: idx, unitCost: li?.unitPrice ?? 0, qty: li?.orderedQty ?? 0 });
               }}
             >
               {purchaseOrders.find(p => p._id === draft.linkedPoId)?.lineItems.map((li, idx) => (
@@ -358,7 +338,6 @@ export default function MovementsPage() {
         )}
       </section>
 
-      {/* ── Supplier ── */}
       <section className="space-y-3">
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
           <UserCircle size={11} weight="duotone" /> Supplier
@@ -388,34 +367,15 @@ export default function MovementsPage() {
         </div>
       </section>
 
-      {/* ── Product ── */}
       <section className="space-y-3">
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Product</p>
-
-        {draft.linkedPoId && (() => {
-          const po = purchaseOrders.find(p => p._id === draft.linkedPoId);
-          const li = po?.lineItems[draft.selectedPoLineIdx ?? 0];
-          if (!li) return null;
-          return (
-            <div className="rounded-lg border border-border bg-surface/50 px-3 py-2 text-xs space-y-0.5">
-              <p className="text-t2 font-medium">{li.productName || li.description}</p>
-              <div className="flex items-center gap-3 text-t3">
-                {li.itemCode && <span>{li.itemCode}</span>}
-                <span>{li.orderedQty} {li.unit} ordered · {li.unitPrice.toLocaleString()} / {li.unit}</span>
-              </div>
-            </div>
-          );
-        })()}
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Warehouse</p>
 
         <SearchSelect
-          label="Stock Item *"
-          options={stockOptions}
-          value={draft.stockItemId || null}
-          onChange={v => {
-            const si = stockItems.find(s => s._id === v);
-            upd({ stockItemId: v ?? '', unitCost: draft.linkedPoId ? draft.unitCost : (si?.weightedAvgCost ?? 0) });
-          }}
-          placeholder="Search stock items..."
+          label={draft.mode === 'transfer' ? 'Source Warehouse *' : 'Warehouse *'}
+          options={warehouseOptions}
+          value={draft.warehouseId || null}
+          onChange={v => upd({ warehouseId: v ?? '' })}
+          placeholder="Select warehouse..."
           clearable={false}
         />
 
@@ -439,7 +399,6 @@ export default function MovementsPage() {
         </div>
       </section>
 
-      {/* ── Weighbridge & Quantity ── */}
       <section className="space-y-3">
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
           <Scales size={11} weight="duotone" /> Weighbridge &amp; Quantity
@@ -485,7 +444,6 @@ export default function MovementsPage() {
         </div>
       </section>
 
-      {/* ── Transport ── */}
       <section className="space-y-3">
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
           <Truck size={11} weight="duotone" /> Transport
@@ -524,7 +482,6 @@ export default function MovementsPage() {
         </div>
       </section>
 
-      {/* ── Details ── */}
       <section className="space-y-3">
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Details</p>
         <div className="grid grid-cols-2 gap-3">
@@ -562,7 +519,6 @@ export default function MovementsPage() {
         </div>
       </section>
 
-      {/* ── Processing / Site Costs ── */}
       {draft.mode !== 'transfer' && (
         <section className="space-y-3">
           <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
@@ -649,7 +605,7 @@ export default function MovementsPage() {
             <div className="relative flex-1 max-w-sm">
               <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
               <input className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors"
-                placeholder="Search ref, item, source..." value={search}
+                placeholder="Search ref, source..." value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }} />
             </div>
             <ColumnSelector cols={MOV_COLS} visible={colVis} onToggle={colToggle} />
@@ -671,10 +627,8 @@ export default function MovementsPage() {
                   <tr className="border-b border-border bg-surface">
                     {colVis.has('plate') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Plate No.</th>}
                     {colVis.has('type') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Type</th>}
-                    {colVis.has('item') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Item</th>}
                     {colVis.has('warehouse') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse</th>}
                     {colVis.has('qty') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Net / Qty</th>}
-                    {colVis.has('balance') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Before → After</th>}
                     {colVis.has('supplier') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Supplier / Truck</th>}
                     {colVis.has('costs') && <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Processing Costs</th>}
                     {colVis.has('source') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Source</th>}
@@ -702,14 +656,8 @@ export default function MovementsPage() {
                             </span>
                           </td>
                         )}
-                        {colVis.has('item') && (
-                          <td className="px-4 py-3.5">
-                            <p className="text-t1 font-medium">{m.itemName}</p>
-                            <p className="text-xs text-t3">{m.itemCode}</p>
-                          </td>
-                        )}
                         {colVis.has('warehouse') && (
-                          <td className="px-4 py-3.5 text-t2 whitespace-nowrap">{m.warehouseName}</td>
+                          <td className="px-4 py-3.5 text-t2 whitespace-nowrap">{m.warehouseName || '—'}</td>
                         )}
                         {colVis.has('qty') && (
                           <td className="px-4 py-3.5 text-right font-medium text-t1 whitespace-nowrap">
@@ -721,11 +669,6 @@ export default function MovementsPage() {
                             ) : (
                               <span>{m.qty > 0 ? '+' : ''}{m.qty.toLocaleString()}</span>
                             )}
-                          </td>
-                        )}
-                        {colVis.has('balance') && (
-                          <td className="px-4 py-3.5 text-right text-xs text-t3 whitespace-nowrap">
-                            {m.qtyBefore.toLocaleString()} → {m.qtyAfter.toLocaleString()}
                           </td>
                         )}
                         {colVis.has('supplier') && (

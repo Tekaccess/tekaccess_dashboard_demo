@@ -217,7 +217,6 @@ export const departmentsData = [
         title: "Inventory Department",
         items: [
           { name: "Products", icon: Package },
-          { name: "Stock", icon: Cube },
           { name: "Movements", icon: ArrowsCounterClockwise },
           { name: "Documents", icon: ClipboardText },
           { name: "Warehouses", icon: Buildings },
