@@ -77,7 +77,12 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
         )
   );
 
+  const hasNoDeptAccess = accessibleDepts.length === 0;
   const currentDepartment = departmentsData.find((d) => d.id === currentDepartmentId) || accessibleDepts[0];
+
+  const visibleSharedItems = hasNoDeptAccess
+    ? sharedMenu.items.filter((i) => i.name === "Calendar" || i.name === "Task management")
+    : sharedMenu.items;
 
   const toggleExpand = (itemName: string) => {
     setExpandedItems((prev) => ({ ...prev, [itemName]: !prev[itemName] }));
@@ -168,7 +173,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
               {sharedMenu.title}
             </p>
             <ul className="space-y-0.5">
-              {sharedMenu.items.map((item, idx) => {
+              {visibleSharedItems.map((item, idx) => {
                 const isActive =
                   item.name === "Dashboard"
                     ? location.pathname === "/" || location.pathname === `/${currentDepartmentId}`
@@ -206,7 +211,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
           </div>
 
           {/* Department Sections */}
-          {currentDepartment.sections.map((section, idx) => (
+          {!hasNoDeptAccess && currentDepartment?.sections.map((section, idx) => (
             <div key={idx}>
               <p className="text-[10px] font-bold text-t3 uppercase tracking-widest mb-2 px-2">
                 {section.title}
@@ -272,28 +277,33 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
             Department
           </p>
           <button
-            onClick={() => setIsDeptDropdownOpen(!isDeptDropdownOpen)}
+            onClick={() => { if (!hasNoDeptAccess) setIsDeptDropdownOpen(!isDeptDropdownOpen); }}
+            disabled={hasNoDeptAccess}
             className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all ${
-              isDeptDropdownOpen
-                ? "border-accent bg-accent-glow text-accent"
-                : "border-border bg-surface hover:border-accent/40 hover:bg-accent-glow text-t1"
+              hasNoDeptAccess
+                ? "border-border bg-surface text-t3 cursor-not-allowed"
+                : isDeptDropdownOpen
+                  ? "border-accent bg-accent-glow text-accent"
+                  : "border-border bg-surface hover:border-accent/40 hover:bg-accent-glow text-t1"
             }`}
           >
             <div className={`h-6 w-6 rounded-md flex items-center justify-center shrink-0 ${
-              isDeptDropdownOpen ? "bg-accent/20" : "bg-accent-glow"
+              hasNoDeptAccess ? "bg-surface" : isDeptDropdownOpen ? "bg-accent/20" : "bg-accent-glow"
             }`}>
-              <BuildingsIcon size={20} weight="duotone" className="text-accent" />
+              <BuildingsIcon size={20} weight="duotone" className={hasNoDeptAccess ? "text-t3" : "text-accent"} />
             </div>
-            <span className="flex-1 text-left text-xs font-semibold truncate">
-              {currentDepartment.name.replace(' Department', '')}
+            <span className={`flex-1 text-left text-xs font-semibold truncate ${hasNoDeptAccess ? "italic" : ""}`}>
+              {hasNoDeptAccess
+                ? "No department assigned"
+                : currentDepartment?.name.replace(' Department', '')}
             </span>
-            {isDeptDropdownOpen
+            {!hasNoDeptAccess && (isDeptDropdownOpen
               ? <CaretUpIcon size={15} weight="bold" className="text-accent shrink-0" />
               : <CaretDownIcon size={15} weight="bold" className="text-t3 shrink-0" />
-            }
+            )}
           </button>
 
-          {isDeptDropdownOpen && (
+          {isDeptDropdownOpen && !hasNoDeptAccess && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setIsDeptDropdownOpen(false)} />
               <div className="absolute bottom-[60%] left-3 right-3 mb-2 bg-card border border-border rounded-xl shadow-2xl overflow-hidden z-50">
