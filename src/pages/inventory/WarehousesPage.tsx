@@ -335,7 +335,8 @@ export default function WarehousesPage() {
   ) : null;
 
   const viewContent = modalMode === 'view' && selected ? (() => {
-    const filledBars = Math.round(Math.min(selectedUsedPct, 100));
+    const TOTAL_BARS = 50;
+    const filledBars = Math.round((Math.min(selectedUsedPct, 100) / 100) * TOTAL_BARS);
     const barColor = selectedUsedPct > 80
       ? 'bg-rose-500'
       : selectedUsedPct > 60
@@ -362,10 +363,10 @@ export default function WarehousesPage() {
           <p className="text-sm font-bold text-t1 mb-4">Overview</p>
           <div className="flex items-center gap-3">
             <div className="flex-1 flex items-stretch gap-0.5 h-7">
-              {Array.from({ length: 100 }).map((_, i) => (
+              {Array.from({ length: TOTAL_BARS }).map((_, i) => (
                 <div
                   key={i}
-                  className={`flex-1 rounded-[1px] ${i < filledBars ? barColor : 'bg-slate-200 dark:bg-slate-700/50'}`}
+                  className={`flex-1 rounded-full ${i < filledBars ? barColor : 'bg-slate-200 dark:bg-slate-700/50'}`}
                 />
               ))}
             </div>
@@ -431,9 +432,18 @@ export default function WarehousesPage() {
                             {m.supplierName || (isOutbound ? 'Outbound' : '—')}
                           </TableCell>
                           <TableCell className="py-3.5 text-xs text-t3 whitespace-nowrap">
-                            {m.movementDate
-                              ? new Date(m.movementDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                              : '—'}
+                            {(() => {
+                              const d = m.movementDate || m.createdAt;
+                              if (!d) return '—';
+                              const dt = new Date(d);
+                              if (isNaN(dt.getTime())) return '—';
+                              return (
+                                <>
+                                  <div>{dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+                                  <div className="text-t3/70">{dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                </>
+                              );
+                            })()}
                           </TableCell>
                         </TableRow>
                       );

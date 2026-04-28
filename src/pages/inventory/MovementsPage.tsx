@@ -29,6 +29,7 @@ import {
   apiListSuppliers,
   apiListProducts,
   apiListInventoryDocs,
+  apiCreateInventoryDoc,
   StockMovement,
   StockItem,
   Warehouse,
@@ -143,6 +144,9 @@ interface NewMovementDraft {
   samplingCost: string;
   otherProcessingCost: string;
   otherProcessingDescription: string;
+  // Source supporting doc — uploaded after the movement is created
+  sourceImage: File | null;
+  sourceDocType: 'Invoice' | 'Receipt' | 'Waybill' | 'Weighbridge';
 }
 
 function emptyDraft(): NewMovementDraft {
@@ -176,6 +180,8 @@ function emptyDraft(): NewMovementDraft {
     samplingCost: "",
     otherProcessingCost: "",
     otherProcessingDescription: "",
+    sourceImage: null,
+    sourceDocType: 'Weighbridge',
   };
 }
 
@@ -450,11 +456,31 @@ export default function MovementsPage() {
       });
     }
 
-    setSaving(false);
     if (!res.success) {
+      setSaving(false);
       setError((res as any).message || "Movement failed.");
       return;
     }
+
+    // Movement saved — upload the source image if the user attached one.
+    // The transfer endpoint returns { transfer: { ... } } not { movement },
+    // so we only attach to direct movements.
+    const newMovementId = res.data?.movement?._id;
+    if (draft.sourceImage && newMovementId) {
+      const docRes = await apiCreateInventoryDoc({
+        movement_id: newMovementId,
+        doc_type: draft.sourceDocType,
+        image: draft.sourceImage,
+      });
+      if (!docRes.success) {
+        setSaving(false);
+        setError(`Movement saved, but image upload failed: ${(docRes as any).message || 'unknown error'}`);
+        load();
+        return;
+      }
+    }
+
+    setSaving(false);
     setPanelOpen(false);
     setDraft(emptyDraft());
     load();
@@ -740,6 +766,57 @@ export default function MovementsPage() {
             placeholder="Select destination..."
             clearable={false}
           />
+        )}
+      </section>
+
+      {/* ── Source Document (image upload) ── */}
+      <section className="space-y-3">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
+          <Receipt size={11} weight="duotone" /> Source Document
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">Document Type</label>
+            <select
+              className={inp}
+              value={draft.sourceDocType}
+              onChange={(e) => upd({ sourceDocType: e.target.value as NewMovementDraft['sourceDocType'] })}
+            >
+              <option value="Weighbridge">Weighbridge</option>
+              <option value="Receipt">Receipt</option>
+              <option value="Invoice">Invoice</option>
+              <option value="Waybill">Waybill</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              className={`${inp} file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-accent/10 file:text-accent file:text-xs file:font-semibold cursor-pointer`}
+              onChange={(e) => upd({ sourceImage: e.target.files?.[0] || null })}
+            />
+          </div>
+        </div>
+        {draft.sourceImage && (
+          <div className="flex items-center gap-3 p-2 bg-surface/50 border border-border rounded-lg">
+            <img
+              src={URL.createObjectURL(draft.sourceImage)}
+              alt="preview"
+              className="w-16 h-16 rounded object-cover border border-border"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-t1 truncate font-medium">{draft.sourceImage.name}</p>
+              <p className="text-[10px] text-t3">{(draft.sourceImage.size / 1024).toFixed(1)} KB</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => upd({ sourceImage: null })}
+              className="text-t3 hover:text-rose-400 text-xs"
+            >
+              Remove
+            </button>
+          </div>
         )}
       </section>
 
@@ -1175,16 +1252,22 @@ export default function MovementsPage() {
                         )}
                         {colVis.has("posted") && (
                           <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">
-                            <p>
-                              {(() => {
-                                const d = m.movementDate || m.createdAt;
-                                if (!d) return '—';
-                                const dt = new Date(d);
-                                return isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString();
-                              })()}
-                            </p>
+                            {(() => {
+                              const d = m.movementDate || m.createdAt;
+                              if (!d) return <span>—</span>;
+                              const dt = new Date(d);
+                              if (isNaN(dt.getTime())) return <span>—</span>;
+                              return (
+                                <>
+                                  <p>{dt.toLocaleDateString()}</p>
+                                  <p className="text-t3/70">
+                                    {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </p>
+                                </>
+                              );
+                            })()}
                             {m.postedBy && (
-                              <p className="text-t3/60">
+                              <p className="text-t3/60 mt-0.5">
                                 {m.postedBy.fullName}
                               </p>
                             )}
