@@ -26,10 +26,14 @@ import {
   apiListWarehouses,
   apiListPurchaseOrders,
   apiListTrucks,
+  apiListSuppliers,
+  apiListProducts,
   StockMovement,
   StockItem,
   Warehouse,
   PurchaseOrder,
+  Supplier,
+  Product,
   Truck as TruckType,
 } from "../../lib/api";
 import SearchSelect, {
@@ -108,6 +112,7 @@ interface NewMovementDraft {
   mode: "inbound" | "outbound" | "transfer";
   stockItemId: string;
   warehouseId: string;
+  productId: string;
   qty: number;
   unitCost: number;
   reason: string;
@@ -116,6 +121,7 @@ interface NewMovementDraft {
   // Inbound / weighbridge fields
   linkedPoId: string;
   linkedPoRef: string;
+  supplierId: string;
   supplierName: string;
   supplierTin: string;
   supplierVrn: string;
@@ -142,12 +148,14 @@ function emptyDraft(): NewMovementDraft {
     mode: "inbound",
     stockItemId: "",
     warehouseId: "",
+    productId: "",
     qty: 0,
     reason: "",
     notes: "",
     destinationWarehouseId: "",
     linkedPoId: "",
     linkedPoRef: "",
+    supplierId: "",
     supplierName: "",
     supplierTin: "",
     supplierVrn: "",
@@ -192,6 +200,8 @@ export default function MovementsPage() {
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [trucks, setTrucks] = useState<TruckType[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -234,11 +244,17 @@ export default function MovementsPage() {
     load();
   }, [load]);
 
-  // Load POs and trucks once on mount (for the form)
+  // Load POs, suppliers, and trucks once on mount (for the form)
   useEffect(() => {
     Promise.all([
       apiListPurchaseOrders({ limit: "200" }).then(
         (r) => r.success && setPurchaseOrders(r.data.orders),
+      ),
+      apiListSuppliers().then(
+        (r) => r.success && setSuppliers(r.data.suppliers),
+      ),
+      apiListProducts({ limit: "200" }).then(
+        (r) => r.success && setProducts(r.data.products),
       ),
       apiListTrucks().then((r) => r.success && setTrucks(r.data.trucks)),
     ]);
@@ -284,6 +300,38 @@ export default function MovementsPage() {
     [purchaseOrders],
   );
 
+  const supplierOptions = useMemo<SearchSelectOption[]>(
+    () =>
+      suppliers.map((s) => ({
+        value: s._id,
+        label: s.name,
+        sublabel: s.supplierCode,
+        meta: s.country,
+      })),
+    [suppliers],
+  );
+
+  const productOptions = useMemo<SearchSelectOption[]>(
+    () =>
+      products.map((p) => ({
+        value: p._id,
+        label: p.name,
+        meta: `${p.cost_per_unit.toLocaleString()} ${p.currency}`,
+      })),
+    [products],
+  );
+
+  const warehouseOptions = useMemo<SearchSelectOption[]>(
+    () =>
+      warehouses.map((w) => ({
+        value: w._id,
+        label: w.name,
+        sublabel: w.warehouseCode,
+        meta: `${(w.liveCapacity?.usedPct ?? 0).toFixed(0)}% used`,
+      })),
+    [warehouses],
+  );
+
   const truckOptions = useMemo<SearchSelectOption[]>(
     () =>
       trucks.map((t) => ({
@@ -322,6 +370,7 @@ export default function MovementsPage() {
 
     const commonMovementFields = {
       warehouseId: draft.warehouseId || selectedStock?.warehouseId || '',
+      productId: draft.productId || undefined,
       qty,
       unitCost: draft.unitCost || undefined,
       sourceRef: draft.linkedPoRef || "Manual entry",
@@ -436,11 +485,13 @@ export default function MovementsPage() {
               upd({
                 linkedPoId: "",
                 linkedPoRef: "",
+                supplierId: "",
                 supplierName: "",
                 supplierPhone: "",
                 selectedPoLineIdx: undefined,
                 stockItemId: "",
                 warehouseId: "",
+                productId: "",
                 unitCost: 0,
                 qty: 0,
               });
@@ -448,17 +499,20 @@ export default function MovementsPage() {
             }
             const po = purchaseOrders.find((p) => p._id === val);
             const firstLine = po?.lineItems?.[0];
+            const poSupplier = suppliers.find((s) => s._id === po?.supplierId);
             upd({
               linkedPoId: val,
               linkedPoRef: opt?.label || "",
+              supplierId: po?.supplierId || "",
               supplierName: po?.supplierName || "",
-              supplierPhone: "",
+              supplierPhone: poSupplier?.contactPhone || "",
               selectedPoLineIdx:
                 po?.lineItems && po.lineItems.length > 0 ? 0 : undefined,
               stockItemId: "",
               // PO is pre-filled with the supplier's default warehouse on creation;
               // use it so the inbound is automatically posted to the right warehouse.
               warehouseId: po?.destinationWarehouseId || "",
+              productId: firstLine?.productId || "",
               unitCost: firstLine?.unitPrice ?? 0,
               qty: firstLine?.orderedQty ?? 0,
             });
@@ -528,6 +582,7 @@ export default function MovementsPage() {
                   upd({
                     selectedPoLineIdx: idx,
                     stockItemId: "",
+                    productId: li?.productId || "",
                     unitCost: li?.unitPrice ?? 0,
                     qty: li?.orderedQty ?? 0,
                   });
@@ -554,11 +609,18 @@ export default function MovementsPage() {
           <label className="block text-[10px] text-t3 mb-1">
             Supplier Name
           </label>
-          <input
-            className={inp}
-            value={draft.supplierName}
-            onChange={(e) => upd({ supplierName: e.target.value })}
-            placeholder="Auto-filled from PO or enter manually"
+          <SearchSelect
+            options={supplierOptions}
+            value={draft.supplierId || null}
+            onChange={(val, opt) => {
+              const sup = suppliers.find((s) => s._id === val);
+              upd({
+                supplierId: val || "",
+                supplierName: opt?.label || "",
+                supplierPhone: sup?.contactPhone || draft.supplierPhone,
+              });
+            }}
+            placeholder="Search supplier..."
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -592,11 +654,33 @@ export default function MovementsPage() {
         </div>
       </section>
 
-      {/* ── Product ── */}
+      {/* ── Warehouse & Product ── */}
       <section className="space-y-3">
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest">
-          Product
+          Warehouse &amp; Product
         </p>
+
+        <SearchSelect
+          label="Warehouse"
+          options={warehouseOptions}
+          value={draft.warehouseId || null}
+          onChange={(v) => upd({ warehouseId: v ?? "" })}
+          placeholder="Search warehouse..."
+        />
+
+        <SearchSelect
+          label="Product"
+          options={productOptions}
+          value={draft.productId || null}
+          onChange={(v, opt) => {
+            const prod = products.find((p) => p._id === v);
+            upd({
+              productId: v ?? "",
+              unitCost: prod?.cost_per_unit ?? draft.unitCost,
+            });
+          }}
+          placeholder="Search product..."
+        />
 
         {draft.linkedPoId &&
           (() => {
@@ -606,13 +690,13 @@ export default function MovementsPage() {
             return (
               <div className="rounded-lg border border-border bg-surface/50 px-3 py-2 text-xs space-y-0.5">
                 <p className="text-t2 font-medium">
-                  {li.productName || li.description}
+                  PO line: {li.productName || li.description}
                 </p>
                 <div className="flex items-center gap-3 text-t3">
                   {li.itemCode && <span>{li.itemCode}</span>}
                   <span>
                     {li.orderedQty} {li.unit} ordered ·{" "}
-                    {li.unitPrice.toLocaleString()} / {li.unit}
+                    {li.unitPrice?.toLocaleString() ?? "0"} / {li.unit}
                   </span>
                 </div>
               </div>
@@ -1028,8 +1112,9 @@ export default function MovementsPage() {
                         )}
                         {colVis.has("balance") && (
                           <td className="px-4 py-3.5 text-right text-xs text-t3 whitespace-nowrap">
-                            {m.qtyBefore.toLocaleString()} →{" "}
-                            {m.qtyAfter.toLocaleString()}
+                            {m.qtyBefore != null && m.qtyAfter != null
+                              ? `${m.qtyBefore.toLocaleString()} → ${m.qtyAfter.toLocaleString()}`
+                              : "—"}
                           </td>
                         )}
                         {colVis.has("supplier") && (

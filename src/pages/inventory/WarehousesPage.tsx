@@ -89,6 +89,14 @@ export default function WarehousesPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Keep `selected` in sync with the freshly-loaded warehouses so the modal
+  // shows up-to-date liveCapacity after data reloads.
+  useEffect(() => {
+    if (!selected) return;
+    const fresh = warehouses.find(w => w._id === selected._id);
+    if (fresh && fresh !== selected) setSelected(fresh);
+  }, [warehouses]);
+
   function updateDraft(patch: Partial<DraftWarehouse>) {
     setDraft(d => ({ ...d, ...patch }));
   }
