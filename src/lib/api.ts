@@ -208,6 +208,8 @@ export type POLineItem = {
   description: string;
   productId?: string | null;
   productName?: string | null;
+  stockItemId?: string | null;
+  itemCode?: string | null;
   analyticProjectId?: string | null;
   analyticProjectName?: string | null;
   unit: 'grams' | 'kg' | 'tons' | 'litres' | 'ml' | 'units' | 'boxes';
@@ -826,6 +828,45 @@ export async function apiDeleteSite(id: string) {
 
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
+export type StockItem = {
+  _id: string;
+  itemCode: string;
+  name: string;
+  description: string | null;
+  category: string;
+  stockUnit: string;
+  onHandQty: number;
+  availableQty: number;
+  weightedAvgCost: number;
+  currency: string;
+  warehouseId: string;
+  warehouseName: string;
+  taxRateId: string | null;
+  taxRateName: string | null;
+  taxRatePercentage: number;
+};
+
+export async function apiListStockItems(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams({ limit: '200', ...params }).toString();
+  return request<{ items: StockItem[]; pagination: { total: number } }>(`/inventory/stock-items?${qs}`);
+}
+
+export async function apiGetStockItemById(id: string) {
+  return request<{ item: StockItem }>(`/inventory/stock-items/${id}`);
+}
+
+export async function apiCreateStockItem(data: Partial<StockItem> & { warehouseId: string }) {
+  return request<{ item: StockItem }>('/inventory/stock-items', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateStockItem(id: string, data: Partial<StockItem>) {
+  return request<{ item: StockItem }>(`/inventory/stock-items/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function apiDeleteStockItem(id: string) {
+  return request<{ item: StockItem }>(`/inventory/stock-items/${id}`, { method: 'DELETE' });
+}
+
 // ─── Warehouses ───────────────────────────────────────────────────────────────
 
 export type Warehouse = {
@@ -867,9 +908,14 @@ export type StockMovement = {
   _id: string;
   movementRef: string;
   movementType: 'INBOUND' | 'OUTBOUND' | 'TRANSFER_OUT' | 'TRANSFER_IN' | 'ADJUSTMENT' | 'STOCK_COUNT' | 'RETURN';
-  warehouseId: string | null;
-  warehouseName: string | null;
+  stockItemId: string;
+  itemCode: string;
+  itemName: string;
+  warehouseId: string;
+  warehouseName: string;
   qty: number;
+  qtyBefore: number;
+  qtyAfter: number;
   unitCost: number;
   totalCost: number;
   sourceType: string;
@@ -908,7 +954,7 @@ export async function apiListMovements(params: Record<string, string> = {}) {
 
 export async function apiCreateMovement(data: {
   movementType: string;
-  warehouseId?: string;
+  stockItemId: string;
   qty: number;
   unitCost?: number;
   sourceType?: string;
@@ -946,8 +992,8 @@ export async function apiDeleteMovement(id: string) {
 }
 
 export async function apiCreateTransfer(data: {
+  stockItemId: string;
   qty: number;
-  sourceWarehouseId?: string;
   destinationWarehouseId: string;
   notes?: string;
 }) {
