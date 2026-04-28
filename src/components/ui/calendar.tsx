@@ -3,6 +3,13 @@ import { CaretLeft, CaretRight, CaretDown } from '@phosphor-icons/react';
 import { DayButton, DayPicker, getDefaultClassNames } from 'react-day-picker';
 
 import { cn } from '../../lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './select';
 
 function Calendar({
   className,
@@ -53,14 +60,8 @@ function Calendar({
           'w-full flex items-center text-sm font-medium justify-center h-(--cell-size) gap-1.5',
           defaultClassNames.dropdowns,
         ),
-        dropdown_root: cn(
-          'relative has-focus:border-accent border border-border shadow-xs has-focus:ring-accent/50 has-focus:ring-[3px] rounded-md',
-          defaultClassNames.dropdown_root,
-        ),
-        dropdown: cn(
-          'absolute bg-card inset-0 opacity-0',
-          defaultClassNames.dropdown,
-        ),
+        dropdown_root: cn('relative', defaultClassNames.dropdown_root),
+        dropdown: cn(defaultClassNames.dropdown),
         caption_label: cn(
           'select-none font-medium text-sm text-t1',
           captionLayout === 'label'
@@ -139,6 +140,7 @@ function Calendar({
           );
         },
         DayButton: CalendarDayButton,
+        Dropdown: CalendarDropdown,
         WeekNumber: ({ children, ...weekProps }) => (
           <td {...weekProps}>
             <div className="flex size-(--cell-size) items-center justify-center text-center">
@@ -193,6 +195,55 @@ function CalendarDayButton({
       )}
       {...props}
     />
+  );
+}
+
+type CalendarDropdownOption = { value: number; label: string; disabled?: boolean };
+
+function CalendarDropdown({
+  value,
+  onChange,
+  options,
+  name,
+  'aria-label': ariaLabel,
+  disabled,
+}: {
+  options?: CalendarDropdownOption[];
+} & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'children'>) {
+  const handleValueChange = (next: string) => {
+    if (!onChange) return;
+    onChange({
+      target: { value: next },
+      currentTarget: { value: next },
+    } as unknown as React.ChangeEvent<HTMLSelectElement>);
+  };
+
+  const isMonths = name === 'months';
+
+  return (
+    <Select
+      value={value !== undefined ? String(value) : undefined}
+      onValueChange={handleValueChange}
+      disabled={disabled}
+    >
+      <SelectTrigger
+        aria-label={ariaLabel}
+        className={cn('h-8 px-2.5', isMonths ? 'w-26' : 'w-20')}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="max-h-75">
+        {options?.map((opt) => (
+          <SelectItem
+            key={opt.value}
+            value={String(opt.value)}
+            disabled={opt.disabled}
+          >
+            {opt.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

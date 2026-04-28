@@ -1497,3 +1497,151 @@ export async function apiBulkDeleteMonthlyTargets(ids: string[]) {
     method: 'POST', body: JSON.stringify({ ids }),
   });
 }
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export type NotificationCategory = 'task' | 'target' | 'event' | 'system';
+export type NotificationType =
+  | 'task_created'
+  | 'task_status_changed'
+  | 'task_assigned'
+  | 'task_due_soon'
+  | 'weekly_target_created'
+  | 'monthly_target_created'
+  | 'event_invited'
+  | 'system';
+
+export type NotificationRecord = {
+  _id: string;
+  userId: string;
+  type: NotificationType;
+  category: NotificationCategory;
+  title: string;
+  message: string;
+  link: string | null;
+  metadata: Record<string, unknown>;
+  read: boolean;
+  readAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type NotificationFilters = {
+  read?: 'true' | 'false';
+  category?: NotificationCategory;
+  type?: NotificationType;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  limit?: string;
+};
+
+export async function apiListNotifications(filters: NotificationFilters = {}) {
+  const params = Object.fromEntries(
+    Object.entries(filters).filter(([, v]) => v !== undefined && v !== '') as [string, string][]
+  );
+  const qs = new URLSearchParams(params).toString();
+  return request<{ notifications: NotificationRecord[]; unreadCount: number }>(
+    `/notifications${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function apiGetUnreadNotificationCount() {
+  return request<{ unreadCount: number }>('/notifications/unread-count');
+}
+
+export async function apiMarkNotificationRead(id: string) {
+  return request<{ notification: NotificationRecord }>(`/notifications/${id}/read`, {
+    method: 'PATCH',
+  });
+}
+
+export async function apiMarkNotificationUnread(id: string) {
+  return request<{ notification: NotificationRecord }>(`/notifications/${id}/unread`, {
+    method: 'PATCH',
+  });
+}
+
+export async function apiMarkAllNotificationsRead() {
+  return request<{ modified: number }>('/notifications/mark-all-read', { method: 'POST' });
+}
+
+export async function apiDeleteNotification(id: string) {
+  return request<{ id: string }>(`/notifications/${id}`, { method: 'DELETE' });
+}
+
+export async function apiClearNotifications(opts: { read?: boolean } = {}) {
+  const qs = opts.read !== undefined ? `?read=${opts.read}` : '';
+  return request<{ deleted: number }>(`/notifications/clear${qs}`, { method: 'DELETE' });
+}
+
+// ─── Calendar Events ──────────────────────────────────────────────────────────
+
+export type CalendarEventType = 'meeting' | 'deadline' | 'reminder' | 'holiday' | 'other';
+
+export type CalendarEventAttendee = {
+  _id: string;
+  fullName: string;
+  avatarUrl?: string | null;
+};
+
+export type CalendarEventRecord = {
+  _id: string;
+  title: string;
+  description: string;
+  type: CalendarEventType;
+  startAt: string;
+  endAt: string;
+  allDay: boolean;
+  location: string;
+  attendees: CalendarEventAttendee[];
+  createdBy: CalendarEventAttendee | string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CalendarEventInput = {
+  title: string;
+  description?: string;
+  type?: CalendarEventType;
+  startAt: string;
+  endAt: string;
+  allDay?: boolean;
+  location?: string;
+  attendees?: string[];
+};
+
+export async function apiListCalendarEvents(filters: {
+  dateFrom?: string;
+  dateTo?: string;
+  type?: CalendarEventType;
+  search?: string;
+} = {}) {
+  const params = Object.fromEntries(
+    Object.entries(filters).filter(([, v]) => v !== undefined && v !== '') as [string, string][]
+  );
+  const qs = new URLSearchParams(params).toString();
+  return request<{ events: CalendarEventRecord[] }>(`/calendar/events${qs ? `?${qs}` : ''}`);
+}
+
+export async function apiGetCalendarEvent(id: string) {
+  return request<{ event: CalendarEventRecord }>(`/calendar/events/${id}`);
+}
+
+export async function apiCreateCalendarEvent(data: CalendarEventInput) {
+  return request<{ event: CalendarEventRecord }>('/calendar/events', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateCalendarEvent(id: string, data: Partial<CalendarEventInput>) {
+  return request<{ event: CalendarEventRecord }>(`/calendar/events/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteCalendarEvent(id: string) {
+  return request<{ id: string }>(`/calendar/events/${id}`, { method: 'DELETE' });
+}

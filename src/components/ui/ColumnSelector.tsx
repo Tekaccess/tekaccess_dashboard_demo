@@ -28,6 +28,38 @@ export function useColumnVisibility(storageKey: string, cols: ColDef[]) {
   return { visible, toggle };
 }
 
+/**
+ * Per-user column width persistence. Stored as { [colKey]: pixels } in localStorage
+ * under `col_widths_<storageKey>`. Unknown keys fall back to `defaults`.
+ */
+export function useColumnWidths(
+  storageKey: string,
+  defaults: Record<string, number>,
+) {
+  const [widths, setWidths] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem(`col_widths_${storageKey}`);
+      if (saved) return { ...defaults, ...JSON.parse(saved) };
+    } catch {}
+    return defaults;
+  });
+
+  const setWidth = React.useCallback(
+    (key: string, width: number) => {
+      setWidths((prev) => {
+        const next = { ...prev, [key]: width };
+        try {
+          localStorage.setItem(`col_widths_${storageKey}`, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    },
+    [storageKey],
+  );
+
+  return { widths, setWidth };
+}
+
 interface ColumnSelectorProps {
   cols: ColDef[];
   visible: Set<string>;

@@ -48,12 +48,13 @@ import {
   subYears,
   isWithinInterval,
 } from 'date-fns';
-import ColumnSelector, { useColumnVisibility, ColDef } from '../components/ui/ColumnSelector';
+import ColumnSelector, { useColumnVisibility, useColumnWidths, ColDef } from '../components/ui/ColumnSelector';
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
+  ResizableTableHead,
   TableHeader,
   TableRow,
 } from '../components/ui/table';
@@ -165,6 +166,19 @@ const MONTHLY_COLS: ColDef[] = [
   { key: 'weeklies',  label: 'Weekly Targets',  defaultVisible: true },
   { key: 'progress',  label: 'Progress',        defaultVisible: true },
 ];
+
+// Default column widths (in pixels). Persisted per-user in localStorage.
+const CHECKBOX_COL_WIDTH = 48;
+const CHECKBOX_COL_STYLE: React.CSSProperties = { width: CHECKBOX_COL_WIDTH, minWidth: CHECKBOX_COL_WIDTH, maxWidth: CHECKBOX_COL_WIDTH };
+const TASK_COL_WIDTHS: Record<string, number> = {
+  task: 360, status: 140, assignee: 200, due: 130, weekly: 200,
+};
+const WEEKLY_COL_WIDTHS: Record<string, number> = {
+  title: 320, monthly: 220, tasks: 110, progress: 180,
+};
+const MONTHLY_COL_WIDTHS: Record<string, number> = {
+  title: 320, weeklies: 200, progress: 180,
+};
 
 // Sample data removed — tasks, weekly targets, monthly targets and users
 // are loaded from the backend on mount.
@@ -481,14 +495,28 @@ function EditableTitle({
 }) {
   const [editing, setEditing] = useState(autoFocus);
   const [draft, setDraft] = useState(value);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  // Resize the textarea to fit content. Reset to 'auto' first so shrinking works,
+  // then set to scrollHeight.
+  const autoSize = useCallback(() => {
+    const el = taRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
 
   useEffect(() => {
     if (editing) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
+      taRef.current?.focus();
+      taRef.current?.select();
+      autoSize();
     }
-  }, [editing]);
+  }, [editing, autoSize]);
+
+  useEffect(() => {
+    if (editing) autoSize();
+  }, [draft, editing, autoSize]);
 
   useEffect(() => {
     if (!editing) setDraft(value);
@@ -509,14 +537,16 @@ function EditableTitle({
 
   if (editing) {
     return (
-      <input
-        ref={inputRef}
+      <textarea
+        ref={taRef}
+        rows={1}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          // Plain Enter commits — Shift+Enter inserts a newline.
+          if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             commit();
           } else if (e.key === 'Escape') {
@@ -525,7 +555,7 @@ function EditableTitle({
           }
         }}
         placeholder={placeholder}
-        className={`w-full min-w-0 bg-surface outline-none rounded px-2 py-1 -mx-2 -my-1 ${className}`}
+        className={`block w-full min-w-0 bg-surface outline-none rounded px-2 py-1 -mx-2 -my-1 resize-none overflow-hidden leading-snug whitespace-pre-wrap break-all ${className}`}
       />
     );
   }
@@ -643,6 +673,10 @@ export default function TaskManagement() {
   const { visible: taskColVis, toggle: taskColToggle } = useColumnVisibility('task-management', TASK_COLS);
   const { visible: weeklyColVis, toggle: weeklyColToggle } = useColumnVisibility('weekly-targets', WEEKLY_COLS);
   const { visible: monthlyColVis, toggle: monthlyColToggle } = useColumnVisibility('monthly-targets', MONTHLY_COLS);
+
+  const { widths: taskColW, setWidth: setTaskColW } = useColumnWidths('task-management', TASK_COL_WIDTHS);
+  const { widths: weeklyColW, setWidth: setWeeklyColW } = useColumnWidths('weekly-targets', WEEKLY_COL_WIDTHS);
+  const { widths: monthlyColW, setWidth: setMonthlyColW } = useColumnWidths('monthly-targets', MONTHLY_COL_WIDTHS);
 
   const selectedTask = tasks.find((t) => t.id === selectedTaskId) ?? null;
   const selectedWeekly = weeklies.find((w) => w.id === selectedWeeklyId) ?? null;
@@ -923,37 +957,30 @@ export default function TaskManagement() {
 
   // Inline-add drafts always commit on blur — empty title is allowed and
   // persists as a placeholder row the user can fill in later.
+  // Note: do the lookup OUTSIDE the setState updater so the API call fires
+  // exactly once (StrictMode invokes updater functions twice in dev).
   const onTaskDraftBlur = (id: string, value: string) => {
     if (inlineDraftTaskId !== id) return;
     setInlineDraftTaskId(null);
-    setTasks((prev) => {
-      const draft = prev.find((t) => t.id === id);
-      if (!draft) return prev;
-      commitTaskDraft({ ...draft, title: value });
-      return prev;
-    });
+    const draft = tasks.find((t) => t.id === id);
+    if (!draft) return;
+    commitTaskDraft({ ...draft, title: value });
   };
 
   const onWeeklyDraftBlur = (id: string, value: string) => {
     if (inlineDraftWeeklyId !== id) return;
     setInlineDraftWeeklyId(null);
-    setWeeklies((prev) => {
-      const draft = prev.find((w) => w.id === id);
-      if (!draft) return prev;
-      commitWeeklyDraft({ ...draft, title: value });
-      return prev;
-    });
+    const draft = weeklies.find((w) => w.id === id);
+    if (!draft) return;
+    commitWeeklyDraft({ ...draft, title: value });
   };
 
   const onMonthlyDraftBlur = (id: string, value: string) => {
     if (inlineDraftMonthlyId !== id) return;
     setInlineDraftMonthlyId(null);
-    setMonthlies((prev) => {
-      const draft = prev.find((m) => m.id === id);
-      if (!draft) return prev;
-      commitMonthlyDraft({ ...draft, title: value });
-      return prev;
-    });
+    const draft = monthlies.find((m) => m.id === id);
+    if (!draft) return;
+    commitMonthlyDraft({ ...draft, title: value });
   };
 
   const closeTaskPanel = () => {
@@ -1174,10 +1201,19 @@ export default function TaskManagement() {
         return (
           <div>
           <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <Table>
+            <Table style={{ tableLayout: 'fixed', minWidth: 0 }}>
+              <colgroup>
+                <col style={CHECKBOX_COL_STYLE} />
+                {taskColVis.has('task')     && <col style={{ width: taskColW.task }} />}
+                {taskColVis.has('status')   && <col style={{ width: taskColW.status }} />}
+                {taskColVis.has('assignee') && <col style={{ width: taskColW.assignee }} />}
+                {taskColVis.has('due')      && <col style={{ width: taskColW.due }} />}
+                {taskColVis.has('weekly')   && <col style={{ width: taskColW.weekly }} />}
+                <col />
+              </colgroup>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12">
+                  <TableHead style={CHECKBOX_COL_STYLE}>
                     <Checkbox
                       checked={allChecked}
                       indeterminate={!allChecked && someChecked}
@@ -1185,11 +1221,22 @@ export default function TaskManagement() {
                       ariaLabel="Select all tasks"
                     />
                   </TableHead>
-                  {taskColVis.has('task')     && <TableHead>Task</TableHead>}
-                  {taskColVis.has('status')   && <TableHead>Status</TableHead>}
-                  {taskColVis.has('assignee') && <TableHead>Assignee</TableHead>}
-                  {taskColVis.has('due')      && <TableHead>Due</TableHead>}
-                  {taskColVis.has('weekly')   && <TableHead>Weekly Target</TableHead>}
+                  {taskColVis.has('task')     && (
+                    <ResizableTableHead width={taskColW.task} onWidthChange={(w) => setTaskColW('task', w)}>Task</ResizableTableHead>
+                  )}
+                  {taskColVis.has('status')   && (
+                    <ResizableTableHead width={taskColW.status} onWidthChange={(w) => setTaskColW('status', w)}>Status</ResizableTableHead>
+                  )}
+                  {taskColVis.has('assignee') && (
+                    <ResizableTableHead width={taskColW.assignee} onWidthChange={(w) => setTaskColW('assignee', w)}>Assignee</ResizableTableHead>
+                  )}
+                  {taskColVis.has('due')      && (
+                    <ResizableTableHead width={taskColW.due} onWidthChange={(w) => setTaskColW('due', w)}>Due</ResizableTableHead>
+                  )}
+                  {taskColVis.has('weekly')   && (
+                    <ResizableTableHead width={taskColW.weekly} onWidthChange={(w) => setTaskColW('weekly', w)}>Weekly Target</ResizableTableHead>
+                  )}
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1202,7 +1249,7 @@ export default function TaskManagement() {
                       onClick={() => setSelectedTaskId(task.id)}
                       className="cursor-pointer"
                     >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell style={CHECKBOX_COL_STYLE} onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selected}
                           onCheckedChange={(v) => setToggle(setSelectedTaskIds, task.id, v)}
@@ -1210,7 +1257,7 @@ export default function TaskManagement() {
                         />
                       </TableCell>
                       {taskColVis.has('task') && (
-                        <TableCell className="max-w-[400px] whitespace-normal break-words">
+                        <TableCell className="whitespace-normal break-all">
                           <EditableTitle
                             value={task.title}
                             onChange={(v) => updateTask(task.id, { title: v })}
@@ -1272,12 +1319,13 @@ export default function TaskManagement() {
                           />
                         </TableCell>
                       )}
+                      <TableCell />
                     </TableRow>
                   );
                 })}
                 {filteredTasks.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={visibleCols} className="py-12 text-center text-sm text-t3">
+                    <TableCell colSpan={visibleCols + 1} className="py-12 text-center text-sm text-t3">
                       No tasks match your filters.
                     </TableCell>
                   </TableRow>
@@ -1317,11 +1365,11 @@ export default function TaskManagement() {
                         onClick={() => setSelectedTaskId(task.id)}
                         className="w-full text-left bg-card rounded-xl border border-border p-4 hover:shadow-md hover:border-accent/40 transition-all"
                       >
-                        <h4 className="text-sm font-medium text-t1 mb-1.5">
+                        <h4 className="text-sm font-medium text-t1 mb-1.5 break-all">
                           {task.title || <span className="text-t3 italic">Untitled</span>}
                         </h4>
                         {task.description && (
-                          <p className="text-xs text-t2 mb-3 line-clamp-2">{task.description}</p>
+                          <p className="text-xs text-t2 mb-3 line-clamp-2 break-words">{task.description}</p>
                         )}
 
                         <div className="flex items-center justify-between">
@@ -1373,10 +1421,18 @@ export default function TaskManagement() {
         return (
           <div>
           <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <Table>
+            <Table style={{ tableLayout: 'fixed', minWidth: 0 }}>
+              <colgroup>
+                <col style={CHECKBOX_COL_STYLE} />
+                {weeklyColVis.has('title')    && <col style={{ width: weeklyColW.title }} />}
+                {weeklyColVis.has('monthly')  && <col style={{ width: weeklyColW.monthly }} />}
+                {weeklyColVis.has('tasks')    && <col style={{ width: weeklyColW.tasks }} />}
+                {weeklyColVis.has('progress') && <col style={{ width: weeklyColW.progress }} />}
+                <col />
+              </colgroup>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12 pr-6">
+                  <TableHead style={CHECKBOX_COL_STYLE}>
                     <Checkbox
                       checked={allChecked}
                       indeterminate={!allChecked && someChecked}
@@ -1384,10 +1440,19 @@ export default function TaskManagement() {
                       ariaLabel="Select all weekly targets"
                     />
                   </TableHead>
-                  {weeklyColVis.has('title')    && <TableHead>Weekly Target</TableHead>}
-                  {weeklyColVis.has('monthly')  && <TableHead>Monthly Target</TableHead>}
-                  {weeklyColVis.has('tasks')    && <TableHead>Tasks</TableHead>}
-                  {weeklyColVis.has('progress') && <TableHead>Progress</TableHead>}
+                  {weeklyColVis.has('title')    && (
+                    <ResizableTableHead width={weeklyColW.title} onWidthChange={(w) => setWeeklyColW('title', w)}>Weekly Target</ResizableTableHead>
+                  )}
+                  {weeklyColVis.has('monthly')  && (
+                    <ResizableTableHead width={weeklyColW.monthly} onWidthChange={(w) => setWeeklyColW('monthly', w)}>Monthly Target</ResizableTableHead>
+                  )}
+                  {weeklyColVis.has('tasks')    && (
+                    <ResizableTableHead width={weeklyColW.tasks} onWidthChange={(w) => setWeeklyColW('tasks', w)}>Tasks</ResizableTableHead>
+                  )}
+                  {weeklyColVis.has('progress') && (
+                    <ResizableTableHead width={weeklyColW.progress} onWidthChange={(w) => setWeeklyColW('progress', w)}>Progress</ResizableTableHead>
+                  )}
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1403,7 +1468,7 @@ export default function TaskManagement() {
                       onClick={() => setSelectedWeeklyId(w.id)}
                       className="cursor-pointer"
                     >
-                      <TableCell className="pr-6" onClick={(e) => e.stopPropagation()}>
+                      <TableCell style={CHECKBOX_COL_STYLE} onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selected}
                           onCheckedChange={(v) => setToggle(setSelectedWeeklyIds, w.id, v)}
@@ -1411,7 +1476,7 @@ export default function TaskManagement() {
                         />
                       </TableCell>
                       {weeklyColVis.has('title') && (
-                        <TableCell>
+                        <TableCell className="whitespace-normal break-all">
                           <EditableTitle
                             value={w.title}
                             onChange={(v) => updateWeekly(w.id, { title: v })}
@@ -1453,12 +1518,13 @@ export default function TaskManagement() {
                           <ProgressBar value={progress} />
                         </TableCell>
                       )}
+                      <TableCell />
                     </TableRow>
                   );
                 })}
                 {filteredWeeklies.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={visibleCols} className="py-12 text-center text-sm text-t3">
+                    <TableCell colSpan={visibleCols + 1} className="py-12 text-center text-sm text-t3">
                       No weekly targets yet.
                     </TableCell>
                   </TableRow>
@@ -1490,10 +1556,17 @@ export default function TaskManagement() {
         return (
           <div>
           <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <Table>
+            <Table style={{ tableLayout: 'fixed', minWidth: 0 }}>
+              <colgroup>
+                <col style={CHECKBOX_COL_STYLE} />
+                {monthlyColVis.has('title')    && <col style={{ width: monthlyColW.title }} />}
+                {monthlyColVis.has('weeklies') && <col style={{ width: monthlyColW.weeklies }} />}
+                {monthlyColVis.has('progress') && <col style={{ width: monthlyColW.progress }} />}
+                <col />
+              </colgroup>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12 pr-6">
+                  <TableHead style={CHECKBOX_COL_STYLE}>
                     <Checkbox
                       checked={allChecked}
                       indeterminate={!allChecked && someChecked}
@@ -1501,9 +1574,16 @@ export default function TaskManagement() {
                       ariaLabel="Select all monthly targets"
                     />
                   </TableHead>
-                  {monthlyColVis.has('title')    && <TableHead>Monthly Target</TableHead>}
-                  {monthlyColVis.has('weeklies') && <TableHead>Weekly Targets</TableHead>}
-                  {monthlyColVis.has('progress') && <TableHead>Progress</TableHead>}
+                  {monthlyColVis.has('title')    && (
+                    <ResizableTableHead width={monthlyColW.title} onWidthChange={(w) => setMonthlyColW('title', w)}>Monthly Target</ResizableTableHead>
+                  )}
+                  {monthlyColVis.has('weeklies') && (
+                    <ResizableTableHead width={monthlyColW.weeklies} onWidthChange={(w) => setMonthlyColW('weeklies', w)}>Weekly Targets</ResizableTableHead>
+                  )}
+                  {monthlyColVis.has('progress') && (
+                    <ResizableTableHead width={monthlyColW.progress} onWidthChange={(w) => setMonthlyColW('progress', w)}>Progress</ResizableTableHead>
+                  )}
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1518,7 +1598,7 @@ export default function TaskManagement() {
                       onClick={() => setSelectedMonthlyId(m.id)}
                       className="cursor-pointer"
                     >
-                      <TableCell className="pr-6" onClick={(e) => e.stopPropagation()}>
+                      <TableCell style={CHECKBOX_COL_STYLE} onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selected}
                           onCheckedChange={(v) => setToggle(setSelectedMonthlyIds, m.id, v)}
@@ -1526,7 +1606,7 @@ export default function TaskManagement() {
                         />
                       </TableCell>
                       {monthlyColVis.has('title') && (
-                        <TableCell>
+                        <TableCell className="whitespace-normal break-all">
                           <EditableTitle
                             value={m.title}
                             onChange={(v) => updateMonthly(m.id, { title: v })}
@@ -1555,12 +1635,13 @@ export default function TaskManagement() {
                           <ProgressBar value={progress} />
                         </TableCell>
                       )}
+                      <TableCell />
                     </TableRow>
                   );
                 })}
                 {filteredMonthlies.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={visibleCols} className="py-12 text-center text-sm text-t3">
+                    <TableCell colSpan={visibleCols + 1} className="py-12 text-center text-sm text-t3">
                       No monthly targets yet.
                     </TableCell>
                   </TableRow>
@@ -1790,9 +1871,9 @@ export default function TaskManagement() {
                           setSelectedWeeklyId(null);
                           setSelectedTaskId(t.id);
                         }}
-                        className="flex items-center justify-between w-full px-2 py-2 rounded-md hover:bg-surface text-left"
+                        className="flex items-start justify-between gap-2 w-full px-2 py-2 rounded-md hover:bg-surface text-left"
                       >
-                        <span className="text-sm text-t1 truncate">
+                        <span className="text-sm text-t1 break-all min-w-0">
                           {t.title || <span className="text-t3 italic">Untitled</span>}
                         </span>
                         <StatusPill status={t.status} />
@@ -1954,9 +2035,9 @@ export default function TaskManagement() {
                           setSelectedMonthlyId(null);
                           setSelectedWeeklyId(w.id);
                         }}
-                        className="flex items-center justify-between w-full px-2 py-2 rounded-md hover:bg-surface text-left gap-3"
+                        className="flex items-start justify-between w-full px-2 py-2 rounded-md hover:bg-surface text-left gap-3"
                       >
-                        <span className="text-sm text-t1 truncate">
+                        <span className="text-sm text-t1 break-all min-w-0">
                           {w.title || <span className="text-t3 italic">Untitled</span>}
                         </span>
                         <span className="text-xs text-t3 shrink-0">{weeklyProgress(w.id, tasks)}%</span>
