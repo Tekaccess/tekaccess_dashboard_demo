@@ -860,7 +860,7 @@ function EventModal({
       >
         <form
           onSubmit={submit}
-          className="bg-card border border-border rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+          className="bg-card border border-border rounded-2xl p-2 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
         >
           {/* Title row */}
           <div className="px-5 pt-5 pb-3 flex items-start gap-3">
@@ -869,7 +869,7 @@ function EventModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Add title"
-              className="flex-1 bg-transparent border-0 border-b border-border-s/60 focus:border-accent text-xl font-medium text-t1 placeholder-t3 outline-none pb-2 transition-colors"
+              className="flex-1 bg-transparent border-0 border-b-2 border-border-s/60 focus:border-accent/50 text-xl font-medium text-t1 placeholder-t3 outline-none pb-2 transition-colors"
             />
             <button
               type="button"
@@ -1006,7 +1006,7 @@ function TimeSelect({
       <SelectTrigger className="w-24">
         <SelectValue />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className='max-h-[200px]'>
         {TIME_SLOTS.map((s) => (
           <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
         ))}
