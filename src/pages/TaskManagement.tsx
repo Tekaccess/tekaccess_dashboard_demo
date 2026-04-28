@@ -169,6 +169,7 @@ const MONTHLY_COLS: ColDef[] = [
 
 // Default column widths (in pixels). Persisted per-user in localStorage.
 const CHECKBOX_COL_WIDTH = 48;
+const CHECKBOX_COL_STYLE: React.CSSProperties = { width: CHECKBOX_COL_WIDTH, minWidth: CHECKBOX_COL_WIDTH, maxWidth: CHECKBOX_COL_WIDTH };
 const TASK_COL_WIDTHS: Record<string, number> = {
   task: 360, status: 140, assignee: 200, due: 130, weekly: 200,
 };
@@ -554,7 +555,7 @@ function EditableTitle({
           }
         }}
         placeholder={placeholder}
-        className={`block w-full min-w-0 bg-surface outline-none rounded px-2 py-1 -mx-2 -my-1 resize-none overflow-hidden leading-snug whitespace-pre-wrap break-words ${className}`}
+        className={`block w-full min-w-0 bg-surface outline-none rounded px-2 py-1 -mx-2 -my-1 resize-none overflow-hidden leading-snug whitespace-pre-wrap break-all ${className}`}
       />
     );
   }
@@ -1202,16 +1203,17 @@ export default function TaskManagement() {
           <div className="bg-card rounded-xl border border-border overflow-hidden">
             <Table style={{ tableLayout: 'fixed', minWidth: 0 }}>
               <colgroup>
-                <col style={{ width: CHECKBOX_COL_WIDTH }} />
+                <col style={CHECKBOX_COL_STYLE} />
                 {taskColVis.has('task')     && <col style={{ width: taskColW.task }} />}
                 {taskColVis.has('status')   && <col style={{ width: taskColW.status }} />}
                 {taskColVis.has('assignee') && <col style={{ width: taskColW.assignee }} />}
                 {taskColVis.has('due')      && <col style={{ width: taskColW.due }} />}
                 {taskColVis.has('weekly')   && <col style={{ width: taskColW.weekly }} />}
+                <col />
               </colgroup>
               <TableHeader>
                 <TableRow>
-                  <TableHead>
+                  <TableHead style={CHECKBOX_COL_STYLE}>
                     <Checkbox
                       checked={allChecked}
                       indeterminate={!allChecked && someChecked}
@@ -1234,6 +1236,7 @@ export default function TaskManagement() {
                   {taskColVis.has('weekly')   && (
                     <ResizableTableHead width={taskColW.weekly} onWidthChange={(w) => setTaskColW('weekly', w)}>Weekly Target</ResizableTableHead>
                   )}
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1246,7 +1249,7 @@ export default function TaskManagement() {
                       onClick={() => setSelectedTaskId(task.id)}
                       className="cursor-pointer"
                     >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell style={CHECKBOX_COL_STYLE} onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selected}
                           onCheckedChange={(v) => setToggle(setSelectedTaskIds, task.id, v)}
@@ -1254,7 +1257,7 @@ export default function TaskManagement() {
                         />
                       </TableCell>
                       {taskColVis.has('task') && (
-                        <TableCell className="whitespace-normal break-words">
+                        <TableCell className="whitespace-normal break-all">
                           <EditableTitle
                             value={task.title}
                             onChange={(v) => updateTask(task.id, { title: v })}
@@ -1316,12 +1319,13 @@ export default function TaskManagement() {
                           />
                         </TableCell>
                       )}
+                      <TableCell />
                     </TableRow>
                   );
                 })}
                 {filteredTasks.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={visibleCols} className="py-12 text-center text-sm text-t3">
+                    <TableCell colSpan={visibleCols + 1} className="py-12 text-center text-sm text-t3">
                       No tasks match your filters.
                     </TableCell>
                   </TableRow>
@@ -1361,7 +1365,7 @@ export default function TaskManagement() {
                         onClick={() => setSelectedTaskId(task.id)}
                         className="w-full text-left bg-card rounded-xl border border-border p-4 hover:shadow-md hover:border-accent/40 transition-all"
                       >
-                        <h4 className="text-sm font-medium text-t1 mb-1.5 break-words">
+                        <h4 className="text-sm font-medium text-t1 mb-1.5 break-all">
                           {task.title || <span className="text-t3 italic">Untitled</span>}
                         </h4>
                         {task.description && (
@@ -1419,15 +1423,16 @@ export default function TaskManagement() {
           <div className="bg-card rounded-xl border border-border overflow-hidden">
             <Table style={{ tableLayout: 'fixed', minWidth: 0 }}>
               <colgroup>
-                <col style={{ width: CHECKBOX_COL_WIDTH }} />
+                <col style={CHECKBOX_COL_STYLE} />
                 {weeklyColVis.has('title')    && <col style={{ width: weeklyColW.title }} />}
                 {weeklyColVis.has('monthly')  && <col style={{ width: weeklyColW.monthly }} />}
                 {weeklyColVis.has('tasks')    && <col style={{ width: weeklyColW.tasks }} />}
                 {weeklyColVis.has('progress') && <col style={{ width: weeklyColW.progress }} />}
+                <col />
               </colgroup>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="pr-6 border-r-0">
+                  <TableHead style={CHECKBOX_COL_STYLE}>
                     <Checkbox
                       checked={allChecked}
                       indeterminate={!allChecked && someChecked}
@@ -1447,6 +1452,7 @@ export default function TaskManagement() {
                   {weeklyColVis.has('progress') && (
                     <ResizableTableHead width={weeklyColW.progress} onWidthChange={(w) => setWeeklyColW('progress', w)}>Progress</ResizableTableHead>
                   )}
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1462,7 +1468,7 @@ export default function TaskManagement() {
                       onClick={() => setSelectedWeeklyId(w.id)}
                       className="cursor-pointer"
                     >
-                      <TableCell className="pr-6 border-r-0" onClick={(e) => e.stopPropagation()}>
+                      <TableCell style={CHECKBOX_COL_STYLE} onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selected}
                           onCheckedChange={(v) => setToggle(setSelectedWeeklyIds, w.id, v)}
@@ -1470,7 +1476,7 @@ export default function TaskManagement() {
                         />
                       </TableCell>
                       {weeklyColVis.has('title') && (
-                        <TableCell className="whitespace-normal break-words">
+                        <TableCell className="whitespace-normal break-all">
                           <EditableTitle
                             value={w.title}
                             onChange={(v) => updateWeekly(w.id, { title: v })}
@@ -1512,12 +1518,13 @@ export default function TaskManagement() {
                           <ProgressBar value={progress} />
                         </TableCell>
                       )}
+                      <TableCell />
                     </TableRow>
                   );
                 })}
                 {filteredWeeklies.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={visibleCols} className="py-12 text-center text-sm text-t3">
+                    <TableCell colSpan={visibleCols + 1} className="py-12 text-center text-sm text-t3">
                       No weekly targets yet.
                     </TableCell>
                   </TableRow>
@@ -1551,14 +1558,15 @@ export default function TaskManagement() {
           <div className="bg-card rounded-xl border border-border overflow-hidden">
             <Table style={{ tableLayout: 'fixed', minWidth: 0 }}>
               <colgroup>
-                <col style={{ width: CHECKBOX_COL_WIDTH }} />
+                <col style={CHECKBOX_COL_STYLE} />
                 {monthlyColVis.has('title')    && <col style={{ width: monthlyColW.title }} />}
                 {monthlyColVis.has('weeklies') && <col style={{ width: monthlyColW.weeklies }} />}
                 {monthlyColVis.has('progress') && <col style={{ width: monthlyColW.progress }} />}
+                <col />
               </colgroup>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="pr-6 border-r-0">
+                  <TableHead style={CHECKBOX_COL_STYLE}>
                     <Checkbox
                       checked={allChecked}
                       indeterminate={!allChecked && someChecked}
@@ -1575,6 +1583,7 @@ export default function TaskManagement() {
                   {monthlyColVis.has('progress') && (
                     <ResizableTableHead width={monthlyColW.progress} onWidthChange={(w) => setMonthlyColW('progress', w)}>Progress</ResizableTableHead>
                   )}
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1589,7 +1598,7 @@ export default function TaskManagement() {
                       onClick={() => setSelectedMonthlyId(m.id)}
                       className="cursor-pointer"
                     >
-                      <TableCell className="pr-6 border-r-0" onClick={(e) => e.stopPropagation()}>
+                      <TableCell style={CHECKBOX_COL_STYLE} onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selected}
                           onCheckedChange={(v) => setToggle(setSelectedMonthlyIds, m.id, v)}
@@ -1597,7 +1606,7 @@ export default function TaskManagement() {
                         />
                       </TableCell>
                       {monthlyColVis.has('title') && (
-                        <TableCell className="whitespace-normal break-words">
+                        <TableCell className="whitespace-normal break-all">
                           <EditableTitle
                             value={m.title}
                             onChange={(v) => updateMonthly(m.id, { title: v })}
@@ -1626,12 +1635,13 @@ export default function TaskManagement() {
                           <ProgressBar value={progress} />
                         </TableCell>
                       )}
+                      <TableCell />
                     </TableRow>
                   );
                 })}
                 {filteredMonthlies.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={visibleCols} className="py-12 text-center text-sm text-t3">
+                    <TableCell colSpan={visibleCols + 1} className="py-12 text-center text-sm text-t3">
                       No monthly targets yet.
                     </TableCell>
                   </TableRow>
@@ -1861,9 +1871,9 @@ export default function TaskManagement() {
                           setSelectedWeeklyId(null);
                           setSelectedTaskId(t.id);
                         }}
-                        className="flex items-center justify-between w-full px-2 py-2 rounded-md hover:bg-surface text-left"
+                        className="flex items-start justify-between gap-2 w-full px-2 py-2 rounded-md hover:bg-surface text-left"
                       >
-                        <span className="text-sm text-t1 truncate">
+                        <span className="text-sm text-t1 break-all min-w-0">
                           {t.title || <span className="text-t3 italic">Untitled</span>}
                         </span>
                         <StatusPill status={t.status} />
@@ -2025,9 +2035,9 @@ export default function TaskManagement() {
                           setSelectedMonthlyId(null);
                           setSelectedWeeklyId(w.id);
                         }}
-                        className="flex items-center justify-between w-full px-2 py-2 rounded-md hover:bg-surface text-left gap-3"
+                        className="flex items-start justify-between w-full px-2 py-2 rounded-md hover:bg-surface text-left gap-3"
                       >
-                        <span className="text-sm text-t1 truncate">
+                        <span className="text-sm text-t1 break-all min-w-0">
                           {w.title || <span className="text-t3 italic">Untitled</span>}
                         </span>
                         <span className="text-xs text-t3 shrink-0">{weeklyProgress(w.id, tasks)}%</span>

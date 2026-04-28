@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, isSameDay, parseISO, startOfMonth, endOfMonth, isValid as isValidDate } from 'date-fns';
 import {
@@ -18,6 +19,7 @@ import {
   CaretDown,
   TextAlignLeft,
   Users,
+  PlusIcon,
 } from '@phosphor-icons/react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import type { DayButton } from 'react-day-picker';
@@ -35,9 +37,7 @@ import {
   apiCreateCalendarEvent,
   apiUpdateCalendarEvent,
   apiDeleteCalendarEvent,
-  apiCreateTaskFromEvent,
   apiListTasks,
-  apiCreateTask,
   apiListWeeklyTargets,
   apiListMonthlyTargets,
   apiListAssignableUsers,
@@ -52,12 +52,12 @@ import {
 
 // ─── Layer config ─────────────────────────────────────────────────────────────
 
-const TYPE_COLORS: Record<CalendarEventType, { chip: string; dot: string; ring: string }> = {
-  meeting:  { chip: 'bg-accent text-white',         dot: 'bg-accent',        ring: 'ring-accent/30' },
-  deadline: { chip: 'bg-red-500 text-white',        dot: 'bg-red-500',       ring: 'ring-red-500/30' },
-  reminder: { chip: 'bg-amber-500 text-white',      dot: 'bg-amber-500',     ring: 'ring-amber-500/30' },
-  holiday:  { chip: 'bg-emerald-500 text-white',    dot: 'bg-emerald-500',   ring: 'ring-emerald-500/30' },
-  other:    { chip: 'bg-slate-500 text-white',      dot: 'bg-slate-500',     ring: 'ring-slate-500/30' },
+const TYPE_COLORS: Record<CalendarEventType, { chip: string; dot: string; ring: string; card: string; bar: string }> = {
+  meeting:  { chip: 'bg-accent text-white',         dot: 'bg-accent',        ring: 'ring-accent/30',      card: 'bg-accent/10 hover:bg-accent/15',         bar: 'bg-accent' },
+  deadline: { chip: 'bg-red-500 text-white',        dot: 'bg-red-500',       ring: 'ring-red-500/30',     card: 'bg-red-500/10 hover:bg-red-500/15',       bar: 'bg-red-500' },
+  reminder: { chip: 'bg-amber-500 text-white',      dot: 'bg-amber-500',     ring: 'ring-amber-500/30',   card: 'bg-amber-500/10 hover:bg-amber-500/15',   bar: 'bg-amber-500' },
+  holiday:  { chip: 'bg-emerald-500 text-white',    dot: 'bg-emerald-500',   ring: 'ring-emerald-500/30', card: 'bg-emerald-500/10 hover:bg-emerald-500/15', bar: 'bg-emerald-500' },
+  other:    { chip: 'bg-slate-500 text-white',      dot: 'bg-slate-500',     ring: 'ring-slate-500/30',   card: 'bg-slate-500/10 hover:bg-slate-500/15',   bar: 'bg-slate-500' },
 };
 
 const TASK_STATUS_COLORS: Record<string, string> = {
@@ -268,8 +268,6 @@ export default function CalendarPage() {
             existing={editingEvent}
             seedDate={modalSeedDate}
             users={users}
-            weeklies={weeklies}
-            onTaskCreated={() => loadAll()}
             onClose={() => setShowEventModal(false)}
             onCreated={(e) => { handleEventCreated(e); setShowEventModal(false); }}
             onUpdated={(e) => { handleEventUpdated(e); setShowEventModal(false); }}
@@ -287,10 +285,6 @@ export default function CalendarPage() {
             onDelete={async (id) => {
               const r = await apiDeleteCalendarEvent(id);
               if (r.success) handleEventDeleted(id);
-            }}
-            onCreateTask={async (id) => {
-              const r = await apiCreateTaskFromEvent(id);
-              if (r.success) handleEventUpdated(r.data.event);
             }}
           />
         )}
@@ -416,18 +410,23 @@ function BigCalendar({
       )}
       <ShadcnCalendar
         mode="single"
+        required
         month={month}
         onMonthChange={onMonthChange}
         selected={selectedDate}
         onSelect={(d) => d && onSelectDate(d)}
+        onDayClick={(d) => onSelectDate(d)}
         showOutsideDays
+        captionLayout="dropdown"
+        startMonth={new Date(2000, 0)}
+        endMonth={new Date(2050, 11)}
         className="w-full p-0 [--cell-size:5.5rem] sm:[--cell-size:6.5rem]"
         classNames={{
           month_caption: 'flex items-center justify-center h-10 w-full px-(--cell-size)',
           weekdays: 'flex',
           weekday: 'text-t3 flex-1 font-semibold text-[11px] uppercase tracking-wider py-2',
           week: 'flex w-full mt-1',
-          day: 'relative w-full p-0 text-center border border-border-s/40 first:rounded-tl-md last:rounded-tr-md',
+          day: 'relative w-full p-0 text-center border border-border-s/40 first:rounded-tl-md last:rounded-tr-md min-h-[80px]',
           today: '',
           outside: 'opacity-50',
         }}
@@ -517,7 +516,7 @@ function DayChip({
             onOpenEvent(item.id);
           }
         }}
-        className={`block truncate text-[10px] leading-tight rounded px-1 py-0.5 cursor-pointer hover:brightness-110 transition-all ${c.chip}`}
+        className={`block truncate max-w-[80px] text-[10px] leading-tight rounded px-1 py-0.5 cursor-pointer hover:brightness-110 transition-all ${c.chip}`}
       >
         {item.title}
       </span>
@@ -525,20 +524,20 @@ function DayChip({
   }
   if (item.kind === 'task') {
     return (
-      <span className="block truncate text-[10px] leading-tight rounded px-1 py-0.5 bg-blue-500/15 text-blue-700 dark:text-blue-300">
+      <span className="block truncate max-w-[80px] text-[10px] leading-tight rounded px-1 py-0.5 bg-blue-500/15 text-blue-700 dark:text-blue-300">
         ▸ {item.title}
       </span>
     );
   }
   if (item.kind === 'weekly') {
     return (
-      <span className="block truncate text-[10px] leading-tight rounded px-1 py-0.5 bg-amber-500/15 text-amber-700 dark:text-amber-300">
+      <span className="block truncate max-w-[80px] text-[10px] leading-tight rounded px-1 py-0.5 bg-amber-500/15 text-amber-700 dark:text-amber-300">
         ◆ {item.title}
       </span>
     );
   }
   return (
-    <span className="block truncate text-[10px] leading-tight rounded px-1 py-0.5 bg-purple-500/15 text-purple-700 dark:text-purple-300">
+    <span className="block truncate max-w-[80px] text-[10px] leading-tight rounded px-1 py-0.5 bg-purple-500/15 text-purple-700 dark:text-purple-300">
       ◆ {item.title}
     </span>
   );
@@ -564,25 +563,31 @@ function DayPanel({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-base font-bold text-t1">{format(date, 'EEEE')}</h3>
-          <p className="text-xs text-t3">{format(date, 'd MMMM yyyy')}</p>
+      <div className="flex items-start justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-accent-glow text-accent">
+            <span className="text-[10px] font-bold uppercase leading-none">{format(date, 'MMM')}</span>
+            <span className="text-lg font-bold leading-none mt-0.5">{format(date, 'd')}</span>
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-t1 leading-tight">{format(date, 'EEEE')}</h3>
+            <p className="text-xs text-t3 mt-0.5">{format(date, 'yyyy')}</p>
+          </div>
         </div>
         <button
           onClick={onCreate}
-          className="p-1.5 rounded-lg text-t3 hover:text-t1 hover:bg-surface transition-colors"
+          className="flex items-center gap-1 size-8 justify-center rounded-full text-xs font-semibold text-accent bg-accent-glow hover:bg-accent hover:text-white transition-colors"
           aria-label="New event on this day"
         >
-          <Plus size={16} weight="bold" />
+          <PlusIcon size={13} weight="bold" />
         </button>
       </div>
 
       {empty ? (
-        <div className="text-center py-10">
+        <div className="text-center py-10 rounded-2xl border border-dashed border-border bg-surface/40">
           <CalendarIcon size={32} weight="duotone" className="text-t3 mx-auto mb-3" />
           <p className="text-sm text-t2">Nothing on this day</p>
-          <button onClick={onCreate} className="mt-3 text-xs text-accent hover:underline">
+          <button onClick={onCreate} className="mt-3 bg-accent hover:brightness-110 text-white py-2 px-4 rounded-full text-xs font-semibold">
             Create an event
           </button>
         </div>
@@ -638,38 +643,30 @@ function EventRow({ event, onClick }: { event: CalendarEventRecord; onClick: () 
   return (
     <button
       onClick={onClick}
-      className="w-full text-left border border-border rounded-xl p-3 hover:border-accent/40 hover:shadow-sm transition-all"
+      className={`w-full text-left rounded-xl p-3 pl-4 relative overflow-hidden transition-all hover:shadow-sm ${c.card}`}
     >
-      <div className="flex items-start gap-2">
-        <span className={`mt-1 w-2 h-2 rounded-full ${c.dot} shrink-0`} />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-t1 truncate">{event.title}</p>
-          <div className="flex items-center gap-1.5 text-xs text-t2 mt-0.5">
-            <Clock size={12} className="text-t3" />
-            <span>
-              {event.allDay
-                ? 'All day'
-                : sameDay
-                  ? `${format(start, 'HH:mm')} – ${format(end, 'HH:mm')}`
-                  : `${format(start, 'd MMM HH:mm')} → ${format(end, 'd MMM HH:mm')}`}
+      <span className={`absolute left-0 top-0 bottom-0 w-1 ${c.bar}`} />
+      <div className="flex flex-col gap-1">
+        <p className="text-sm font-semibold text-t1 break-words">{event.title}</p>
+        <div className="flex items-center gap-1.5 text-xs text-t2">
+          <Clock size={12} className="text-t3" />
+          <span>
+            {event.allDay
+              ? 'All day'
+              : sameDay
+                ? `${format(start, 'HH:mm')} – ${format(end, 'HH:mm')}`
+                : `${format(start, 'd MMM HH:mm')} → ${format(end, 'd MMM HH:mm')}`}
+          </span>
+        </div>
+        {event.attendees.length > 0 && (
+          <div className="flex items-center gap-1.5 text-xs text-t3">
+            <Users size={12} />
+            <span className="truncate">
+              {event.attendees.slice(0, 3).map((a) => (a.fullName ?? '').split(' ')[0]).join(', ')}
+              {event.attendees.length > 3 && ` +${event.attendees.length - 3}`}
             </span>
           </div>
-          {event.location && (
-            <div className="flex items-center gap-1.5 text-xs text-t2 mt-0.5">
-              <MapPin size={12} className="text-t3" />
-              <span className="truncate">{event.location}</span>
-            </div>
-          )}
-          {event.attendees.length > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-t3 mt-0.5">
-              <Users size={12} />
-              <span className="truncate">
-                {event.attendees.slice(0, 3).map((a) => a.fullName.split(' ')[0]).join(', ')}
-                {event.attendees.length > 3 && ` +${event.attendees.length - 3}`}
-              </span>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </button>
   );
@@ -678,11 +675,12 @@ function EventRow({ event, onClick }: { event: CalendarEventRecord; onClick: () 
 function TaskRow({ task }: { task: TaskRecord }) {
   const colorClass = TASK_STATUS_COLORS[task.status] ?? 'bg-t3/30 text-t1';
   return (
-    <div className="border border-border rounded-xl p-3">
+    <div className="rounded-xl p-3 pl-4 relative overflow-hidden bg-blue-500/10 hover:bg-blue-500/15 transition-colors">
+      <span className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
       <div className="flex items-start gap-2">
         <ListChecks size={14} weight="duotone" className="text-blue-500 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-t1 truncate">{task.title || 'Untitled task'}</p>
+          <p className="text-sm font-medium text-t1 break-words">{task.title || 'Untitled task'}</p>
           <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${colorClass}`}>
             {task.status.replace('-', ' ')}
           </span>
@@ -697,7 +695,12 @@ function TargetRow({ item }: { item: CalendarItem }) {
   const isWeekly = item.kind === 'weekly';
   const progress = item.record.progress ?? 0;
   return (
-    <div className="border border-border rounded-xl p-3">
+    <div
+      className={`rounded-xl p-3 pl-4 relative overflow-hidden transition-colors ${
+        isWeekly ? 'bg-amber-500/10 hover:bg-amber-500/15' : 'bg-purple-500/10 hover:bg-purple-500/15'
+      }`}
+    >
+      <span className={`absolute left-0 top-0 bottom-0 w-1 ${isWeekly ? 'bg-amber-500' : 'bg-purple-500'}`} />
       <div className="flex items-start gap-2">
         <Target
           size={14}
@@ -706,7 +709,7 @@ function TargetRow({ item }: { item: CalendarItem }) {
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium text-t1 truncate">{item.title}</p>
+            <p className="text-sm font-medium text-t1 break-words">{item.title}</p>
             <span className="text-[10px] font-bold text-t3 shrink-0">{progress}%</span>
           </div>
           <p className="text-[10px] text-t3 mt-0.5">{isWeekly ? 'Weekly target' : 'Monthly target'}</p>
@@ -749,14 +752,10 @@ function combineDateAndTime(date: Date, hhmm: string): Date {
   return out;
 }
 
-type ModalMode = 'event' | 'task';
-
 function EventModal({
   existing,
   seedDate,
   users,
-  weeklies,
-  onTaskCreated,
   onClose,
   onCreated,
   onUpdated,
@@ -764,8 +763,6 @@ function EventModal({
   existing: CalendarEventRecord | null;
   seedDate: Date | null;
   users: AssignableUser[];
-  weeklies: WeeklyTargetRecord[];
-  onTaskCreated: () => void;
   onClose: () => void;
   onCreated: (e: CalendarEventRecord) => void;
   onUpdated: (e: CalendarEventRecord) => void;
@@ -788,30 +785,20 @@ function EventModal({
     return e;
   }, [existing, baseStart]);
 
-  const [mode, setMode] = useState<ModalMode>('event');
-
-  // Shared
   const [title, setTitle] = useState(existing?.title ?? '');
   const [description, setDescription] = useState(existing?.description ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState('');
 
-  // Event-only
   const [startDate, setStartDate] = useState<Date>(baseStart);
   const [endDate, setEndDate] = useState<Date>(baseEnd);
   const [startTime, setStartTime] = useState<string>(snapToSlot(baseStart));
   const [endTime, setEndTime] = useState<string>(snapToSlot(baseEnd));
   const [allDay, setAllDay] = useState(existing?.allDay ?? false);
   const [type, setType] = useState<CalendarEventType>(existing?.type ?? 'meeting');
-  const [location, setLocation] = useState(existing?.location ?? '');
   const [attendeeIds, setAttendeeIds] = useState<string[]>(
     existing?.attendees.map((a) => a._id) ?? [],
   );
-
-  // Task-only — mirror Task Management's daily-task fields exactly.
-  const [taskStatus, setTaskStatus] = useState<TaskRecord['status']>('not-started');
-  const [taskAssignee, setTaskAssignee] = useState<string>('');
-  const [taskWeeklyTargetId, setTaskWeeklyTargetId] = useState<string>('');
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -820,24 +807,6 @@ function EventModal({
 
     setSubmitting(true);
     try {
-      if (mode === 'task') {
-        const res = await apiCreateTask({
-          title: title.trim(),
-          description: description.trim(),
-          status: taskStatus,
-          assignee: taskAssignee || null,
-          dueDate: format(startDate, 'yyyy-MM-dd'),
-          weeklyTargetId: taskWeeklyTargetId || null,
-        } as Partial<TaskRecord>);
-        if (res.success) {
-          onTaskCreated();
-          onClose();
-        } else {
-          setErr(res.message || 'Failed to create task');
-        }
-        return;
-      }
-
       const start = allDay
         ? new Date(new Date(startDate).setHours(0, 0, 0, 0))
         : combineDateAndTime(startDate, startTime);
@@ -853,7 +822,7 @@ function EventModal({
         startAt: start.toISOString(),
         endAt: end.toISOString(),
         allDay,
-        location: location.trim(),
+        location: '',
         attendees: attendeeIds,
       };
       const res = isEdit
@@ -871,9 +840,6 @@ function EventModal({
       setSubmitting(false);
     }
   };
-
-  // Editing an existing event: lock to event mode (task editing happens in task management).
-  const showTabs = !isEdit;
 
   return (
     <>
@@ -915,182 +881,81 @@ function EventModal({
             </button>
           </div>
 
-          {/* Mode tabs */}
-          {showTabs && (
-            <div className="px-5 pb-2 flex items-center gap-1">
-              <ModeTab label="Event" active={mode === 'event'} onClick={() => setMode('event')} />
-              <ModeTab label="Task" active={mode === 'task'} onClick={() => setMode('task')} />
-            </div>
-          )}
-
           <OverlayScrollbarsComponent
             className="flex-1"
             options={{ scrollbars: { autoHide: 'leave' } }}
             defer
           >
             <div className="px-5 py-3 space-y-1">
-              {mode === 'event' ? (
-                <>
-                  {/* Time row */}
-                  <Row icon={<Clock size={18} weight="duotone" className="text-t3" />}>
-                    <div className="flex flex-wrap items-center gap-2">
+              {/* Time row */}
+              <Row icon={<Clock size={18} weight="duotone" className="text-t3" />}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <DatePicker
+                    value={startDate}
+                    onChange={(d) => {
+                      if (!d) return;
+                      setStartDate(d);
+                      if (!allDay && endDate < d) setEndDate(d);
+                    }}
+                    compact
+                  />
+                  {!allDay && (
+                    <>
+                      <TimeSelect value={startTime} onChange={setStartTime} />
+                      <span className="text-t3 text-sm">–</span>
+                      <TimeSelect value={endTime} onChange={setEndTime} />
+                    </>
+                  )}
+                  {allDay && (
+                    <>
+                      <span className="text-t3 text-sm">–</span>
                       <DatePicker
-                        value={startDate}
-                        onChange={(d) => {
-                          if (!d) return;
-                          setStartDate(d);
-                          if (!allDay && endDate < d) setEndDate(d);
-                        }}
+                        value={endDate}
+                        onChange={(d) => d && setEndDate(d)}
                         compact
                       />
-                      {!allDay && (
-                        <>
-                          <TimeSelect value={startTime} onChange={setStartTime} />
-                          <span className="text-t3 text-sm">–</span>
-                          <TimeSelect value={endTime} onChange={setEndTime} />
-                        </>
-                      )}
-                      {allDay && (
-                        <>
-                          <span className="text-t3 text-sm">–</span>
-                          <DatePicker
-                            value={endDate}
-                            onChange={(d) => d && setEndDate(d)}
-                            compact
-                          />
-                        </>
-                      )}
-                    </div>
-                  </Row>
+                    </>
+                  )}
+                </div>
+              </Row>
 
-                  {/* All-day checkbox */}
-                  <Row icon={<span className="w-[18px]" />}>
-                    <label className="inline-flex items-center gap-2 cursor-pointer select-none py-1">
-                      <Checkbox checked={allDay} onCheckedChange={setAllDay} />
-                      <span className="text-sm text-t1">All day</span>
-                    </label>
-                  </Row>
+              {/* All-day checkbox */}
+              <Row icon={<span className="w-[18px]" />}>
+                <label className="inline-flex items-center gap-2 cursor-pointer select-none py-1">
+                  <Checkbox checked={allDay} onCheckedChange={setAllDay} />
+                  <span className="text-sm text-t1">All day</span>
+                </label>
+              </Row>
 
-                  {/* Type select (kept since the calendar colors events by type) */}
-                  <Row icon={<CalendarIcon size={18} weight="duotone" className="text-t3" />}>
-                    <Select value={type} onValueChange={(v) => setType(v as CalendarEventType)}>
-                      <SelectTrigger className="w-44 capitalize">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {EVENT_TYPES.map((t) => (
-                          <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Row>
+              {/* Type select (kept since the calendar colors events by type) */}
+              <Row icon={<CalendarIcon size={18} weight="duotone" className="text-t3" />}>
+                <Select value={type} onValueChange={(v) => setType(v as CalendarEventType)}>
+                  <SelectTrigger className="w-44 capitalize">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EVENT_TYPES.map((t) => (
+                      <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Row>
 
-                  {/* Attendees */}
-                  <Row icon={<UsersThree size={18} weight="duotone" className="text-t3" />}>
-                    <AttendeesPicker users={users} value={attendeeIds} onChange={setAttendeeIds} />
-                  </Row>
+              {/* Attendees */}
+              <Row icon={<UsersThree size={18} weight="duotone" className="text-t3" />}>
+                <AttendeesPicker users={users} value={attendeeIds} onChange={setAttendeeIds} />
+              </Row>
 
-                  {/* Location */}
-                  <Row icon={<MapPin size={18} weight="duotone" className="text-t3" />}>
-                    <input
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Add rooms or location"
-                      className="w-full bg-transparent border-0 text-sm text-t1 placeholder-t3 outline-none py-2 hover:bg-surface focus:bg-surface rounded-md px-2 -mx-2 transition-colors"
-                    />
-                  </Row>
-
-                  {/* Description */}
-                  <Row icon={<TextAlignLeft size={18} weight="duotone" className="text-t3" />}>
-                    <textarea
-                      rows={2}
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Add description"
-                      className="w-full bg-transparent border-0 text-sm text-t1 placeholder-t3 outline-none py-2 px-2 -mx-2 hover:bg-surface focus:bg-surface rounded-md resize-none transition-colors"
-                    />
-                  </Row>
-                </>
-              ) : (
-                <>
-                  {/* Status — same options as Task Management's daily-task panel */}
-                  <Row icon={<CircleNotch size={18} weight="duotone" className="text-t3" />}>
-                    <Select
-                      value={taskStatus}
-                      onValueChange={(v) => setTaskStatus(v as TaskRecord['status'])}
-                    >
-                      <SelectTrigger className="w-44 capitalize">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="not-started">Not started</SelectItem>
-                        <SelectItem value="in-progress">In progress</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="postponed">Postponed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Row>
-
-                  {/* Assignee */}
-                  <Row icon={<Users size={18} weight="duotone" className="text-t3" />}>
-                    <Select
-                      value={taskAssignee || 'none'}
-                      onValueChange={(v) => setTaskAssignee(v === 'none' ? '' : v)}
-                    >
-                      <SelectTrigger className="w-56">
-                        <SelectValue placeholder="Assign to…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Unassigned</SelectItem>
-                        {users.map((u) => (
-                          <SelectItem key={u._id} value={u._id}>{u.fullName}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Row>
-
-                  {/* Due date */}
-                  <Row icon={<CalendarIcon size={18} weight="duotone" className="text-t3" />}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-t3">Due</span>
-                      <DatePicker
-                        value={startDate}
-                        onChange={(d) => d && setStartDate(d)}
-                        compact
-                      />
-                    </div>
-                  </Row>
-
-                  {/* Weekly target */}
-                  <Row icon={<Target size={18} weight="duotone" className="text-t3" />}>
-                    <Select
-                      value={taskWeeklyTargetId || 'none'}
-                      onValueChange={(v) => setTaskWeeklyTargetId(v === 'none' ? '' : v)}
-                    >
-                      <SelectTrigger className="w-64">
-                        <SelectValue placeholder="No weekly target" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {weeklies.map((w) => (
-                          <SelectItem key={w._id} value={w._id}>{w.title || 'Untitled weekly'}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Row>
-
-                  {/* Description */}
-                  <Row icon={<TextAlignLeft size={18} weight="duotone" className="text-t3" />}>
-                    <textarea
-                      rows={3}
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Add description"
-                      className="w-full bg-transparent border-0 text-sm text-t1 placeholder-t3 outline-none py-2 px-2 -mx-2 hover:bg-surface focus:bg-surface rounded-md resize-none transition-colors"
-                    />
-                  </Row>
-                </>
-              )}
+              {/* Description */}
+              <Row icon={<TextAlignLeft size={18} weight="duotone" className="text-t3" />}>
+                <textarea
+                  rows={2}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Add description"
+                  className="w-full bg-transparent border-0 text-sm text-t1 placeholder-t3 outline-none py-2 px-2 -mx-2 hover:bg-surface focus:bg-surface rounded-md resize-none transition-colors"
+                />
+              </Row>
 
               {err && <p className="text-xs text-red-500 px-2 pt-2">{err}</p>}
             </div>
@@ -1125,22 +990,6 @@ function Row({ icon, children }: { icon: React.ReactNode; children: React.ReactN
       <div className="w-5 flex items-center justify-center pt-2 shrink-0">{icon}</div>
       <div className="flex-1 min-w-0">{children}</div>
     </div>
-  );
-}
-
-function ModeTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-        active
-          ? 'bg-accent-glow text-accent'
-          : 'text-t2 hover:bg-surface hover:text-t1'
-      }`}
-    >
-      {label}
-    </button>
   );
 }
 
@@ -1205,10 +1054,33 @@ function AttendeesPicker({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const wrapRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [popoverPos, setPopoverPos] = useState<{ left: number; top: number; width: number } | null>(null);
+
+  // Position the portal-rendered popover relative to the input wrapper. Recompute
+  // on open, scroll, and resize so it tracks the input even inside scrolling parents.
+  useEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const r = wrapRef.current?.getBoundingClientRect();
+      if (!r) return;
+      setPopoverPos({ left: r.left, top: r.bottom + 4, width: r.width });
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [open]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (wrapRef.current?.contains(t)) return;
+      if (popoverRef.current?.contains(t)) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
@@ -1262,8 +1134,12 @@ function AttendeesPicker({
         />
       </div>
 
-      {open && filtered.length > 0 && (
-        <div className="absolute left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-2xl max-h-48 overflow-auto z-10">
+      {open && filtered.length > 0 && popoverPos && createPortal(
+        <div
+          ref={popoverRef}
+          style={{ position: 'fixed', left: popoverPos.left, top: popoverPos.top, width: popoverPos.width }}
+          className="bg-card border border-border rounded-xl shadow-2xl max-h-56 overflow-auto z-[60]"
+        >
           {filtered.slice(0, 30).map((u) => (
             <button
               key={u._id}
@@ -1277,7 +1153,8 @@ function AttendeesPicker({
               <span className="truncate">{u.fullName}</span>
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -1290,16 +1167,13 @@ function EventDetailPanel({
   onClose,
   onEdit,
   onDelete,
-  onCreateTask,
 }: {
   event: CalendarEventRecord;
   onClose: () => void;
   onEdit: (e: CalendarEventRecord) => void;
   onDelete: (id: string) => Promise<void>;
-  onCreateTask: (id: string) => Promise<void>;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [creating, setCreating] = useState(false);
   const c = TYPE_COLORS[event.type] ?? TYPE_COLORS.other;
   const start = parseISO(event.startAt);
   const end = parseISO(event.endAt);
@@ -1336,7 +1210,7 @@ function EventDetailPanel({
 
         <OverlayScrollbarsComponent className="flex-1" options={{ scrollbars: { autoHide: 'leave' } }} defer>
           <div className="px-5 py-4 space-y-4">
-            <h3 className="text-lg font-bold text-t1 leading-tight">{event.title}</h3>
+            <h3 className="text-lg font-bold text-t1 leading-tight break-all">{event.title}</h3>
 
             <div className="text-sm text-t2 flex items-start gap-2">
               <Clock size={14} className="mt-0.5 text-t3" />
@@ -1368,9 +1242,9 @@ function EventDetailPanel({
                       className="flex items-center gap-1.5 pl-1 pr-2 py-0.5 bg-surface text-t1 text-xs rounded-md border border-border"
                     >
                       <span className="w-5 h-5 rounded-full bg-accent/15 text-accent text-[10px] font-bold flex items-center justify-center">
-                        {a.fullName[0]?.toUpperCase()}
+                        {(a.fullName ?? '')[0]?.toUpperCase()}
                       </span>
-                      {a.fullName}
+                      {a.fullName ?? ''}
                     </span>
                   ))}
                 </div>
@@ -1384,31 +1258,10 @@ function EventDetailPanel({
               </div>
             )}
 
-            {event.linkedTaskId && (
-              <div className="rounded-xl border border-accent/30 bg-accent-glow px-3 py-2 text-xs text-accent flex items-center gap-2">
-                <CheckCircle size={14} weight="duotone" />
-                A task has been created from this event.
-              </div>
-            )}
           </div>
         </OverlayScrollbarsComponent>
 
         <div className="px-5 py-3 border-t border-border space-y-2">
-          {!event.linkedTaskId && (
-            <button
-              type="button"
-              disabled={creating}
-              onClick={async () => {
-                setCreating(true);
-                await onCreateTask(event._id);
-                setCreating(false);
-              }}
-              className="w-full px-4 py-2 bg-accent hover:bg-accent-h text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {creating ? <CircleNotch size={14} weight="bold" className="animate-spin" /> : <ListChecks size={14} weight="bold" />}
-              Create task from event
-            </button>
-          )}
           <div className="flex gap-2">
             <button
               type="button"

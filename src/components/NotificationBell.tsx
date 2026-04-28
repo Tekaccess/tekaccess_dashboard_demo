@@ -6,9 +6,6 @@ import {
   BellSlash,
   CheckCircle,
   CircleNotch,
-  ListChecks,
-  Target,
-  Gear,
   Trash,
   Check,
   X,
@@ -34,6 +31,7 @@ const CATEGORY_LABEL: Record<CategoryFilter, string> = {
   all: 'All',
   task: 'Tasks',
   target: 'Targets',
+  event: 'Events',
   system: 'System',
 };
 
@@ -42,12 +40,6 @@ const READ_LABEL: Record<ReadFilter, string> = {
   unread: 'Unread',
   read: 'Read',
 };
-
-function categoryIcon(category: NotificationCategory) {
-  if (category === 'task') return <ListChecks size={16} weight="duotone" className="text-accent" />;
-  if (category === 'target') return <Target size={16} weight="duotone" className="text-amber-500" />;
-  return <Gear size={16} weight="duotone" className="text-t3" />;
-}
 
 function relativeTime(iso: string): string {
   const t = new Date(iso).getTime();
@@ -266,7 +258,7 @@ export default function NotificationBell() {
                           Category
                         </p>
                         <div className="flex gap-1 flex-wrap">
-                          {(['all', 'task', 'target', 'system'] as CategoryFilter[]).map((v) => (
+                          {(['all', 'task', 'target', 'event', 'system'] as CategoryFilter[]).map((v) => (
                             <button
                               key={v}
                               onClick={() => setCategoryFilter(v)}
@@ -337,10 +329,9 @@ export default function NotificationBell() {
                         }`}
                         onClick={() => handleNotificationClick(n)}
                       >
-                        <div className="shrink-0 mt-0.5">{categoryIcon(n.category)}</div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <p className={`text-xs leading-tight ${n.read ? 'text-t2 font-medium' : 'text-t1 font-bold'}`}>
+                            <p className={`text-xs leading-tight break-words ${n.read ? 'text-t3 font-medium' : 'text-t1 font-bold'}`}>
                               {n.title}
                             </p>
                             {!n.read && (
@@ -348,9 +339,9 @@ export default function NotificationBell() {
                             )}
                           </div>
                           {n.message && (
-                            <p className="text-[11px] text-t3 mt-0.5 line-clamp-2">{n.message}</p>
+                            <p className={`text-[11px] mt-0.5 line-clamp-2 break-words ${n.read ? 'text-t3/70' : 'text-t3'}`}>{n.message}</p>
                           )}
-                          <p className="text-[10px] text-t3 mt-1">{relativeTime(n.createdAt)}</p>
+                          <p className={`text-[10px] mt-1 ${n.read ? 'text-t3/70' : 'text-t3'}`}>{relativeTime(n.createdAt)}</p>
                         </div>
                         <button
                           onClick={(e) => {

@@ -1501,7 +1501,7 @@ export async function apiBulkDeleteMonthlyTargets(ids: string[]) {
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 
-export type NotificationCategory = 'task' | 'target' | 'system';
+export type NotificationCategory = 'task' | 'target' | 'event' | 'system';
 export type NotificationType =
   | 'task_created'
   | 'task_status_changed'
@@ -1509,6 +1509,7 @@ export type NotificationType =
   | 'task_due_soon'
   | 'weekly_target_created'
   | 'monthly_target_created'
+  | 'event_invited'
   | 'system';
 
 export type NotificationRecord = {
@@ -1596,7 +1597,6 @@ export type CalendarEventRecord = {
   location: string;
   attendees: CalendarEventAttendee[];
   createdBy: CalendarEventAttendee | string;
-  linkedTaskId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -1645,11 +1645,4 @@ export async function apiUpdateCalendarEvent(id: string, data: Partial<CalendarE
 
 export async function apiDeleteCalendarEvent(id: string) {
   return request<{ id: string }>(`/calendar/events/${id}`, { method: 'DELETE' });
-}
-
-export async function apiCreateTaskFromEvent(id: string) {
-  return request<{ task: TaskRecord; event: CalendarEventRecord }>(
-    `/calendar/events/${id}/create-task`,
-    { method: 'POST' }
-  );
 }
