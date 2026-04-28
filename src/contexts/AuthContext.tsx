@@ -9,6 +9,7 @@ import {
   apiUploadAvatar,
   getAccessToken,
   setAccessToken,
+  setRefreshToken,
   type BackendUser,
 } from "../lib/api";
 
@@ -83,6 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return res.message || "Invalid email or password.";
     }
     setAccessToken(res.data.accessToken);
+    setRefreshToken(res.data.refreshToken);
     const u = toUser(res.data.user);
     userRef.current = u;
     setUser(u);

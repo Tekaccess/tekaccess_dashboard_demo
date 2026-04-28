@@ -8,9 +8,15 @@ type ApiResponse<T = null> = {
 };
 
 const TOKEN_KEY = 'tekaccess_token';
+const REFRESH_KEY = 'tekaccess_refresh';
 
-// Load persisted token on module init so it's ready before the first request.
+// Load persisted tokens on module init so they're ready before the first request.
 let _accessToken: string | null = localStorage.getItem(TOKEN_KEY);
+let _refreshToken: string | null = localStorage.getItem(REFRESH_KEY);
+
+// In-flight refresh promise, shared across concurrent 401s so we only call
+// /auth/refresh once even if many requests fail at the same time.
+let _refreshInFlight: Promise<boolean> | null = null;
 
 export function setAccessToken(token: string | null) {
   _accessToken = token;
@@ -21,13 +27,62 @@ export function setAccessToken(token: string | null) {
   }
 }
 
+export function setRefreshToken(token: string | null) {
+  _refreshToken = token;
+  if (token) {
+    localStorage.setItem(REFRESH_KEY, token);
+  } else {
+    localStorage.removeItem(REFRESH_KEY);
+  }
+}
+
 export function getAccessToken() {
   return _accessToken;
+}
+
+export function getRefreshToken() {
+  return _refreshToken;
+}
+
+function clearAuth() {
+  setAccessToken(null);
+  setRefreshToken(null);
+  localStorage.removeItem('tekaccess_user');
+}
+
+async function tryRefresh(): Promise<boolean> {
+  if (!_refreshToken) return false;
+  if (_refreshInFlight) return _refreshInFlight;
+
+  _refreshInFlight = (async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: _refreshToken }),
+      });
+      if (!res.ok) return false;
+      const json = await res.json();
+      if (!json?.success || !json.data?.accessToken || !json.data?.refreshToken) {
+        return false;
+      }
+      setAccessToken(json.data.accessToken);
+      setRefreshToken(json.data.refreshToken);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      _refreshInFlight = null;
+    }
+  })();
+
+  return _refreshInFlight;
 }
 
 async function request<T>(
   path: string,
   options: RequestInit = {},
+  _retried = false,
 ): Promise<ApiResponse<T>> {
   const isFormData = options.body instanceof FormData;
   const headers: Record<string, string> = {
@@ -41,11 +96,16 @@ async function request<T>(
 
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
 
-  // If the server rejects the token (expired, password changed, deactivated),
-  // wipe local storage so the user is redirected to login on next navigation.
+  // If the access token was rejected, try a one-shot silent refresh + retry.
+  if (res.status === 401 && !_retried && _refreshToken) {
+    const ok = await tryRefresh();
+    if (ok) return request<T>(path, options, true);
+  }
+
+  // Refresh failed or wasn't possible — wipe local state so the user is
+  // redirected to login on next navigation.
   if (res.status === 401 || res.status === 403) {
-    setAccessToken(null);
-    localStorage.removeItem('tekaccess_user');
+    clearAuth();
   }
 
   const json = await res.json();
@@ -72,15 +132,32 @@ export type BackendUser = {
 };
 
 export async function apiLogin(email: string, password: string) {
-  return request<{ accessToken: string; user: BackendUser }>('/auth/login', {
+  return request<{ accessToken: string; refreshToken: string; user: BackendUser }>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
 }
 
 export async function apiLogout() {
-  setAccessToken(null);
-  return request('/auth/logout', { method: 'POST' });
+  const refreshToken = _refreshToken;
+  const accessToken = _accessToken;
+  // Clear locally first so a slow/failed network call doesn't leave the UI authenticated.
+  clearAuth();
+  // Best-effort revoke server-side. Bypass request() so a 401 here doesn't
+  // re-trigger a refresh against the now-revoked token.
+  try {
+    await fetch(`${BASE_URL}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+  } catch {
+    // Network errors are non-fatal — the refresh token will TTL-expire anyway.
+  }
+  return { success: true, data: null } as ApiResponse;
 }
 
 export async function apiValidateResetToken(token: string) {
