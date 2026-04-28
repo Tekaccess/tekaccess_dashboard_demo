@@ -1359,3 +1359,125 @@ export async function apiCreateMaintenanceRecord(data: Partial<MaintenanceRecord
 export async function apiUpdateMaintenanceRecord(id: string, data: Partial<MaintenanceRecord>) {
   return request<{ record: MaintenanceRecord }>(`/transport/maintenance/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
+
+// ─── Task Management ────────────────────────────────────────────────────────
+
+export type AssignableUser = {
+  _id: string;
+  fullName: string;
+  avatarUrl?: string | null;
+};
+
+export type TaskStatus = 'not-started' | 'in-progress' | 'completed' | 'postponed';
+
+export type TaskRecord = {
+  _id: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  assignee: string | null;
+  dueDate: string | null;
+  weeklyTargetId: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WeeklyTargetRecord = {
+  _id: string;
+  title: string;
+  description: string;
+  monthlyTargetId: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  progress: number; // computed server-side
+};
+
+export type MonthlyTargetRecord = {
+  _id: string;
+  title: string;
+  description: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  progress: number; // computed server-side
+};
+
+// Assignable users (id + fullName + avatarUrl, available to all authenticated users)
+export async function apiListAssignableUsers() {
+  return request<{ users: AssignableUser[] }>('/users/assignable');
+}
+
+// Tasks
+export async function apiListTasks(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ tasks: TaskRecord[] }>(`/task-management/tasks${qs ? `?${qs}` : ''}`);
+}
+export async function apiCreateTask(data: Partial<TaskRecord>) {
+  return request<{ task: TaskRecord }>('/task-management/tasks', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function apiUpdateTask(id: string, data: Partial<TaskRecord>) {
+  return request<{ task: TaskRecord }>(`/task-management/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+export async function apiDeleteTask(id: string) {
+  return request<{ id: string }>(`/task-management/tasks/${id}`, { method: 'DELETE' });
+}
+export async function apiBulkDeleteTasks(ids: string[]) {
+  return request<{ deleted: number; ids: string[] }>('/task-management/tasks/bulk-delete', {
+    method: 'POST', body: JSON.stringify({ ids }),
+  });
+}
+export async function apiBulkReassignTasks(ids: string[], assignee: string | null) {
+  return request<{ matched: number; modified: number }>('/task-management/tasks/bulk-reassign', {
+    method: 'POST', body: JSON.stringify({ ids, assignee }),
+  });
+}
+
+// Weekly targets
+export async function apiListWeeklyTargets(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ weeklyTargets: WeeklyTargetRecord[] }>(`/task-management/weekly-targets${qs ? `?${qs}` : ''}`);
+}
+export async function apiCreateWeeklyTarget(data: Partial<WeeklyTargetRecord>) {
+  return request<{ weeklyTarget: WeeklyTargetRecord }>('/task-management/weekly-targets', {
+    method: 'POST', body: JSON.stringify(data),
+  });
+}
+export async function apiUpdateWeeklyTarget(id: string, data: Partial<WeeklyTargetRecord>) {
+  return request<{ weeklyTarget: WeeklyTargetRecord }>(`/task-management/weekly-targets/${id}`, {
+    method: 'PATCH', body: JSON.stringify(data),
+  });
+}
+export async function apiDeleteWeeklyTarget(id: string) {
+  return request<{ id: string }>(`/task-management/weekly-targets/${id}`, { method: 'DELETE' });
+}
+export async function apiBulkDeleteWeeklyTargets(ids: string[]) {
+  return request<{ deleted: number; ids: string[] }>('/task-management/weekly-targets/bulk-delete', {
+    method: 'POST', body: JSON.stringify({ ids }),
+  });
+}
+
+// Monthly targets
+export async function apiListMonthlyTargets(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ monthlyTargets: MonthlyTargetRecord[] }>(`/task-management/monthly-targets${qs ? `?${qs}` : ''}`);
+}
+export async function apiCreateMonthlyTarget(data: Partial<MonthlyTargetRecord>) {
+  return request<{ monthlyTarget: MonthlyTargetRecord }>('/task-management/monthly-targets', {
+    method: 'POST', body: JSON.stringify(data),
+  });
+}
+export async function apiUpdateMonthlyTarget(id: string, data: Partial<MonthlyTargetRecord>) {
+  return request<{ monthlyTarget: MonthlyTargetRecord }>(`/task-management/monthly-targets/${id}`, {
+    method: 'PATCH', body: JSON.stringify(data),
+  });
+}
+export async function apiDeleteMonthlyTarget(id: string) {
+  return request<{ id: string }>(`/task-management/monthly-targets/${id}`, { method: 'DELETE' });
+}
+export async function apiBulkDeleteMonthlyTargets(ids: string[]) {
+  return request<{ deleted: number; ids: string[] }>('/task-management/monthly-targets/bulk-delete', {
+    method: 'POST', body: JSON.stringify({ ids }),
+  });
+}

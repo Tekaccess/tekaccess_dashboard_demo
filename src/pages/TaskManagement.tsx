@@ -58,6 +58,17 @@ import {
   TableRow,
 } from '../components/ui/table';
 import { Input } from '../components/ui/input';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  apiListTasks, apiCreateTask, apiUpdateTask, apiDeleteTask,
+  apiBulkDeleteTasks, apiBulkReassignTasks,
+  apiListWeeklyTargets, apiCreateWeeklyTarget, apiUpdateWeeklyTarget, apiDeleteWeeklyTarget,
+  apiBulkDeleteWeeklyTargets,
+  apiListMonthlyTargets, apiCreateMonthlyTarget, apiUpdateMonthlyTarget, apiDeleteMonthlyTarget,
+  apiBulkDeleteMonthlyTargets,
+  apiListAssignableUsers,
+  type AssignableUser,
+} from '../lib/api';
 import {
   Select,
   SelectContent,
@@ -109,21 +120,8 @@ interface Task {
   updatedAt: string; // ISO timestamp
 }
 
-interface User {
-  id: string;
-  name: string;
-}
-
-const USERS: User[] = [
-  { id: 'u-thierry', name: 'Thierry' },
-  { id: 'u-marie',   name: 'Marie' },
-  { id: 'u-jean',    name: 'Jean' },
-  { id: 'u-sarah',   name: 'Sarah' },
-  { id: 'u-david',   name: 'David' },
-  { id: 'u-paul',    name: 'Paul' },
-];
-
-const getUser = (id: string | null): User | null => (id ? USERS.find((u) => u.id === id) ?? null : null);
+// User shape now mirrors the backend's `AssignableUser` exactly.
+type User = AssignableUser;
 
 interface WeeklyTarget {
   id: string;
@@ -168,27 +166,59 @@ const MONTHLY_COLS: ColDef[] = [
   { key: 'progress',  label: 'Progress',        defaultVisible: true },
 ];
 
-const sampleMonthlyTargets: MonthlyTarget[] = [
-  { id: 'm1', title: 'April Operations Excellence', description: 'Improve operational KPIs across finance, transport and inventory.' },
-  { id: 'm2', title: 'April People & Clients',      description: 'Strengthen onboarding flow and client satisfaction.' },
-];
+// Sample data removed — tasks, weekly targets, monthly targets and users
+// are loaded from the backend on mount.
 
-const sampleWeeklyTargets: WeeklyTarget[] = [
-  { id: 'w1', title: 'Week 17 — Finance reporting',       description: 'Close Q1 reports and refresh dashboards.', monthlyTargetId: 'm1' },
-  { id: 'w2', title: 'Week 17 — Transport optimization',  description: 'Optimize delivery routes.',                 monthlyTargetId: 'm1' },
-  { id: 'w3', title: 'Week 17 — Inventory readiness',     description: 'Prepare for the quarterly audit.',          monthlyTargetId: 'm1' },
-  { id: 'w4', title: 'Week 17 — Onboarding & clients',    description: 'Roll out onboarding workflow and CSAT survey.', monthlyTargetId: 'm2' },
-  { id: 'w5', title: 'Week 17 — Procurement review',      description: 'Tighten the procurement approval flow.',    monthlyTargetId: null },
-];
+// Local-draft sentinel: rows that haven't been POSTed yet have an id with this
+// prefix, so save handlers know to create rather than update.
+const DRAFT_ID_PREFIX = 'draft-';
+const isDraftId = (id: string) => id.startsWith(DRAFT_ID_PREFIX);
 
-const sampleTasks: Task[] = [
-  { id: '1', title: 'Update financial reports',     description: 'Generate Q1 financial reports and update dashboard',         status: 'in-progress', assignee: 'u-thierry', dueDate: '2026-04-18', weeklyTargetId: 'w1', updatedAt: '2026-04-28T08:30:00Z' },
-  { id: '2', title: 'Review transport routes',      description: 'Optimize delivery routes for better efficiency',              status: 'not-started', assignee: 'u-marie',   dueDate: '2026-04-20', weeklyTargetId: 'w2', updatedAt: '2026-04-27T14:15:00Z' },
-  { id: '3', title: 'Inventory audit preparation',  description: 'Prepare documentation for quarterly inventory audit',         status: 'postponed',   assignee: 'u-jean',    dueDate: '2026-04-16', weeklyTargetId: 'w3', updatedAt: '2026-04-26T09:45:00Z' },
-  { id: '4', title: 'Employee onboarding system',   description: 'Set up new employee onboarding workflow',                     status: 'completed',   assignee: 'u-sarah',   dueDate: '2026-04-15', weeklyTargetId: 'w4', updatedAt: '2026-04-22T16:20:00Z' },
-  { id: '5', title: 'Procurement process review',   description: 'Analyze and improve procurement approval process',            status: 'in-progress', assignee: 'u-thierry', dueDate: '2026-04-22', weeklyTargetId: 'w5', updatedAt: '2026-04-28T11:05:00Z' },
-  { id: '6', title: 'Client satisfaction survey',   description: 'Design and distribute client satisfaction questionnaire',     status: 'not-started', assignee: 'u-marie',   dueDate: '2026-04-25', weeklyTargetId: 'w4', updatedAt: '2026-04-25T10:00:00Z' },
-];
+// Convert backend dueDate (ISO datetime or null) into the page's existing
+// 'yyyy-MM-dd' (or '') representation, so existing render code doesn't change.
+function dueFromApi(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = parseISO(iso);
+  return isValidDate(d) ? format(d, 'yyyy-MM-dd') : '';
+}
+
+function mapTaskFromApi(t: {
+  _id: string; title: string; description: string; status: Status;
+  assignee: string | null; dueDate: string | null; weeklyTargetId: string | null;
+  updatedAt: string;
+}): Task {
+  return {
+    id: t._id,
+    title: t.title,
+    description: t.description ?? '',
+    status: t.status,
+    assignee: t.assignee ?? null,
+    dueDate: dueFromApi(t.dueDate),
+    weeklyTargetId: t.weeklyTargetId ?? null,
+    updatedAt: t.updatedAt,
+  };
+}
+
+function mapWeeklyFromApi(w: {
+  _id: string; title: string; description: string; monthlyTargetId: string | null;
+}): WeeklyTarget {
+  return {
+    id: w._id,
+    title: w.title,
+    description: w.description ?? '',
+    monthlyTargetId: w.monthlyTargetId ?? null,
+  };
+}
+
+function mapMonthlyFromApi(m: {
+  _id: string; title: string; description: string;
+}): MonthlyTarget {
+  return {
+    id: m._id,
+    title: m.title,
+    description: m.description ?? '',
+  };
+}
 
 function formatDueDate(iso: string): string {
   if (!iso) return '';
@@ -345,13 +375,15 @@ function Avatar({ name, size = 24 }: { name: string; size?: number }) {
 function AssigneeSelect({
   value,
   onChange,
+  users,
   compact = false,
 }: {
   value: string | null;
   onChange: (id: string | null) => void;
+  users: User[];
   compact?: boolean;
 }) {
-  const user = getUser(value);
+  const user = users.find((u) => u._id === value) ?? null;
   return (
     <Select
       value={value ?? NONE}
@@ -368,8 +400,8 @@ function AssigneeSelect({
         <SelectValue placeholder="Empty">
           {user ? (
             <div className="flex items-center gap-2">
-              <Avatar name={user.name} size={20} />
-              <span className="text-sm text-t1">{user.name}</span>
+              <Avatar name={user.fullName} size={20} />
+              <span className="text-sm text-t1">{user.fullName}</span>
             </div>
           ) : (
             <span className="text-sm text-t3 italic">Unassigned</span>
@@ -380,11 +412,11 @@ function AssigneeSelect({
         <SelectItem value={NONE} className="py-2 px-2">
           <span className="text-sm text-t3 italic">Unassigned</span>
         </SelectItem>
-        {USERS.map((u) => (
-          <SelectItem key={u.id} value={u.id} className="py-2 px-2">
+        {users.map((u) => (
+          <SelectItem key={u._id} value={u._id} className="py-2 px-2">
             <div className="flex items-center gap-2">
-              <Avatar name={u.name} size={24} />
-              <span className="text-sm text-t1">{u.name}</span>
+              <Avatar name={u.fullName} size={24} />
+              <span className="text-sm text-t1">{u.fullName}</span>
             </div>
           </SelectItem>
         ))}
@@ -479,7 +511,6 @@ function EditableTitle({
     return (
       <input
         ref={inputRef}
-        size={1}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
@@ -494,7 +525,7 @@ function EditableTitle({
           }
         }}
         placeholder={placeholder}
-        className={`w-full min-w-0 bg-surface outline-none rounded px-1 -mx-1 ${className}`}
+        className={`w-full min-w-0 bg-surface outline-none rounded px-2 py-1 -mx-2 -my-1 ${className}`}
       />
     );
   }
@@ -505,7 +536,7 @@ function EditableTitle({
         e.stopPropagation();
         setEditing(true);
       }}
-      className={`cursor-text rounded px-1 -mx-1 hover:bg-surface ${className} ${
+      className={`cursor-text rounded px-2 py-1 -mx-2 -my-1 hover:bg-surface ${className} ${
         !value ? 'text-t3 italic' : ''
       }`}
     >
@@ -537,9 +568,42 @@ function PropertyRow({
 export default function TaskManagement() {
   const [tab, setTab] = useState<TabKey>('tasks');
 
-  const [tasks, setTasks] = useState<Task[]>(sampleTasks);
-  const [weeklies, setWeeklies] = useState<WeeklyTarget[]>(sampleWeeklyTargets);
-  const [monthlies, setMonthlies] = useState<MonthlyTarget[]>(sampleMonthlyTargets);
+  const { user: currentUser } = useAuth();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [weeklies, setWeeklies] = useState<WeeklyTarget[]>([]);
+  const [monthlies, setMonthlies] = useState<MonthlyTarget[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const getUser = useCallback(
+    (id: string | null): User | null => (id ? users.find((u) => u._id === id) ?? null : null),
+    [users],
+  );
+
+  // Load everything from the backend on mount.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [tasksRes, weeklyRes, monthlyRes, usersRes] = await Promise.all([
+          apiListTasks(),
+          apiListWeeklyTargets(),
+          apiListMonthlyTargets(),
+          apiListAssignableUsers(),
+        ]);
+        if (cancelled) return;
+        if (tasksRes.success && tasksRes.data) setTasks(tasksRes.data.tasks.map(mapTaskFromApi));
+        if (weeklyRes.success && weeklyRes.data) setWeeklies(weeklyRes.data.weeklyTargets.map(mapWeeklyFromApi));
+        if (monthlyRes.success && monthlyRes.data) setMonthlies(monthlyRes.data.monthlyTargets.map(mapMonthlyFromApi));
+        if (usersRes.success && usersRes.data) setUsers(usersRes.data.users);
+      } catch (err) {
+        console.error('Failed to load task management data', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFunnel, setStatusFunnel] = useState<string>('all');
@@ -617,18 +681,32 @@ export default function TaskManagement() {
     return m.title.toLowerCase().includes(q) || m.description.toLowerCase().includes(q);
   });
 
+  // Optimistic local update + fire PATCH if the row is server-side. Drafts stay
+  // local until they're committed (see commitDraftTask / closeTaskPanel).
   const updateTask = useCallback((id: string, patch: Partial<Task>) => {
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...patch, updatedAt: new Date().toISOString() } : t)),
     );
+    if (isDraftId(id)) return;
+    const payload: Record<string, unknown> = { ...patch };
+    if ('dueDate' in patch) payload.dueDate = patch.dueDate ? patch.dueDate : null;
+    apiUpdateTask(id, payload).catch((e) => console.error('apiUpdateTask failed', e));
   }, []);
 
   const updateWeekly = useCallback((id: string, patch: Partial<WeeklyTarget>) => {
     setWeeklies((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w)));
+    if (isDraftId(id)) return;
+    apiUpdateWeeklyTarget(id, patch as Record<string, unknown>).catch((e) =>
+      console.error('apiUpdateWeeklyTarget failed', e),
+    );
   }, []);
 
   const updateMonthly = useCallback((id: string, patch: Partial<MonthlyTarget>) => {
     setMonthlies((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+    if (isDraftId(id)) return;
+    apiUpdateMonthlyTarget(id, patch as Record<string, unknown>).catch((e) =>
+      console.error('apiUpdateMonthlyTarget failed', e),
+    );
   }, []);
 
   const setToggle = (
@@ -653,6 +731,8 @@ export default function TaskManagement() {
 
   const handleBulkReassign = (userId: string | null) => {
     if (tab !== 'tasks' || selectedTaskIds.size === 0) return;
+    const ids = [...selectedTaskIds];
+    const nonDraft = ids.filter((id) => !isDraftId(id));
     const now = new Date().toISOString();
     setTasks((prev) =>
       prev.map((t) =>
@@ -660,45 +740,132 @@ export default function TaskManagement() {
       ),
     );
     setSelectedTaskIds(new Set());
+    if (nonDraft.length > 0) {
+      apiBulkReassignTasks(nonDraft, userId).catch((e) => console.error('apiBulkReassignTasks failed', e));
+    }
   };
 
   const handleBulkDelete = () => {
     if (tab === 'tasks') {
+      const ids = [...selectedTaskIds];
+      const nonDraft = ids.filter((id) => !isDraftId(id));
       setTasks((prev) => prev.filter((t) => !selectedTaskIds.has(t.id)));
       setSelectedTaskIds(new Set());
+      if (nonDraft.length > 0) apiBulkDeleteTasks(nonDraft).catch((e) => console.error('apiBulkDeleteTasks failed', e));
     } else if (tab === 'weekly') {
       const ids = selectedWeeklyIds;
-      // Orphan tasks that were linked to a deleted weekly target.
+      const nonDraft = [...ids].filter((id) => !isDraftId(id));
       setTasks((prev) =>
         prev.map((t) => (t.weeklyTargetId && ids.has(t.weeklyTargetId) ? { ...t, weeklyTargetId: null } : t)),
       );
       setWeeklies((prev) => prev.filter((w) => !ids.has(w.id)));
       setSelectedWeeklyIds(new Set());
+      if (nonDraft.length > 0) apiBulkDeleteWeeklyTargets(nonDraft).catch((e) => console.error('apiBulkDeleteWeeklyTargets failed', e));
     } else {
       const ids = selectedMonthlyIds;
-      // Orphan weekly targets that were linked to a deleted monthly target.
+      const nonDraft = [...ids].filter((id) => !isDraftId(id));
       setWeeklies((prev) =>
         prev.map((w) => (w.monthlyTargetId && ids.has(w.monthlyTargetId) ? { ...w, monthlyTargetId: null } : w)),
       );
       setMonthlies((prev) => prev.filter((m) => !ids.has(m.id)));
       setSelectedMonthlyIds(new Set());
+      if (nonDraft.length > 0) apiBulkDeleteMonthlyTargets(nonDraft).catch((e) => console.error('apiBulkDeleteMonthlyTargets failed', e));
     }
   };
 
-  const newId = (prefix: string) =>
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : `${prefix}-${Date.now()}`;
+  // Generate a draft id. Real ids come from the backend on commit, and rows
+  // tagged with DRAFT_ID_PREFIX never trigger a PATCH (only a POST on commit).
+  const newDraftId = (kind: string) => {
+    const random =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    return `${DRAFT_ID_PREFIX}${kind}-${random}`;
+  };
+
+  // Replace a draft row's local id with the real id from the backend, also
+  // updating any state that referenced the draft id.
+  const swapDraftTaskId = (draftId: string, real: Task) => {
+    setTasks((prev) => prev.map((t) => (t.id === draftId ? real : t)));
+    setSelectedTaskId((cur) => (cur === draftId ? real.id : cur));
+    setInlineDraftTaskId((cur) => (cur === draftId ? null : cur));
+  };
+  const swapDraftWeeklyId = (draftId: string, real: WeeklyTarget) => {
+    setWeeklies((prev) => prev.map((w) => (w.id === draftId ? real : w)));
+    setSelectedWeeklyId((cur) => (cur === draftId ? real.id : cur));
+    setInlineDraftWeeklyId((cur) => (cur === draftId ? null : cur));
+  };
+  const swapDraftMonthlyId = (draftId: string, real: MonthlyTarget) => {
+    setMonthlies((prev) => prev.map((m) => (m.id === draftId ? real : m)));
+    setSelectedMonthlyId((cur) => (cur === draftId ? real.id : cur));
+    setInlineDraftMonthlyId((cur) => (cur === draftId ? null : cur));
+  };
+
+  const commitTaskDraft = async (draft: Task) => {
+    try {
+      const res = await apiCreateTask({
+        title: draft.title.trim(),
+        description: draft.description,
+        status: draft.status,
+        assignee: draft.assignee,
+        dueDate: draft.dueDate || null,
+        weeklyTargetId: draft.weeklyTargetId,
+      } as Record<string, unknown>);
+      if (res.success && res.data) swapDraftTaskId(draft.id, mapTaskFromApi(res.data.task));
+      else {
+        console.error('Create task failed:', res.message);
+        setTasks((prev) => prev.filter((t) => t.id !== draft.id));
+      }
+    } catch (e) {
+      console.error('apiCreateTask failed', e);
+      setTasks((prev) => prev.filter((t) => t.id !== draft.id));
+    }
+  };
+
+  const commitWeeklyDraft = async (draft: WeeklyTarget) => {
+    try {
+      const res = await apiCreateWeeklyTarget({
+        title: draft.title.trim(),
+        description: draft.description,
+        monthlyTargetId: draft.monthlyTargetId,
+      } as Record<string, unknown>);
+      if (res.success && res.data) swapDraftWeeklyId(draft.id, mapWeeklyFromApi(res.data.weeklyTarget));
+      else {
+        console.error('Create weekly target failed:', res.message);
+        setWeeklies((prev) => prev.filter((w) => w.id !== draft.id));
+      }
+    } catch (e) {
+      console.error('apiCreateWeeklyTarget failed', e);
+      setWeeklies((prev) => prev.filter((w) => w.id !== draft.id));
+    }
+  };
+
+  const commitMonthlyDraft = async (draft: MonthlyTarget) => {
+    try {
+      const res = await apiCreateMonthlyTarget({
+        title: draft.title.trim(),
+        description: draft.description,
+      } as Record<string, unknown>);
+      if (res.success && res.data) swapDraftMonthlyId(draft.id, mapMonthlyFromApi(res.data.monthlyTarget));
+      else {
+        console.error('Create monthly target failed:', res.message);
+        setMonthlies((prev) => prev.filter((m) => m.id !== draft.id));
+      }
+    } catch (e) {
+      console.error('apiCreateMonthlyTarget failed', e);
+      setMonthlies((prev) => prev.filter((m) => m.id !== draft.id));
+    }
+  };
 
   const handleNewTask = () => {
-    const id = newId('task');
+    const id = newDraftId('task');
     const newTask: Task = {
       id,
       title: '',
       description: '',
       status: 'not-started',
-      assignee: null,
-      dueDate: '',
+      assignee: currentUser?.id ?? null,
+      dueDate: format(new Date(), 'yyyy-MM-dd'),
       weeklyTargetId: null,
       updatedAt: new Date().toISOString(),
     };
@@ -708,7 +875,7 @@ export default function TaskManagement() {
   };
 
   const handleNewWeekly = () => {
-    const id = newId('weekly');
+    const id = newDraftId('weekly');
     const newWeekly: WeeklyTarget = {
       id,
       title: '',
@@ -721,7 +888,7 @@ export default function TaskManagement() {
   };
 
   const handleNewMonthly = () => {
-    const id = newId('monthly');
+    const id = newDraftId('monthly');
     const newMonthly: MonthlyTarget = { id, title: '', description: '' };
     isNewItemRef.current = true;
     setMonthlies((prev) => [newMonthly, ...prev]);
@@ -729,50 +896,71 @@ export default function TaskManagement() {
   };
 
   const addInlineTask = () => {
-    const id = newId('task');
+    const id = newDraftId('task');
     setTasks((prev) => [
       ...prev,
       {
-        id, title: '', description: '', status: 'not-started', assignee: null,
-        dueDate: '', weeklyTargetId: null, updatedAt: new Date().toISOString(),
+        id, title: '', description: '', status: 'not-started',
+        assignee: currentUser?.id ?? null,
+        dueDate: format(new Date(), 'yyyy-MM-dd'),
+        weeklyTargetId: null, updatedAt: new Date().toISOString(),
       },
     ]);
     setInlineDraftTaskId(id);
   };
 
   const addInlineWeekly = () => {
-    const id = newId('weekly');
+    const id = newDraftId('weekly');
     setWeeklies((prev) => [...prev, { id, title: '', description: '', monthlyTargetId: null }]);
     setInlineDraftWeeklyId(id);
   };
 
   const addInlineMonthly = () => {
-    const id = newId('monthly');
+    const id = newDraftId('monthly');
     setMonthlies((prev) => [...prev, { id, title: '', description: '' }]);
     setInlineDraftMonthlyId(id);
   };
 
+  // Inline-add drafts always commit on blur — empty title is allowed and
+  // persists as a placeholder row the user can fill in later.
   const onTaskDraftBlur = (id: string, value: string) => {
     if (inlineDraftTaskId !== id) return;
-    if (!value.trim()) setTasks((prev) => prev.filter((t) => t.id !== id));
     setInlineDraftTaskId(null);
+    setTasks((prev) => {
+      const draft = prev.find((t) => t.id === id);
+      if (!draft) return prev;
+      commitTaskDraft({ ...draft, title: value });
+      return prev;
+    });
   };
 
   const onWeeklyDraftBlur = (id: string, value: string) => {
     if (inlineDraftWeeklyId !== id) return;
-    if (!value.trim()) setWeeklies((prev) => prev.filter((w) => w.id !== id));
     setInlineDraftWeeklyId(null);
+    setWeeklies((prev) => {
+      const draft = prev.find((w) => w.id === id);
+      if (!draft) return prev;
+      commitWeeklyDraft({ ...draft, title: value });
+      return prev;
+    });
   };
 
   const onMonthlyDraftBlur = (id: string, value: string) => {
     if (inlineDraftMonthlyId !== id) return;
-    if (!value.trim()) setMonthlies((prev) => prev.filter((m) => m.id !== id));
     setInlineDraftMonthlyId(null);
+    setMonthlies((prev) => {
+      const draft = prev.find((m) => m.id === id);
+      if (!draft) return prev;
+      commitMonthlyDraft({ ...draft, title: value });
+      return prev;
+    });
   };
 
   const closeTaskPanel = () => {
-    if (isNewItemRef.current && selectedTask && !selectedTask.title.trim()) {
-      setTasks((prev) => prev.filter((t) => t.id !== selectedTask.id));
+    const t = selectedTask;
+    if (t && isDraftId(t.id)) {
+      if (!t.title.trim()) setTasks((prev) => prev.filter((x) => x.id !== t.id));
+      else commitTaskDraft(t);
     }
     isNewItemRef.current = false;
     setSelectedTaskId(null);
@@ -790,19 +978,24 @@ export default function TaskManagement() {
     });
     isNewItemRef.current = false;
     setSelectedTaskId(null);
+    if (!isDraftId(id)) apiDeleteTask(id).catch((e) => console.error('apiDeleteTask failed', e));
   };
 
   const closeWeeklyPanel = () => {
-    if (isNewItemRef.current && selectedWeekly && !selectedWeekly.title.trim()) {
-      setWeeklies((prev) => prev.filter((w) => w.id !== selectedWeekly.id));
+    const w = selectedWeekly;
+    if (w && isDraftId(w.id)) {
+      if (!w.title.trim()) setWeeklies((prev) => prev.filter((x) => x.id !== w.id));
+      else commitWeeklyDraft(w);
     }
     isNewItemRef.current = false;
     setSelectedWeeklyId(null);
   };
 
   const closeMonthlyPanel = () => {
-    if (isNewItemRef.current && selectedMonthly && !selectedMonthly.title.trim()) {
-      setMonthlies((prev) => prev.filter((m) => m.id !== selectedMonthly.id));
+    const m = selectedMonthly;
+    if (m && isDraftId(m.id)) {
+      if (!m.title.trim()) setMonthlies((prev) => prev.filter((x) => x.id !== m.id));
+      else commitMonthlyDraft(m);
     }
     isNewItemRef.current = false;
     setSelectedMonthlyId(null);
@@ -984,7 +1177,7 @@ export default function TaskManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10 pr-0">
+                  <TableHead className="w-12">
                     <Checkbox
                       checked={allChecked}
                       indeterminate={!allChecked && someChecked}
@@ -1009,7 +1202,7 @@ export default function TaskManagement() {
                       onClick={() => setSelectedTaskId(task.id)}
                       className="cursor-pointer"
                     >
-                      <TableCell className="pr-0" onClick={(e) => e.stopPropagation()}>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selected}
                           onCheckedChange={(v) => setToggle(setSelectedTaskIds, task.id, v)}
@@ -1017,7 +1210,7 @@ export default function TaskManagement() {
                         />
                       </TableCell>
                       {taskColVis.has('task') && (
-                        <TableCell>
+                        <TableCell className="max-w-[400px] whitespace-normal break-words">
                           <EditableTitle
                             value={task.title}
                             onChange={(v) => updateTask(task.id, { title: v })}
@@ -1047,8 +1240,8 @@ export default function TaskManagement() {
                             const u = getUser(task.assignee);
                             return u ? (
                               <div className="flex items-center gap-2">
-                                <Avatar name={u.name} size={24} />
-                                <span className="text-sm text-t2">{u.name}</span>
+                                <Avatar name={u.fullName} size={24} />
+                                <span className="text-sm text-t2">{u.fullName}</span>
                               </div>
                             ) : (
                               <span className="text-xs text-t3 italic">Unassigned</span>
@@ -1136,9 +1329,9 @@ export default function TaskManagement() {
                             const u = getUser(task.assignee);
                             return u ? (
                               <div className="flex items-center gap-2">
-                                <Avatar name={u.name} size={24} />
+                                <Avatar name={u.fullName} size={24} />
                                 <span className="text-xs text-t2">
-                                  {task.dueDate ? formatDueDate(task.dueDate) : u.name}
+                                  {task.dueDate ? formatDueDate(task.dueDate) : u.fullName}
                                 </span>
                               </div>
                             ) : (
@@ -1183,7 +1376,7 @@ export default function TaskManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10 pr-0">
+                  <TableHead className="w-12 pr-6">
                     <Checkbox
                       checked={allChecked}
                       indeterminate={!allChecked && someChecked}
@@ -1210,7 +1403,7 @@ export default function TaskManagement() {
                       onClick={() => setSelectedWeeklyId(w.id)}
                       className="cursor-pointer"
                     >
-                      <TableCell className="pr-0" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="pr-6" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selected}
                           onCheckedChange={(v) => setToggle(setSelectedWeeklyIds, w.id, v)}
@@ -1300,7 +1493,7 @@ export default function TaskManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10 pr-0">
+                  <TableHead className="w-12 pr-6">
                     <Checkbox
                       checked={allChecked}
                       indeterminate={!allChecked && someChecked}
@@ -1325,7 +1518,7 @@ export default function TaskManagement() {
                       onClick={() => setSelectedMonthlyId(m.id)}
                       className="cursor-pointer"
                     >
-                      <TableCell className="pr-0" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="pr-6" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selected}
                           onCheckedChange={(v) => setToggle(setSelectedMonthlyIds, m.id, v)}
@@ -1451,6 +1644,7 @@ export default function TaskManagement() {
                   <AssigneeSelect
                     value={selectedTask.assignee}
                     onChange={(id) => updateTask(selectedTask.id, { assignee: id })}
+                    users={users}
                     compact
                   />
                 </PropertyRow>
@@ -1651,14 +1845,14 @@ export default function TaskManagement() {
                     >
                       <span className="text-sm text-t3 italic">Unassigned</span>
                     </button>
-                    {USERS.map((u) => (
+                    {users.map((u) => (
                       <button
-                        key={u.id}
-                        onClick={() => handleBulkReassign(u.id)}
+                        key={u._id}
+                        onClick={() => handleBulkReassign(u._id)}
                         className="w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-surface text-left transition-colors"
                       >
-                        <Avatar name={u.name} size={24} />
-                        <span className="text-sm text-t1 truncate">{u.name}</span>
+                        <Avatar name={u.fullName} size={24} />
+                        <span className="text-sm text-t1 truncate">{u.fullName}</span>
                       </button>
                     ))}
                   </Popover.Content>
