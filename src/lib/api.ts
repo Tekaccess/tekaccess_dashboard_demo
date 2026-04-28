@@ -919,8 +919,25 @@ export type Warehouse = {
   managerName: string | null;
   managerContact: string | null;
   isActive: boolean;
-  liveCapacity?: { occupiedCapacity: number; usedPct: number; nearCapacityAlert: boolean };
+  currentQty: number;
+  alertThresholdPct: number;
 };
+
+// Derived helpers — usedPct, available capacity, and the near-capacity flag
+// are NOT stored on the warehouse. Compute them from currentQty + totalCapacity
+// at the call site so there's only ever one source of truth.
+export function warehouseUsedPct(w: Warehouse): number {
+  if (!w.totalCapacity || w.totalCapacity <= 0) return 0;
+  return +((w.currentQty / w.totalCapacity) * 100).toFixed(1);
+}
+
+export function warehouseAvailable(w: Warehouse): number {
+  return Math.max(0, (w.totalCapacity || 0) - (w.currentQty || 0));
+}
+
+export function isNearCapacity(w: Warehouse): boolean {
+  return warehouseUsedPct(w) >= (w.alertThresholdPct ?? 90);
+}
 
 export async function apiListWarehouses(params: Record<string, string> = {}) {
   const qs = new URLSearchParams(params).toString();

@@ -323,12 +323,17 @@ export default function MovementsPage() {
 
   const warehouseOptions = useMemo<SearchSelectOption[]>(
     () =>
-      warehouses.map((w) => ({
-        value: w._id,
-        label: w.name,
-        sublabel: w.warehouseCode,
-        meta: `${(w.liveCapacity?.usedPct ?? 0).toFixed(0)}% used`,
-      })),
+      warehouses.map((w) => {
+        const pct = w.totalCapacity > 0
+          ? +((w.currentQty / w.totalCapacity) * 100).toFixed(0)
+          : 0;
+        return {
+          value: w._id,
+          label: w.name,
+          sublabel: w.warehouseCode,
+          meta: `${pct}% used`,
+        };
+      }),
     [warehouses],
   );
 
