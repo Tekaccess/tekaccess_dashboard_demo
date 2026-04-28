@@ -306,7 +306,12 @@ export default function StockCountsPage() {
                       </td>
                       <td className="px-4 py-3.5 text-xs text-t2">{m.reason ?? '—'}</td>
                       <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">
-                        {new Date(m.postedAt).toLocaleDateString()}
+                        {(() => {
+                          const d = m.movementDate || m.createdAt;
+                          if (!d) return '—';
+                          const dt = new Date(d);
+                          return isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString();
+                        })()}
                       </td>
                     </tr>
                   ))}

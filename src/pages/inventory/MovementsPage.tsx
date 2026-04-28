@@ -28,12 +28,14 @@ import {
   apiListTrucks,
   apiListSuppliers,
   apiListProducts,
+  apiListInventoryDocs,
   StockMovement,
   StockItem,
   Warehouse,
   PurchaseOrder,
   Supplier,
   Product,
+  InventoryDoc,
   Truck as TruckType,
 } from "../../lib/api";
 import SearchSelect, {
@@ -188,9 +190,7 @@ const MOV_COLS: ColDef[] = [
   { key: "item", label: "Item", defaultVisible: true },
   { key: "warehouse", label: "Warehouse", defaultVisible: true },
   { key: "qty", label: "Net / Qty", defaultVisible: true },
-  { key: "balance", label: "Before → After", defaultVisible: true },
   { key: "supplier", label: "Supplier / Truck", defaultVisible: true },
-  { key: "costs", label: "Processing Costs", defaultVisible: true },
   { key: "source", label: "Source", defaultVisible: true },
   { key: "posted", label: "Posted", defaultVisible: true },
 ];
@@ -203,6 +203,9 @@ export default function MovementsPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [trucks, setTrucks] = useState<TruckType[]>([]);
+  // Map of movement_id → docs[] so the Source column can render a thumbnail
+  // of the first attached image without a per-row fetch.
+  const [movementDocs, setMovementDocs] = useState<Record<string, InventoryDoc[]>>({});
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -234,6 +237,21 @@ export default function MovementsPage() {
     if (movRes.success) {
       setMovements(movRes.data.movements);
       setTotal(movRes.data.pagination.total);
+      // Pull docs for the loaded movement IDs so the Source column can
+      // thumbnail the first attached image without N round-trips.
+      const ids = movRes.data.movements.map(m => m._id);
+      if (ids.length > 0) {
+        apiListInventoryDocs({ movement_ids: ids.join(','), limit: '500' }).then(dr => {
+          if (!dr.success) return;
+          const grouped: Record<string, InventoryDoc[]> = {};
+          for (const d of dr.data.documents) {
+            (grouped[d.movement_id] ||= []).push(d);
+          }
+          setMovementDocs(grouped);
+        });
+      } else {
+        setMovementDocs({});
+      }
     }
     if (siRes.success) setStockItems(siRes.data.items);
     if (whRes.success) setWarehouses(whRes.data.warehouses);
@@ -1022,19 +1040,9 @@ export default function MovementsPage() {
                         Net / Qty
                       </th>
                     )}
-                    {colVis.has("balance") && (
-                      <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                        Before → After
-                      </th>
-                    )}
                     {colVis.has("supplier") && (
                       <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
                         Supplier / Truck
-                      </th>
-                    )}
-                    {colVis.has("costs") && (
-                      <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                        Processing Costs
                       </th>
                     )}
                     {colVis.has("source") && (
@@ -1057,10 +1065,6 @@ export default function MovementsPage() {
                       dot: "bg-t3",
                       Icon: ArrowsCounterClockwise,
                     };
-                    const totalProcessing =
-                      (m.crusherCost ?? 0) +
-                      (m.samplingCost ?? 0) +
-                      (m.otherProcessingCost ?? 0);
                     return (
                       <tr
                         key={m._id}
@@ -1120,13 +1124,6 @@ export default function MovementsPage() {
                             )}
                           </td>
                         )}
-                        {colVis.has("balance") && (
-                          <td className="px-4 py-3.5 text-right text-xs text-t3 whitespace-nowrap">
-                            {m.qtyBefore != null && m.qtyAfter != null
-                              ? `${m.qtyBefore.toLocaleString()} → ${m.qtyAfter.toLocaleString()}`
-                              : "—"}
-                          </td>
-                        )}
                         {colVis.has("supplier") && (
                           <td className="px-4 py-3.5">
                             {m.supplierName && (
@@ -1145,52 +1142,47 @@ export default function MovementsPage() {
                             )}
                           </td>
                         )}
-                        {colVis.has("costs") && (
-                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                            {totalProcessing > 0 ? (
-                              <div>
-                                <span className="text-amber-500 font-semibold text-sm">
-                                  {totalProcessing.toLocaleString()}
-                                </span>
-                                <div className="text-[10px] text-t3 space-y-0.5 mt-0.5 text-left">
-                                  {(m.crusherCost ?? 0) > 0 && (
-                                    <p>
-                                      Crusher: {m.crusherCost?.toLocaleString()}
-                                    </p>
-                                  )}
-                                  {(m.samplingCost ?? 0) > 0 && (
-                                    <p>
-                                      Sampling:{" "}
-                                      {m.samplingCost?.toLocaleString()}
-                                    </p>
-                                  )}
-                                  {(m.otherProcessingCost ?? 0) > 0 && (
-                                    <p>
-                                      {m.otherProcessingDescription || "Other"}:{" "}
-                                      {m.otherProcessingCost?.toLocaleString()}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-t3 text-xs">—</span>
-                            )}
-                          </td>
-                        )}
                         {colVis.has("source") && (
-                          <td className="px-4 py-3.5 text-t2 text-xs whitespace-nowrap">
-                            {m.linkedPoRef ? (
-                              <span className="text-accent">
-                                {m.linkedPoRef}
-                              </span>
-                            ) : (
-                              m.sourceRef || "—"
-                            )}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            {(() => {
+                              const docs = movementDocs[m._id] || [];
+                              const firstImg = docs.find(d => d.image_path);
+                              if (firstImg) {
+                                return (
+                                  <a
+                                    href={firstImg.image_path}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    title={`${docs.length} doc${docs.length > 1 ? 's' : ''} attached — click to open`}
+                                    className="inline-block"
+                                  >
+                                    <img
+                                      src={firstImg.image_path}
+                                      alt={firstImg.doc_type || 'source'}
+                                      className="w-12 h-12 rounded-md object-cover border border-border hover:border-accent transition-colors"
+                                    />
+                                  </a>
+                                );
+                              }
+                              return (
+                                <div className="w-12 h-12 rounded-md border border-dashed border-border flex items-center justify-center text-t3" title="No supporting doc">
+                                  <Receipt size={16} weight="duotone" />
+                                </div>
+                              );
+                            })()}
                           </td>
                         )}
                         {colVis.has("posted") && (
                           <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">
-                            <p>{new Date(m.postedAt).toLocaleDateString()}</p>
+                            <p>
+                              {(() => {
+                                const d = m.movementDate || m.createdAt;
+                                if (!d) return '—';
+                                const dt = new Date(d);
+                                return isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString();
+                              })()}
+                            </p>
                             {m.postedBy && (
                               <p className="text-t3/60">
                                 {m.postedBy.fullName}
