@@ -41,10 +41,27 @@ export default function RootLayout() {
 
   const pathParts = location.pathname.split('/').filter(Boolean);
   const firstSegment = pathParts[0] || '';
-  const currentDepartmentId = ALL_DEPT_IDS.includes(firstSegment) ? firstSegment : '';
+  const urlDepartmentId = ALL_DEPT_IDS.includes(firstSegment) ? firstSegment : '';
 
   const accessibleDepts = user ? getOrderedDepts(user.role, user.dashboardAccess, user.preferences?.dashboardOrder ?? []) : [];
   const defaultDept = accessibleDepts[0] ?? 'finance';
+
+  // Remember the last department the user was viewing so navigating to
+  // department-agnostic pages (/tasks, /calendar, /reports) doesn't reset it.
+  const [lastDepartmentId, setLastDepartmentId] = useState<string>(() => {
+    const stored = typeof window !== 'undefined' ? window.localStorage.getItem('lastDepartmentId') : null;
+    return stored && ALL_DEPT_IDS.includes(stored) ? stored : '';
+  });
+
+  useEffect(() => {
+    if (urlDepartmentId && urlDepartmentId !== lastDepartmentId) {
+      setLastDepartmentId(urlDepartmentId);
+      window.localStorage.setItem('lastDepartmentId', urlDepartmentId);
+    }
+  }, [urlDepartmentId, lastDepartmentId]);
+
+  const rememberedDept = lastDepartmentId && accessibleDepts.includes(lastDepartmentId) ? lastDepartmentId : '';
+  const currentDepartmentId = urlDepartmentId || rememberedDept;
 
   useEffect(() => {
     if (!isInitialising && !isAuthenticated && !isPublicRoute) {
@@ -55,10 +72,10 @@ export default function RootLayout() {
   // Redirect to first accessible dept if current route is a dept the user can't access.
   useEffect(() => {
     if (isInitialising || !isAuthenticated || isPublicRoute || !user) return;
-    if (currentDepartmentId && !accessibleDepts.includes(currentDepartmentId)) {
+    if (urlDepartmentId && !accessibleDepts.includes(urlDepartmentId)) {
       navigate({ to: `/${defaultDept}` });
     }
-  }, [isInitialising, isAuthenticated, isPublicRoute, currentDepartmentId, accessibleDepts, defaultDept, navigate, user]);
+  }, [isInitialising, isAuthenticated, isPublicRoute, urlDepartmentId, accessibleDepts, defaultDept, navigate, user]);
 
   if (isPublicRoute) return <Outlet />;
   if (isInitialising) return null;
