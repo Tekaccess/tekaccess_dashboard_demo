@@ -1,123 +1,827 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
+import { motion, AnimatePresence } from 'motion/react';
+import * as Popover from '@radix-ui/react-popover';
+
+// Easing curves and timing tuned for "smooth but fast" feel.
+const EASE_OUT_FAST = [0.32, 0.72, 0, 1] as const;
+const PANEL_DURATION = 0.24;
+const FADE_DURATION = 0.18;
 import {
   Plus,
   MagnifyingGlass,
-  Funnel,
-  DotsThree,
   Clock,
-  Users,
-  CheckCircle,
-  Circle,
-  Warning,
-  X
+  X,
+  List as ListIcon,
+  Kanban,
+  CalendarBlank,
+  User as UserIcon,
+  CircleNotch,
+  ArrowSquareOut,
+  Target,
+  CalendarCheck,
+  Trash,
+  Check,
+  Minus,
+  UsersThree,
 } from '@phosphor-icons/react';
+import {
+  format,
+  parseISO,
+  isValid as isValidDate,
+  formatDistanceToNow,
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+  addDays,
+  addWeeks,
+  addMonths,
+  addYears,
+  subDays,
+  subWeeks,
+  subMonths,
+  subYears,
+  isWithinInterval,
+} from 'date-fns';
 import ColumnSelector, { useColumnVisibility, ColDef } from '../components/ui/ColumnSelector';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../components/ui/table';
+import { Input } from '../components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
+import DatePicker from '../components/ui/DatePicker';
+
+type Status = 'not-started' | 'in-progress' | 'completed' | 'postponed';
+type TabKey = 'tasks' | 'weekly' | 'monthly';
+type DueRange =
+  | 'all'
+  | 'past-day'   | 'this-day'   | 'next-day'
+  | 'past-week'  | 'this-week'  | 'next-week'
+  | 'past-month' | 'this-month' | 'next-month'
+  | 'past-year'  | 'this-year'  | 'next-year';
+
+const DUE_RANGE_LABELS: Record<DueRange, string> = {
+  'all':         'All due dates',
+  'past-day':    'Yesterday',
+  'this-day':    'Today',
+  'next-day':    'Tomorrow',
+  'past-week':   'Last week',
+  'this-week':   'This week',
+  'next-week':   'Next week',
+  'past-month':  'Last month',
+  'this-month':  'This month',
+  'next-month':  'Next month',
+  'past-year':   'Last year',
+  'this-year':   'This year',
+  'next-year':   'Next year',
+};
+
+// Sentinel for "no parent target" in shadcn Select (it disallows empty-string values).
+const NONE = '__none__';
 
 interface Task {
   id: string;
   title: string;
   description: string;
-  status: 'todo' | 'in-progress' | 'review' | 'completed';
-  assignee: string;
+  status: Status;
+  assignee: string | null; // user id, or null if unassigned
   dueDate: string;
-  progress: number;
+  weeklyTargetId: string | null;
+  updatedAt: string; // ISO timestamp
 }
 
-const statusLabels = {
-  todo: 'To Do',
-  'in-progress': 'In Progress',
-  review: 'In Review',
-  completed: 'Completed'
-};
+interface User {
+  id: string;
+  name: string;
+}
 
-const statusIcons = {
-  todo: Circle,
-  'in-progress': Clock,
-  review: Warning,
-  completed: CheckCircle
+const USERS: User[] = [
+  { id: 'u-thierry', name: 'Thierry' },
+  { id: 'u-marie',   name: 'Marie' },
+  { id: 'u-jean',    name: 'Jean' },
+  { id: 'u-sarah',   name: 'Sarah' },
+  { id: 'u-david',   name: 'David' },
+  { id: 'u-paul',    name: 'Paul' },
+];
+
+const getUser = (id: string | null): User | null => (id ? USERS.find((u) => u.id === id) ?? null : null);
+
+interface WeeklyTarget {
+  id: string;
+  title: string;
+  description: string;
+  monthlyTargetId: string | null;
+}
+
+interface MonthlyTarget {
+  id: string;
+  title: string;
+  description: string;
+}
+
+const STATUSES: Status[] = ['not-started', 'in-progress', 'completed', 'postponed'];
+
+const STATUS_LABELS: Record<Status, string> = {
+  'not-started': 'Not Started',
+  'in-progress': 'In Progress',
+  completed:     'Completed',
+  postponed:     'Postponed',
 };
 
 const TASK_COLS: ColDef[] = [
-  { key: 'task',     label: 'Task',     defaultVisible: true },
-  { key: 'status',   label: 'Status',   defaultVisible: true },
-  { key: 'assignee', label: 'Assignee', defaultVisible: true },
-  { key: 'due',      label: 'Due Date', defaultVisible: true },
-  { key: 'progress', label: 'Progress', defaultVisible: true },
-  { key: 'actions',  label: 'Actions',  defaultVisible: true },
+  { key: 'task',     label: 'Task',           defaultVisible: true },
+  { key: 'status',   label: 'Status',         defaultVisible: true },
+  { key: 'assignee', label: 'Assignee',       defaultVisible: true },
+  { key: 'due',      label: 'Due Date',       defaultVisible: true },
+  { key: 'weekly',   label: 'Weekly Target',  defaultVisible: true },
+];
+
+const WEEKLY_COLS: ColDef[] = [
+  { key: 'title',    label: 'Weekly Target',   defaultVisible: true },
+  { key: 'monthly',  label: 'Monthly Target',  defaultVisible: true },
+  { key: 'tasks',    label: 'Tasks',           defaultVisible: true },
+  { key: 'progress', label: 'Progress',        defaultVisible: true },
+];
+
+const MONTHLY_COLS: ColDef[] = [
+  { key: 'title',     label: 'Monthly Target',  defaultVisible: true },
+  { key: 'weeklies',  label: 'Weekly Targets',  defaultVisible: true },
+  { key: 'progress',  label: 'Progress',        defaultVisible: true },
+];
+
+const sampleMonthlyTargets: MonthlyTarget[] = [
+  { id: 'm1', title: 'April Operations Excellence', description: 'Improve operational KPIs across finance, transport and inventory.' },
+  { id: 'm2', title: 'April People & Clients',      description: 'Strengthen onboarding flow and client satisfaction.' },
+];
+
+const sampleWeeklyTargets: WeeklyTarget[] = [
+  { id: 'w1', title: 'Week 17 — Finance reporting',       description: 'Close Q1 reports and refresh dashboards.', monthlyTargetId: 'm1' },
+  { id: 'w2', title: 'Week 17 — Transport optimization',  description: 'Optimize delivery routes.',                 monthlyTargetId: 'm1' },
+  { id: 'w3', title: 'Week 17 — Inventory readiness',     description: 'Prepare for the quarterly audit.',          monthlyTargetId: 'm1' },
+  { id: 'w4', title: 'Week 17 — Onboarding & clients',    description: 'Roll out onboarding workflow and CSAT survey.', monthlyTargetId: 'm2' },
+  { id: 'w5', title: 'Week 17 — Procurement review',      description: 'Tighten the procurement approval flow.',    monthlyTargetId: null },
 ];
 
 const sampleTasks: Task[] = [
-  {
-    id: '1',
-    title: 'Update financial reports',
-    description: 'Generate Q1 financial reports and update dashboard',
-    status: 'in-progress',
-    assignee: 'Thierry',
-    dueDate: '2026-04-18',
-    progress: 65
-  },
-  {
-    id: '2',
-    title: 'Review transport routes',
-    description: 'Optimize delivery routes for better efficiency',
-    status: 'todo',
-    assignee: 'Marie',
-    dueDate: '2026-04-20',
-    progress: 0
-  },
-  {
-    id: '3',
-    title: 'Inventory audit preparation',
-    description: 'Prepare documentation for quarterly inventory audit',
-    status: 'review',
-    assignee: 'Jean',
-    dueDate: '2026-04-16',
-    progress: 90
-  },
-  {
-    id: '4',
-    title: 'Employee onboarding system',
-    description: 'Set up new employee onboarding workflow',
-    status: 'completed',
-    assignee: 'Sarah',
-    dueDate: '2026-04-15',
-    progress: 100
-  },
-  {
-    id: '5',
-    title: 'Procurement process review',
-    description: 'Analyze and improve procurement approval process',
-    status: 'in-progress',
-    assignee: 'Thierry',
-    dueDate: '2026-04-22',
-    progress: 40
-  },
-  {
-    id: '6',
-    title: 'Client satisfaction survey',
-    description: 'Design and distribute client satisfaction questionnaire',
-    status: 'todo',
-    assignee: 'Marie',
-    dueDate: '2026-04-25',
-    progress: 0
-  }
+  { id: '1', title: 'Update financial reports',     description: 'Generate Q1 financial reports and update dashboard',         status: 'in-progress', assignee: 'u-thierry', dueDate: '2026-04-18', weeklyTargetId: 'w1', updatedAt: '2026-04-28T08:30:00Z' },
+  { id: '2', title: 'Review transport routes',      description: 'Optimize delivery routes for better efficiency',              status: 'not-started', assignee: 'u-marie',   dueDate: '2026-04-20', weeklyTargetId: 'w2', updatedAt: '2026-04-27T14:15:00Z' },
+  { id: '3', title: 'Inventory audit preparation',  description: 'Prepare documentation for quarterly inventory audit',         status: 'postponed',   assignee: 'u-jean',    dueDate: '2026-04-16', weeklyTargetId: 'w3', updatedAt: '2026-04-26T09:45:00Z' },
+  { id: '4', title: 'Employee onboarding system',   description: 'Set up new employee onboarding workflow',                     status: 'completed',   assignee: 'u-sarah',   dueDate: '2026-04-15', weeklyTargetId: 'w4', updatedAt: '2026-04-22T16:20:00Z' },
+  { id: '5', title: 'Procurement process review',   description: 'Analyze and improve procurement approval process',            status: 'in-progress', assignee: 'u-thierry', dueDate: '2026-04-22', weeklyTargetId: 'w5', updatedAt: '2026-04-28T11:05:00Z' },
+  { id: '6', title: 'Client satisfaction survey',   description: 'Design and distribute client satisfaction questionnaire',     status: 'not-started', assignee: 'u-marie',   dueDate: '2026-04-25', weeklyTargetId: 'w4', updatedAt: '2026-04-25T10:00:00Z' },
 ];
 
+function formatDueDate(iso: string): string {
+  if (!iso) return '';
+  const d = parseISO(iso);
+  return isValidDate(d) ? format(d, 'MMM d, yyyy') : '';
+}
+
+function getDueRangeBounds(range: DueRange, now: Date = new Date()): { start: Date; end: Date } | null {
+  switch (range) {
+    case 'all':         return null;
+    case 'past-day':    { const d = subDays(now, 1);   return { start: startOfDay(d),   end: endOfDay(d)   }; }
+    case 'this-day':    return { start: startOfDay(now),  end: endOfDay(now)   };
+    case 'next-day':    { const d = addDays(now, 1);   return { start: startOfDay(d),   end: endOfDay(d)   }; }
+    case 'past-week':   { const d = subWeeks(now, 1);  return { start: startOfWeek(d),  end: endOfWeek(d)  }; }
+    case 'this-week':   return { start: startOfWeek(now), end: endOfWeek(now)  };
+    case 'next-week':   { const d = addWeeks(now, 1);  return { start: startOfWeek(d),  end: endOfWeek(d)  }; }
+    case 'past-month':  { const d = subMonths(now, 1); return { start: startOfMonth(d), end: endOfMonth(d) }; }
+    case 'this-month':  return { start: startOfMonth(now), end: endOfMonth(now) };
+    case 'next-month':  { const d = addMonths(now, 1); return { start: startOfMonth(d), end: endOfMonth(d) }; }
+    case 'past-year':   { const d = subYears(now, 1);  return { start: startOfYear(d),  end: endOfYear(d)  }; }
+    case 'this-year':   return { start: startOfYear(now),  end: endOfYear(now)  };
+    case 'next-year':   { const d = addYears(now, 1);  return { start: startOfYear(d),  end: endOfYear(d)  }; }
+  }
+}
+
+// Weekly progress: a weekly target with no daily tasks is considered 100% (nothing to do).
+// Adding a task drops it because completed/total shrinks; completing all tasks restores 100%.
+function weeklyProgress(weeklyId: string, tasks: Task[]): number {
+  const linked = tasks.filter((t) => t.weeklyTargetId === weeklyId);
+  if (linked.length === 0) return 100;
+  const completed = linked.filter((t) => t.status === 'completed').length;
+  return Math.round((completed / linked.length) * 100);
+}
+
+// Monthly progress is the average of its linked weekly targets' progress.
+function monthlyProgress(monthlyId: string, weeklies: WeeklyTarget[], tasks: Task[]): number {
+  const linked = weeklies.filter((w) => w.monthlyTargetId === monthlyId);
+  if (linked.length === 0) return 100;
+  const sum = linked.reduce((acc, w) => acc + weeklyProgress(w.id, tasks), 0);
+  return Math.round(sum / linked.length);
+}
+
+function StatusPill({ status, className = '' }: { status: Status; className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center text-xs font-medium text-t1 bg-surface px-2 py-0.5 rounded ${className}`}
+    >
+      {STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+function StatusSelect({
+  value,
+  onChange,
+  compact = false,
+}: {
+  value: Status;
+  onChange: (s: Status) => void;
+  compact?: boolean;
+}) {
+  return (
+    <Select value={value} onValueChange={(v) => onChange(v as Status)}>
+      <SelectTrigger
+        onClick={(e) => e.stopPropagation()}
+        className={
+          compact
+            ? 'h-8 w-full px-2 border-transparent shadow-none bg-transparent hover:bg-surface focus:ring-0 focus:border-transparent'
+            : 'h-9 bg-surface focus:ring-0 focus:border-border'
+        }
+      >
+        <SelectValue>
+          <StatusPill status={value} />
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {STATUSES.map((s) => (
+          <SelectItem key={s} value={s}>
+            {STATUS_LABELS[s]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function ParentSelect({
+  value,
+  onChange,
+  options,
+  placeholder = 'None',
+  compact = false,
+}: {
+  value: string | null;
+  onChange: (id: string | null) => void;
+  options: { id: string; title: string }[];
+  placeholder?: string;
+  compact?: boolean;
+}) {
+  return (
+    <Select
+      value={value ?? NONE}
+      onValueChange={(v) => onChange(v === NONE ? null : v)}
+    >
+      <SelectTrigger
+        onClick={(e) => e.stopPropagation()}
+        className={
+          compact
+            ? 'h-8 w-fit max-w-full px-2 border-transparent shadow-none bg-transparent hover:bg-surface focus:ring-0 focus:border-transparent'
+            : 'h-9 bg-surface focus:ring-0 focus:border-border'
+        }
+      >
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={NONE}>
+          <span className="text-t3 italic">None</span>
+        </SelectItem>
+        {options.map((o) => (
+          <SelectItem key={o.id} value={o.id}>
+            {o.title || <span className="text-t3 italic">Untitled</span>}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function ProgressBar({ value }: { value: number }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 bg-surface-hover rounded-full h-1.5 max-w-32">
+        <div
+          className="bg-accent h-1.5 rounded-full transition-all"
+          style={{ width: `${value}%` }}
+        />
+      </div>
+      <span className="text-xs text-t3 w-9 text-right">{value}%</span>
+    </div>
+  );
+}
+
+function Avatar({ name, size = 24 }: { name: string; size?: number }) {
+  return (
+    <div
+      className="rounded-full bg-accent/20 flex items-center justify-center text-accent font-medium shrink-0"
+      style={{ width: size, height: size, fontSize: Math.max(10, Math.round(size * 0.42)) }}
+    >
+      {name.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+function AssigneeSelect({
+  value,
+  onChange,
+  compact = false,
+}: {
+  value: string | null;
+  onChange: (id: string | null) => void;
+  compact?: boolean;
+}) {
+  const user = getUser(value);
+  return (
+    <Select
+      value={value ?? NONE}
+      onValueChange={(v) => onChange(v === NONE ? null : v)}
+    >
+      <SelectTrigger
+        onClick={(e) => e.stopPropagation()}
+        className={
+          compact
+            ? 'h-8 w-full px-2 border-transparent shadow-none bg-transparent hover:bg-surface focus:ring-0 focus:border-transparent'
+            : 'h-9 bg-surface focus:ring-0 focus:border-border'
+        }
+      >
+        <SelectValue placeholder="Empty">
+          {user ? (
+            <div className="flex items-center gap-2">
+              <Avatar name={user.name} size={20} />
+              <span className="text-sm text-t1">{user.name}</span>
+            </div>
+          ) : (
+            <span className="text-sm text-t3 italic">Unassigned</span>
+          )}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent className="min-w-64">
+        <SelectItem value={NONE} className="py-2 px-2">
+          <span className="text-sm text-t3 italic">Unassigned</span>
+        </SelectItem>
+        {USERS.map((u) => (
+          <SelectItem key={u.id} value={u.id} className="py-2 px-2">
+            <div className="flex items-center gap-2">
+              <Avatar name={u.name} size={24} />
+              <span className="text-sm text-t1">{u.name}</span>
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function Checkbox({
+  checked,
+  indeterminate = false,
+  onCheckedChange,
+  ariaLabel,
+  className = '',
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  onCheckedChange: (v: boolean) => void;
+  ariaLabel?: string;
+  className?: string;
+}) {
+  const active = checked || indeterminate;
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={indeterminate ? 'mixed' : checked}
+      aria-label={ariaLabel}
+      onClick={(e) => {
+        e.stopPropagation();
+        onCheckedChange(!checked);
+      }}
+      className={`w-[18px] h-[18px] rounded-md border flex items-center justify-center shrink-0 transition-all
+        ${active
+          ? 'bg-accent border-accent text-white shadow-sm'
+          : 'bg-card border-border hover:border-accent/60 hover:bg-surface'}
+        ${className}`}
+    >
+      {indeterminate ? (
+        <Minus size={12} weight="bold" />
+      ) : checked ? (
+        <Check size={12} weight="bold" />
+      ) : null}
+    </button>
+  );
+}
+
+function EditableTitle({
+  value,
+  onChange,
+  onBlur,
+  className = '',
+  placeholder = 'Untitled',
+  autoFocus = false,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onBlur?: (v: string) => void;
+  className?: string;
+  placeholder?: string;
+  autoFocus?: boolean;
+}) {
+  const [editing, setEditing] = useState(autoFocus);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [editing]);
+
+  useEffect(() => {
+    if (!editing) setDraft(value);
+  }, [value, editing]);
+
+  const commit = () => {
+    setEditing(false);
+    const trimmed = draft.trim();
+    if (trimmed !== value) onChange(trimmed);
+    onBlur?.(trimmed);
+  };
+
+  const cancel = () => {
+    setDraft(value);
+    setEditing(false);
+    onBlur?.(value);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        size={1}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commit();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancel();
+          }
+        }}
+        placeholder={placeholder}
+        className={`w-full min-w-0 bg-surface outline-none rounded px-1 -mx-1 ${className}`}
+      />
+    );
+  }
+
+  return (
+    <span
+      onClick={(e) => {
+        e.stopPropagation();
+        setEditing(true);
+      }}
+      className={`cursor-text rounded px-1 -mx-1 hover:bg-surface ${className} ${
+        !value ? 'text-t3 italic' : ''
+      }`}
+    >
+      {value || placeholder}
+    </span>
+  );
+}
+
+function PropertyRow({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string; weight?: 'duotone' | 'regular' | 'bold' | 'fill' }>;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[170px_1fr] items-center gap-3 py-1.5">
+      <div className="flex items-center gap-2.5 text-sm text-t2">
+        <Icon className="w-[18px] h-[18px] text-t3" weight="duotone" />
+        <span>{label}</span>
+      </div>
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
 export default function TaskManagement() {
+  const [tab, setTab] = useState<TabKey>('tasks');
+
   const [tasks, setTasks] = useState<Task[]>(sampleTasks);
+  const [weeklies, setWeeklies] = useState<WeeklyTarget[]>(sampleWeeklyTargets);
+  const [monthlies, setMonthlies] = useState<MonthlyTarget[]>(sampleMonthlyTargets);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFunnel, setStatusFunnel] = useState<string>('all');
-  const [showTaskModal, setShowTaskModal] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'board'>('board');
-  const { visible: colVis, toggle: colToggle } = useColumnVisibility('task-management', TASK_COLS);
+  const [dueRange, setDueRange] = useState<DueRange>('all');
+  const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
+
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedWeeklyId, setSelectedWeeklyId] = useState<string | null>(null);
+  const [selectedMonthlyId, setSelectedMonthlyId] = useState<string | null>(null);
+
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [selectedWeeklyIds, setSelectedWeeklyIds] = useState<Set<string>>(new Set());
+  const [selectedMonthlyIds, setSelectedMonthlyIds] = useState<Set<string>>(new Set());
+
+  // Inline-add: ID of the row currently in "fresh empty" mode. Auto-removed on blur if title is still empty.
+  const [inlineDraftTaskId, setInlineDraftTaskId] = useState<string | null>(null);
+  const [inlineDraftWeeklyId, setInlineDraftWeeklyId] = useState<string | null>(null);
+  const [inlineDraftMonthlyId, setInlineDraftMonthlyId] = useState<string | null>(null);
+
+  const activeSelected =
+    tab === 'tasks'  ? selectedTaskIds  :
+    tab === 'weekly' ? selectedWeeklyIds :
+                       selectedMonthlyIds;
+
+  const setActiveSelected =
+    tab === 'tasks'  ? setSelectedTaskIds  :
+    tab === 'weekly' ? setSelectedWeeklyIds :
+                       setSelectedMonthlyIds;
+
+  const activeNoun =
+    tab === 'tasks'  ? (activeSelected.size === 1 ? 'task'           : 'tasks') :
+    tab === 'weekly' ? (activeSelected.size === 1 ? 'weekly target'  : 'weekly targets') :
+                       (activeSelected.size === 1 ? 'monthly target' : 'monthly targets');
+
+  const isNewItemRef = useRef(false);
+
+  const { visible: taskColVis, toggle: taskColToggle } = useColumnVisibility('task-management', TASK_COLS);
+  const { visible: weeklyColVis, toggle: weeklyColToggle } = useColumnVisibility('weekly-targets', WEEKLY_COLS);
+  const { visible: monthlyColVis, toggle: monthlyColToggle } = useColumnVisibility('monthly-targets', MONTHLY_COLS);
+
+  const selectedTask = tasks.find((t) => t.id === selectedTaskId) ?? null;
+  const selectedWeekly = weeklies.find((w) => w.id === selectedWeeklyId) ?? null;
+  const selectedMonthly = monthlies.find((m) => m.id === selectedMonthlyId) ?? null;
+
+  const weeklyOptions = useMemo(() => weeklies.map((w) => ({ id: w.id, title: w.title })), [weeklies]);
+  const monthlyOptions = useMemo(() => monthlies.map((m) => ({ id: m.id, title: m.title })), [monthlies]);
+
+  const dueBounds = useMemo(() => getDueRangeBounds(dueRange), [dueRange]);
 
   const filteredTasks = tasks.filter((task) => {
-    const matchesMagnifyingGlass = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         task.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const q = searchTerm.toLowerCase();
+    const matchesSearch =
+      task.title.toLowerCase().includes(q) ||
+      task.description.toLowerCase().includes(q);
     const matchesStatus = statusFunnel === 'all' || task.status === statusFunnel;
-    return matchesMagnifyingGlass && matchesStatus;
+    let matchesDue = true;
+    if (dueBounds) {
+      if (!task.dueDate) {
+        matchesDue = false;
+      } else {
+        const d = parseISO(task.dueDate);
+        matchesDue = isValidDate(d) && isWithinInterval(d, dueBounds);
+      }
+    }
+    return matchesSearch && matchesStatus && matchesDue;
   });
+
+  const filteredWeeklies = weeklies.filter((w) => {
+    const q = searchTerm.toLowerCase();
+    return w.title.toLowerCase().includes(q) || w.description.toLowerCase().includes(q);
+  });
+
+  const filteredMonthlies = monthlies.filter((m) => {
+    const q = searchTerm.toLowerCase();
+    return m.title.toLowerCase().includes(q) || m.description.toLowerCase().includes(q);
+  });
+
+  const updateTask = useCallback((id: string, patch: Partial<Task>) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...patch, updatedAt: new Date().toISOString() } : t)),
+    );
+  }, []);
+
+  const updateWeekly = useCallback((id: string, patch: Partial<WeeklyTarget>) => {
+    setWeeklies((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w)));
+  }, []);
+
+  const updateMonthly = useCallback((id: string, patch: Partial<MonthlyTarget>) => {
+    setMonthlies((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+  }, []);
+
+  const setToggle = (
+    setter: React.Dispatch<React.SetStateAction<Set<string>>>,
+    id: string,
+    v: boolean,
+  ) => setter((prev) => {
+    const next = new Set(prev);
+    if (v) next.add(id); else next.delete(id);
+    return next;
+  });
+
+  const setToggleAll = (
+    setter: React.Dispatch<React.SetStateAction<Set<string>>>,
+    ids: string[],
+    v: boolean,
+  ) => setter((prev) => {
+    const next = new Set(prev);
+    ids.forEach((id) => (v ? next.add(id) : next.delete(id)));
+    return next;
+  });
+
+  const handleBulkReassign = (userId: string | null) => {
+    if (tab !== 'tasks' || selectedTaskIds.size === 0) return;
+    const now = new Date().toISOString();
+    setTasks((prev) =>
+      prev.map((t) =>
+        selectedTaskIds.has(t.id) ? { ...t, assignee: userId, updatedAt: now } : t,
+      ),
+    );
+    setSelectedTaskIds(new Set());
+  };
+
+  const handleBulkDelete = () => {
+    if (tab === 'tasks') {
+      setTasks((prev) => prev.filter((t) => !selectedTaskIds.has(t.id)));
+      setSelectedTaskIds(new Set());
+    } else if (tab === 'weekly') {
+      const ids = selectedWeeklyIds;
+      // Orphan tasks that were linked to a deleted weekly target.
+      setTasks((prev) =>
+        prev.map((t) => (t.weeklyTargetId && ids.has(t.weeklyTargetId) ? { ...t, weeklyTargetId: null } : t)),
+      );
+      setWeeklies((prev) => prev.filter((w) => !ids.has(w.id)));
+      setSelectedWeeklyIds(new Set());
+    } else {
+      const ids = selectedMonthlyIds;
+      // Orphan weekly targets that were linked to a deleted monthly target.
+      setWeeklies((prev) =>
+        prev.map((w) => (w.monthlyTargetId && ids.has(w.monthlyTargetId) ? { ...w, monthlyTargetId: null } : w)),
+      );
+      setMonthlies((prev) => prev.filter((m) => !ids.has(m.id)));
+      setSelectedMonthlyIds(new Set());
+    }
+  };
+
+  const newId = (prefix: string) =>
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${prefix}-${Date.now()}`;
+
+  const handleNewTask = () => {
+    const id = newId('task');
+    const newTask: Task = {
+      id,
+      title: '',
+      description: '',
+      status: 'not-started',
+      assignee: null,
+      dueDate: '',
+      weeklyTargetId: null,
+      updatedAt: new Date().toISOString(),
+    };
+    isNewItemRef.current = true;
+    setTasks((prev) => [newTask, ...prev]);
+    setSelectedTaskId(id);
+  };
+
+  const handleNewWeekly = () => {
+    const id = newId('weekly');
+    const newWeekly: WeeklyTarget = {
+      id,
+      title: '',
+      description: '',
+      monthlyTargetId: null,
+    };
+    isNewItemRef.current = true;
+    setWeeklies((prev) => [newWeekly, ...prev]);
+    setSelectedWeeklyId(id);
+  };
+
+  const handleNewMonthly = () => {
+    const id = newId('monthly');
+    const newMonthly: MonthlyTarget = { id, title: '', description: '' };
+    isNewItemRef.current = true;
+    setMonthlies((prev) => [newMonthly, ...prev]);
+    setSelectedMonthlyId(id);
+  };
+
+  const addInlineTask = () => {
+    const id = newId('task');
+    setTasks((prev) => [
+      ...prev,
+      {
+        id, title: '', description: '', status: 'not-started', assignee: null,
+        dueDate: '', weeklyTargetId: null, updatedAt: new Date().toISOString(),
+      },
+    ]);
+    setInlineDraftTaskId(id);
+  };
+
+  const addInlineWeekly = () => {
+    const id = newId('weekly');
+    setWeeklies((prev) => [...prev, { id, title: '', description: '', monthlyTargetId: null }]);
+    setInlineDraftWeeklyId(id);
+  };
+
+  const addInlineMonthly = () => {
+    const id = newId('monthly');
+    setMonthlies((prev) => [...prev, { id, title: '', description: '' }]);
+    setInlineDraftMonthlyId(id);
+  };
+
+  const onTaskDraftBlur = (id: string, value: string) => {
+    if (inlineDraftTaskId !== id) return;
+    if (!value.trim()) setTasks((prev) => prev.filter((t) => t.id !== id));
+    setInlineDraftTaskId(null);
+  };
+
+  const onWeeklyDraftBlur = (id: string, value: string) => {
+    if (inlineDraftWeeklyId !== id) return;
+    if (!value.trim()) setWeeklies((prev) => prev.filter((w) => w.id !== id));
+    setInlineDraftWeeklyId(null);
+  };
+
+  const onMonthlyDraftBlur = (id: string, value: string) => {
+    if (inlineDraftMonthlyId !== id) return;
+    if (!value.trim()) setMonthlies((prev) => prev.filter((m) => m.id !== id));
+    setInlineDraftMonthlyId(null);
+  };
+
+  const closeTaskPanel = () => {
+    if (isNewItemRef.current && selectedTask && !selectedTask.title.trim()) {
+      setTasks((prev) => prev.filter((t) => t.id !== selectedTask.id));
+    }
+    isNewItemRef.current = false;
+    setSelectedTaskId(null);
+  };
+
+  const deleteSelectedTask = () => {
+    if (!selectedTask) return;
+    const id = selectedTask.id;
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+    setSelectedTaskIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    isNewItemRef.current = false;
+    setSelectedTaskId(null);
+  };
+
+  const closeWeeklyPanel = () => {
+    if (isNewItemRef.current && selectedWeekly && !selectedWeekly.title.trim()) {
+      setWeeklies((prev) => prev.filter((w) => w.id !== selectedWeekly.id));
+    }
+    isNewItemRef.current = false;
+    setSelectedWeeklyId(null);
+  };
+
+  const closeMonthlyPanel = () => {
+    if (isNewItemRef.current && selectedMonthly && !selectedMonthly.title.trim()) {
+      setMonthlies((prev) => prev.filter((m) => m.id !== selectedMonthly.id));
+    }
+    isNewItemRef.current = false;
+    setSelectedMonthlyId(null);
+  };
+
+  const onPrimaryAdd = () => {
+    if (tab === 'tasks') handleNewTask();
+    else if (tab === 'weekly') handleNewWeekly();
+    else handleNewMonthly();
+  };
+
+  const primaryAddLabel =
+    tab === 'tasks' ? 'New Task' : tab === 'weekly' ? 'New Weekly Target' : 'New Monthly Target';
+
+  const TABS: { k: TabKey; label: string }[] = [
+    { k: 'tasks',   label: 'Daily Tasks' },
+    { k: 'weekly',  label: 'Weekly Targets' },
+    { k: 'monthly', label: 'Monthly Targets' },
+  ];
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -125,264 +829,952 @@ export default function TaskManagement() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-t1">Task Management</h2>
-          <p className="text-sm text-t2 mt-1">Track and manage your team's tasks</p>
+          <p className="text-sm text-t2 mt-1">
+            Track daily tasks against weekly and monthly targets
+          </p>
         </div>
         <button
-          onClick={() => setShowTaskModal(true)}
+          onClick={onPrimaryAdd}
           className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent-h transition-colors"
         >
           <Plus className="w-4 h-4" />
-          New Task
+          {primaryAddLabel}
         </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1 bg-card rounded-xl border border-border p-1 w-fit">
+        {TABS.map(({ k, label }) => {
+          const active = tab === k;
+          return (
+            <button
+              key={k}
+              onClick={() => setTab(k)}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                active ? 'bg-accent text-white' : 'text-t2 hover:bg-surface'
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Filters */}
       <div className="bg-card rounded-xl border border-border p-4">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* MagnifyingGlass */}
-          <div className="flex-1 relative">
-            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-t3" />
-            <input
+        <div className="flex flex-col lg:flex-row gap-3">
+          <div className="relative w-full sm:w-64">
+            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-t3 pointer-events-none" />
+            <Input
               type="text"
-              placeholder="MagnifyingGlass tasks..."
+              placeholder={
+                tab === 'tasks'
+                  ? 'Search tasks...'
+                  : tab === 'weekly'
+                  ? 'Search weekly targets...'
+                  : 'Search monthly targets...'
+              }
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-xl text-sm outline-none focus:border-accent focus:ring-1 focus:ring-[#1e3a8a]"
+              className="pl-9"
             />
           </div>
 
-          {/* Status Funnel */}
-          <select
-            value={statusFunnel}
-            onChange={(e) => setStatusFunnel(e.target.value)}
-            className="px-4 py-2 border border-border rounded-xl text-sm text-t2 outline-none cursor-pointer hover:bg-surface"
-          >
-            <option value="all">All Status</option>
-            <option value="todo">To Do</option>
-            <option value="in-progress">In Progress</option>
-            <option value="review">In Review</option>
-            <option value="completed">Completed</option>
-          </select>
+          {tab === 'tasks' && (
+            <>
+              <Select value={statusFunnel} onValueChange={setStatusFunnel}>
+                <SelectTrigger className="h-9 min-w-40 focus:ring-0 focus:border-border">
+                  <SelectValue placeholder="All status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  {STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {STATUS_LABELS[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-          {/* View Toggle */}
-          <div className="flex border border-border rounded-xl overflow-hidden">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-3 py-2 text-sm ${viewMode === 'list' ? 'bg-accent text-white' : 'bg-card text-t2'}`}
-            >
-              List
-            </button>
-            <button
-              onClick={() => setViewMode('board')}
-              className={`px-3 py-2 text-sm ${viewMode === 'board' ? 'bg-accent text-white' : 'bg-card text-t2'}`}
-            >
-              Board
-            </button>
-          </div>
+              <Select value={dueRange} onValueChange={(v) => setDueRange(v as DueRange)}>
+                <SelectTrigger className="h-9 min-w-44 focus:ring-0 focus:border-border">
+                  <SelectValue placeholder="All due dates" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{DUE_RANGE_LABELS['all']}</SelectItem>
+                  <SelectSeparator />
+                  <SelectGroup>
+                    <SelectLabel>Past</SelectLabel>
+                    <SelectItem value="past-day">{DUE_RANGE_LABELS['past-day']}</SelectItem>
+                    <SelectItem value="past-week">{DUE_RANGE_LABELS['past-week']}</SelectItem>
+                    <SelectItem value="past-month">{DUE_RANGE_LABELS['past-month']}</SelectItem>
+                    <SelectItem value="past-year">{DUE_RANGE_LABELS['past-year']}</SelectItem>
+                  </SelectGroup>
+                  <SelectSeparator />
+                  <SelectGroup>
+                    <SelectLabel>Current</SelectLabel>
+                    <SelectItem value="this-day">{DUE_RANGE_LABELS['this-day']}</SelectItem>
+                    <SelectItem value="this-week">{DUE_RANGE_LABELS['this-week']}</SelectItem>
+                    <SelectItem value="this-month">{DUE_RANGE_LABELS['this-month']}</SelectItem>
+                    <SelectItem value="this-year">{DUE_RANGE_LABELS['this-year']}</SelectItem>
+                  </SelectGroup>
+                  <SelectSeparator />
+                  <SelectGroup>
+                    <SelectLabel>Upcoming</SelectLabel>
+                    <SelectItem value="next-day">{DUE_RANGE_LABELS['next-day']}</SelectItem>
+                    <SelectItem value="next-week">{DUE_RANGE_LABELS['next-week']}</SelectItem>
+                    <SelectItem value="next-month">{DUE_RANGE_LABELS['next-month']}</SelectItem>
+                    <SelectItem value="next-year">{DUE_RANGE_LABELS['next-year']}</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
 
-          {viewMode === 'list' && <ColumnSelector cols={TASK_COLS} visible={colVis} onToggle={colToggle} />}
+              <div className="flex border border-border rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setViewMode('list')}
+                  aria-label="List view"
+                  title="List view"
+                  className={`px-3 py-2 transition-colors ${
+                    viewMode === 'list' ? 'bg-accent text-white' : 'bg-card text-t2 hover:bg-surface'
+                  }`}
+                >
+                  <ListIcon className="w-4 h-4" weight="bold" />
+                </button>
+                <button
+                  onClick={() => setViewMode('board')}
+                  aria-label="Board view"
+                  title="Board view"
+                  className={`px-3 py-2 transition-colors ${
+                    viewMode === 'board' ? 'bg-accent text-white' : 'bg-card text-t2 hover:bg-surface'
+                  }`}
+                >
+                  <Kanban className="w-4 h-4" weight="bold" />
+                </button>
+              </div>
+            </>
+          )}
+
+          {tab === 'tasks' && viewMode === 'list' && (
+            <ColumnSelector cols={TASK_COLS} visible={taskColVis} onToggle={taskColToggle} />
+          )}
+          {tab === 'weekly' && (
+            <ColumnSelector cols={WEEKLY_COLS} visible={weeklyColVis} onToggle={weeklyColToggle} />
+          )}
+          {tab === 'monthly' && (
+            <ColumnSelector cols={MONTHLY_COLS} visible={monthlyColVis} onToggle={monthlyColToggle} />
+          )}
         </div>
       </div>
 
-      {/* Task List View */}
-      {viewMode === 'list' && (
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <OverlayScrollbarsComponent
-            options={{ scrollbars: { autoHide: 'never' } }}
-            defer
-          >
-            <table className="w-full">
-              <thead className="bg-surface border-b border-border">
-                <tr>
-                  {colVis.has('task') && <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Task</th>}
-                  {colVis.has('status') && <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Status</th>}
-                  {colVis.has('assignee') && <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Assignee</th>}
-                  {colVis.has('due') && <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Due Date</th>}
-                  {colVis.has('progress') && <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider">Progress</th>}
-                  {colVis.has('actions') && <th className="text-left py-3 px-4 text-xs font-medium text-t2 uppercase tracking-wider"></th>}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTasks.map((task) => (
-                  <tr key={task.id} className="border-b border-border-s hover:bg-surface transition-colors">
-                    {colVis.has('task') && (
-                      <td className="py-4 px-4">
-                        <p className="text-sm font-medium text-t1">{task.title}</p>
-                      </td>
-                    )}
-                    {colVis.has('status') && (
-                      <td className="py-4 px-4">
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-t2">
-                          {React.createElement(statusIcons[task.status], { className: 'w-3 h-3' })}
-                          {statusLabels[task.status]}
-                        </span>
-                      </td>
-                    )}
-                    {colVis.has('assignee') && (
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center text-xs font-medium text-accent">
-                            {task.assignee.charAt(0)}
-                          </div>
-                          <span className="text-sm text-t2">{task.assignee}</span>
-                        </div>
-                      </td>
-                    )}
-                    {colVis.has('due') && <td className="py-4 px-4 text-sm text-t2">{task.dueDate}</td>}
-                    {colVis.has('progress') && (
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-surface-hover rounded-full h-2">
-                            <div
-                              className="bg-accent h-2 rounded-full transition-all"
-                              style={{ width: `${task.progress}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-t2">{task.progress}%</span>
-                        </div>
-                      </td>
-                    )}
-                    {colVis.has('actions') && (
-                      <td className="py-4 px-4">
-                        <button className="p-1 hover:bg-surface rounded">
-                          <DotsThree className="w-4 h-4 text-t2" />
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </OverlayScrollbarsComponent>
-        </div>
-      )}
-
-      {/* Task Board View (Kanban) */}
-      {viewMode === 'board' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {(['todo', 'in-progress', 'review', 'completed'] as const).map((status) => (
-            <div key={status}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-t1 flex items-center gap-2">
-                  {React.createElement(statusIcons[status], { className: 'w-4 h-4' })}
-                  {statusLabels[status]}
-                </h3>
-                <span className="text-xs text-t2 bg-card px-2 py-1 rounded-full">
-                  {filteredTasks.filter(t => t.status === status).length}
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                {filteredTasks
-                  .filter(task => task.status === status)
-                  .map((task) => (
-                    <div key={task.id} className="bg-card rounded-2xl border border-border p-4 hover:shadow-md transition-shadow cursor-pointer">
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="text-sm font-medium text-t1">{task.title}</h4>
-                      </div>
-
-                      <p className="text-xs text-t2 mb-3 line-clamp-2">{task.description}</p>
-
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center text-xs font-medium text-accent">
-                          {task.assignee.charAt(0)}
-                        </div>
-                        <span className="text-xs text-t2">{task.dueDate}</span>
-                      </div>
-
-                      {status !== 'completed' && (
-                        <div className="mt-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs text-t2">Progress</span>
-                            <span className="text-xs text-t2">{task.progress}%</span>
-                          </div>
-                          <div className="bg-surface-hover rounded-full h-1.5">
-                            <div
-                              className="bg-accent h-1.5 rounded-full transition-all"
-                              style={{ width: `${task.progress}%` }}
-                            />
-                          </div>
-                        </div>
+      {/* TASKS — List View */}
+      {tab === 'tasks' && viewMode === 'list' && (() => {
+        const visibleIds = filteredTasks.map((t) => t.id);
+        const allChecked = visibleIds.length > 0 && visibleIds.every((id) => selectedTaskIds.has(id));
+        const someChecked = visibleIds.some((id) => selectedTaskIds.has(id));
+        const visibleCols =
+          (taskColVis.has('task')     ? 1 : 0) +
+          (taskColVis.has('status')   ? 1 : 0) +
+          (taskColVis.has('assignee') ? 1 : 0) +
+          (taskColVis.has('due')      ? 1 : 0) +
+          (taskColVis.has('weekly')   ? 1 : 0) +
+          1; // checkbox column
+        return (
+          <div>
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10 pr-0">
+                    <Checkbox
+                      checked={allChecked}
+                      indeterminate={!allChecked && someChecked}
+                      onCheckedChange={(v) => setToggleAll(setSelectedTaskIds, visibleIds, v)}
+                      ariaLabel="Select all tasks"
+                    />
+                  </TableHead>
+                  {taskColVis.has('task')     && <TableHead>Task</TableHead>}
+                  {taskColVis.has('status')   && <TableHead>Status</TableHead>}
+                  {taskColVis.has('assignee') && <TableHead>Assignee</TableHead>}
+                  {taskColVis.has('due')      && <TableHead>Due</TableHead>}
+                  {taskColVis.has('weekly')   && <TableHead>Weekly Target</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTasks.map((task) => {
+                  const selected = selectedTaskIds.has(task.id);
+                  return (
+                    <TableRow
+                      key={task.id}
+                      data-state={selected ? 'selected' : undefined}
+                      onClick={() => setSelectedTaskId(task.id)}
+                      className="cursor-pointer"
+                    >
+                      <TableCell className="pr-0" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selected}
+                          onCheckedChange={(v) => setToggle(setSelectedTaskIds, task.id, v)}
+                          ariaLabel={`Select ${task.title || 'task'}`}
+                        />
+                      </TableCell>
+                      {taskColVis.has('task') && (
+                        <TableCell>
+                          <EditableTitle
+                            value={task.title}
+                            onChange={(v) => updateTask(task.id, { title: v })}
+                            className="text-sm font-medium text-t1"
+                            placeholder="Task title"
+                            autoFocus={inlineDraftTaskId === task.id}
+                            onBlur={
+                              inlineDraftTaskId === task.id
+                                ? (v) => onTaskDraftBlur(task.id, v)
+                                : undefined
+                            }
+                          />
+                        </TableCell>
                       )}
-                    </div>
-                  ))}
+                      {taskColVis.has('status') && (
+                        <TableCell>
+                          <StatusSelect
+                            value={task.status}
+                            onChange={(s) => updateTask(task.id, { status: s })}
+                            compact
+                          />
+                        </TableCell>
+                      )}
+                      {taskColVis.has('assignee') && (
+                        <TableCell>
+                          {(() => {
+                            const u = getUser(task.assignee);
+                            return u ? (
+                              <div className="flex items-center gap-2">
+                                <Avatar name={u.name} size={24} />
+                                <span className="text-sm text-t2">{u.name}</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-t3 italic">Unassigned</span>
+                            );
+                          })()}
+                        </TableCell>
+                      )}
+                      {taskColVis.has('due') && (
+                        <TableCell className="px-2" onClick={(e) => e.stopPropagation()}>
+                          <DatePicker
+                            value={task.dueDate ? parseISO(task.dueDate) : null}
+                            onChange={(d) =>
+                              updateTask(task.id, { dueDate: d ? format(d, 'yyyy-MM-dd') : '' })
+                            }
+                            placeholder="—"
+                            compact
+                          />
+                        </TableCell>
+                      )}
+                      {taskColVis.has('weekly') && (
+                        <TableCell className="px-2">
+                          <ParentSelect
+                            value={task.weeklyTargetId}
+                            onChange={(id) => updateTask(task.id, { weeklyTargetId: id })}
+                            options={weeklyOptions}
+                            placeholder="None"
+                            compact
+                          />
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
+                {filteredTasks.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={visibleCols} className="py-12 text-center text-sm text-t3">
+                      No tasks match your filters.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <button
+            onClick={addInlineTask}
+            className="mt-2 flex items-center gap-2 px-3 py-2 text-sm text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" weight="bold" />
+            New task
+          </button>
+          </div>
+        );
+      })()}
+
+      {/* TASKS — Board View */}
+      {tab === 'tasks' && viewMode === 'board' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          {STATUSES.map((status) => {
+            const items = filteredTasks.filter((t) => t.status === status);
+            return (
+              <div key={status}>
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <h3 className="text-sm font-semibold text-t1">{STATUS_LABELS[status]}</h3>
+                  <span className="text-xs text-t3 bg-surface px-2 py-0.5 rounded-full">{items.length}</span>
+                </div>
+
+                <div className="space-y-3">
+                  {items.map((task) => {
+                    const weekly = weeklies.find((w) => w.id === task.weeklyTargetId) ?? null;
+                    return (
+                      <button
+                        key={task.id}
+                        onClick={() => setSelectedTaskId(task.id)}
+                        className="w-full text-left bg-card rounded-xl border border-border p-4 hover:shadow-md hover:border-accent/40 transition-all"
+                      >
+                        <h4 className="text-sm font-medium text-t1 mb-1.5">
+                          {task.title || <span className="text-t3 italic">Untitled</span>}
+                        </h4>
+                        {task.description && (
+                          <p className="text-xs text-t2 mb-3 line-clamp-2">{task.description}</p>
+                        )}
+
+                        <div className="flex items-center justify-between">
+                          {(() => {
+                            const u = getUser(task.assignee);
+                            return u ? (
+                              <div className="flex items-center gap-2">
+                                <Avatar name={u.name} size={24} />
+                                <span className="text-xs text-t2">
+                                  {task.dueDate ? formatDueDate(task.dueDate) : u.name}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-t3 italic">Unassigned</span>
+                            );
+                          })()}
+                        </div>
+
+                        {weekly && (
+                          <div className="mt-3 flex items-center gap-1.5 text-xs text-t3">
+                            <Target className="w-3.5 h-3.5" weight="duotone" />
+                            <span className="truncate">{weekly.title || 'Untitled weekly target'}</span>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {items.length === 0 && (
+                    <div className="text-xs text-t3 italic px-1 py-6 text-center">No tasks</div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* ── New Task Side Panel ──────────────────────────────────────────────── */}
-      {showTaskModal && (
-        <div className="fixed inset-0 z-[60] flex justify-end">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowTaskModal(false)}
+      {/* WEEKLY TARGETS */}
+      {tab === 'weekly' && (() => {
+        const visibleIds = filteredWeeklies.map((w) => w.id);
+        const allChecked = visibleIds.length > 0 && visibleIds.every((id) => selectedWeeklyIds.has(id));
+        const someChecked = visibleIds.some((id) => selectedWeeklyIds.has(id));
+        const visibleCols =
+          (weeklyColVis.has('title')    ? 1 : 0) +
+          (weeklyColVis.has('monthly')  ? 1 : 0) +
+          (weeklyColVis.has('tasks')    ? 1 : 0) +
+          (weeklyColVis.has('progress') ? 1 : 0) +
+          1; // checkbox column
+        return (
+          <div>
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10 pr-0">
+                    <Checkbox
+                      checked={allChecked}
+                      indeterminate={!allChecked && someChecked}
+                      onCheckedChange={(v) => setToggleAll(setSelectedWeeklyIds, visibleIds, v)}
+                      ariaLabel="Select all weekly targets"
+                    />
+                  </TableHead>
+                  {weeklyColVis.has('title')    && <TableHead>Weekly Target</TableHead>}
+                  {weeklyColVis.has('monthly')  && <TableHead>Monthly Target</TableHead>}
+                  {weeklyColVis.has('tasks')    && <TableHead>Tasks</TableHead>}
+                  {weeklyColVis.has('progress') && <TableHead>Progress</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredWeeklies.map((w) => {
+                  const linked = tasks.filter((t) => t.weeklyTargetId === w.id);
+                  const completed = linked.filter((t) => t.status === 'completed').length;
+                  const progress = weeklyProgress(w.id, tasks);
+                  const selected = selectedWeeklyIds.has(w.id);
+                  return (
+                    <TableRow
+                      key={w.id}
+                      data-state={selected ? 'selected' : undefined}
+                      onClick={() => setSelectedWeeklyId(w.id)}
+                      className="cursor-pointer"
+                    >
+                      <TableCell className="pr-0" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selected}
+                          onCheckedChange={(v) => setToggle(setSelectedWeeklyIds, w.id, v)}
+                          ariaLabel={`Select ${w.title || 'weekly target'}`}
+                        />
+                      </TableCell>
+                      {weeklyColVis.has('title') && (
+                        <TableCell>
+                          <EditableTitle
+                            value={w.title}
+                            onChange={(v) => updateWeekly(w.id, { title: v })}
+                            className="text-sm font-medium text-t1"
+                            placeholder="Weekly target name"
+                            autoFocus={inlineDraftWeeklyId === w.id}
+                            onBlur={
+                              inlineDraftWeeklyId === w.id
+                                ? (v) => onWeeklyDraftBlur(w.id, v)
+                                : undefined
+                            }
+                          />
+                        </TableCell>
+                      )}
+                      {weeklyColVis.has('monthly') && (
+                        <TableCell className="px-2">
+                          <ParentSelect
+                            value={w.monthlyTargetId}
+                            onChange={(id) => updateWeekly(w.id, { monthlyTargetId: id })}
+                            options={monthlyOptions}
+                            placeholder="None"
+                            compact
+                          />
+                        </TableCell>
+                      )}
+                      {weeklyColVis.has('tasks') && (
+                        <TableCell className="text-t2">
+                          {linked.length === 0 ? (
+                            <span className="text-xs text-t3 italic">No tasks</span>
+                          ) : (
+                            <span>
+                              {completed}/{linked.length}
+                            </span>
+                          )}
+                        </TableCell>
+                      )}
+                      {weeklyColVis.has('progress') && (
+                        <TableCell>
+                          <ProgressBar value={progress} />
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
+                {filteredWeeklies.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={visibleCols} className="py-12 text-center text-sm text-t3">
+                      No weekly targets yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <button
+            onClick={addInlineWeekly}
+            className="mt-2 flex items-center gap-2 px-3 py-2 text-sm text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" weight="bold" />
+            New weekly target
+          </button>
+          </div>
+        );
+      })()}
+
+      {/* MONTHLY TARGETS */}
+      {tab === 'monthly' && (() => {
+        const visibleIds = filteredMonthlies.map((m) => m.id);
+        const allChecked = visibleIds.length > 0 && visibleIds.every((id) => selectedMonthlyIds.has(id));
+        const someChecked = visibleIds.some((id) => selectedMonthlyIds.has(id));
+        const visibleCols =
+          (monthlyColVis.has('title')    ? 1 : 0) +
+          (monthlyColVis.has('weeklies') ? 1 : 0) +
+          (monthlyColVis.has('progress') ? 1 : 0) +
+          1; // checkbox column
+        return (
+          <div>
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10 pr-0">
+                    <Checkbox
+                      checked={allChecked}
+                      indeterminate={!allChecked && someChecked}
+                      onCheckedChange={(v) => setToggleAll(setSelectedMonthlyIds, visibleIds, v)}
+                      ariaLabel="Select all monthly targets"
+                    />
+                  </TableHead>
+                  {monthlyColVis.has('title')    && <TableHead>Monthly Target</TableHead>}
+                  {monthlyColVis.has('weeklies') && <TableHead>Weekly Targets</TableHead>}
+                  {monthlyColVis.has('progress') && <TableHead>Progress</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredMonthlies.map((m) => {
+                  const linked = weeklies.filter((w) => w.monthlyTargetId === m.id);
+                  const progress = monthlyProgress(m.id, weeklies, tasks);
+                  const selected = selectedMonthlyIds.has(m.id);
+                  return (
+                    <TableRow
+                      key={m.id}
+                      data-state={selected ? 'selected' : undefined}
+                      onClick={() => setSelectedMonthlyId(m.id)}
+                      className="cursor-pointer"
+                    >
+                      <TableCell className="pr-0" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selected}
+                          onCheckedChange={(v) => setToggle(setSelectedMonthlyIds, m.id, v)}
+                          ariaLabel={`Select ${m.title || 'monthly target'}`}
+                        />
+                      </TableCell>
+                      {monthlyColVis.has('title') && (
+                        <TableCell>
+                          <EditableTitle
+                            value={m.title}
+                            onChange={(v) => updateMonthly(m.id, { title: v })}
+                            className="text-sm font-medium text-t1"
+                            placeholder="Monthly target name"
+                            autoFocus={inlineDraftMonthlyId === m.id}
+                            onBlur={
+                              inlineDraftMonthlyId === m.id
+                                ? (v) => onMonthlyDraftBlur(m.id, v)
+                                : undefined
+                            }
+                          />
+                        </TableCell>
+                      )}
+                      {monthlyColVis.has('weeklies') && (
+                        <TableCell className="text-t2">
+                          {linked.length === 0 ? (
+                            <span className="text-xs text-t3 italic">No weekly targets</span>
+                          ) : (
+                            <span>{linked.length}</span>
+                          )}
+                        </TableCell>
+                      )}
+                      {monthlyColVis.has('progress') && (
+                        <TableCell>
+                          <ProgressBar value={progress} />
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
+                {filteredMonthlies.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={visibleCols} className="py-12 text-center text-sm text-t3">
+                      No monthly targets yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <button
+            onClick={addInlineMonthly}
+            className="mt-2 flex items-center gap-2 px-3 py-2 text-sm text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" weight="bold" />
+            New monthly target
+          </button>
+          </div>
+        );
+      })()}
+
+      {/* TASK PANEL */}
+      <AnimatePresence>
+      {selectedTask && (
+        <motion.div key="task-panel-host" className="fixed inset-0 z-[60] flex justify-end">
+          <motion.div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={closeTaskPanel}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: FADE_DURATION }}
           />
-          <div className="relative w-full max-w-md bg-card h-full shadow-2xl flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-              <div className="text-sm font-medium text-t2">Task Lifecycle Management</div>
+          <motion.div
+            className="relative w-full max-w-xl bg-card h-full shadow-2xl flex flex-col"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: PANEL_DURATION, ease: EASE_OUT_FAST }}
+          >
+            <div className="flex items-center justify-between px-4 py-3 shrink-0">
               <button
-                onClick={() => setShowTaskModal(false)}
-                className="text-emerald-500 hover:text-emerald-400 text-sm font-semibold transition-colors"
+                onClick={closeTaskPanel}
+                aria-label="Close"
+                className="p-1.5 rounded-md text-t3 hover:bg-surface hover:text-t1 transition-colors"
               >
-                Close
+                <X className="w-4 h-4" weight="bold" />
+              </button>
+              <button
+                onClick={deleteSelectedTask}
+                aria-label="Delete task"
+                title="Delete task"
+                className="p-1.5 rounded-md text-t3 hover:bg-red-500/10 hover:text-red-500 transition-colors"
+              >
+                <Trash className="w-4 h-4" weight="bold" />
               </button>
             </div>
+
             <OverlayScrollbarsComponent
-              className="flex-1 p-6"
+              className="flex-1 px-12 pb-12"
               options={{ scrollbars: { autoHide: 'never' } }}
               defer
             >
-              <div className="space-y-6 text-t1">
-                <div>
-                  <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Core Objectives</label>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-[10px] text-t2 mb-1">Task Nomenclature</label>
-                      <input type="text" placeholder="Specify project task name" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none focus:border-accent" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-t2 mb-1">Operational Description</label>
-                      <textarea rows={3} placeholder="Define scope and deliverables" className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm outline-none focus:border-accent" />
-                    </div>
+              <div className="pt-4 pb-6">
+                <EditableTitle
+                  value={selectedTask.title}
+                  onChange={(v) => updateTask(selectedTask.id, { title: v })}
+                  className="text-3xl font-bold text-t1 leading-tight tracking-tight block w-full"
+                  placeholder="Untitled"
+                  autoFocus={isNewItemRef.current}
+                />
+              </div>
+
+              <div className="space-y-1 mb-8">
+                <PropertyRow icon={CircleNotch} label="Status">
+                  <StatusSelect
+                    value={selectedTask.status}
+                    onChange={(s) => updateTask(selectedTask.id, { status: s })}
+                    compact
+                  />
+                </PropertyRow>
+
+                <PropertyRow icon={UserIcon} label="Assignee">
+                  <AssigneeSelect
+                    value={selectedTask.assignee}
+                    onChange={(id) => updateTask(selectedTask.id, { assignee: id })}
+                    compact
+                  />
+                </PropertyRow>
+
+                <PropertyRow icon={CalendarBlank} label="Due date">
+                  <DatePicker
+                    value={selectedTask.dueDate ? parseISO(selectedTask.dueDate) : null}
+                    onChange={(d) =>
+                      updateTask(selectedTask.id, {
+                        dueDate: d ? format(d, 'yyyy-MM-dd') : '',
+                      })
+                    }
+                    placeholder="Empty"
+                    compact
+                  />
+                </PropertyRow>
+
+                <PropertyRow icon={Target} label="Weekly target">
+                  <ParentSelect
+                    value={selectedTask.weeklyTargetId}
+                    onChange={(id) => updateTask(selectedTask.id, { weeklyTargetId: id })}
+                    options={weeklyOptions}
+                    placeholder="None"
+                    compact
+                  />
+                </PropertyRow>
+              </div>
+
+              <div className="border-t border-border-s mb-4" />
+
+              <textarea
+                value={selectedTask.description}
+                onChange={(e) => updateTask(selectedTask.id, { description: e.target.value })}
+                placeholder="Add a description…"
+                rows={8}
+                className="w-full bg-transparent text-sm text-t1 placeholder-t3 outline-none resize-none leading-relaxed"
+              />
+
+              {selectedTask.updatedAt && (() => {
+                const d = parseISO(selectedTask.updatedAt);
+                if (!isValidDate(d)) return null;
+                return (
+                  <div className="mt-8 pt-4 border-t border-border-s">
+                    <p
+                      className="text-xs text-t3"
+                      title={format(d, 'PPpp')}
+                    >
+                      Last edited {formatDistanceToNow(d, { addSuffix: true })}
+                    </p>
                   </div>
-                </div>
+                );
+              })()}
+            </OverlayScrollbarsComponent>
+          </motion.div>
+        </motion.div>
+      )}
+      </AnimatePresence>
 
-                <div>
-                  <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Workflow State</label>
-                  <select className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs appearance-none outline-none focus:ring-2 focus:ring-[#1e3a8a]/10">
-                    <option>To Do</option>
-                    <option>In Progress</option>
-                    <option>In Review</option>
-                    <option>Completed</option>
-                  </select>
-                </div>
+      {/* WEEKLY PANEL */}
+      <AnimatePresence>
+      {selectedWeekly && (
+        <motion.div key="weekly-panel-host" className="fixed inset-0 z-[60] flex justify-end">
+          <motion.div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={closeWeeklyPanel}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: FADE_DURATION }}
+          />
+          <motion.div
+            className="relative w-full max-w-xl bg-card h-full shadow-2xl flex flex-col"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: PANEL_DURATION, ease: EASE_OUT_FAST }}
+          >
+            <div className="flex items-center px-4 py-3 shrink-0">
+              <button
+                onClick={closeWeeklyPanel}
+                aria-label="Close"
+                className="p-1.5 rounded-md text-t3 hover:bg-surface hover:text-t1 transition-colors"
+              >
+                <X className="w-4 h-4" weight="bold" />
+              </button>
+            </div>
 
-                <div>
-                  <label className="block text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Accountability</label>
-                  <div className="flex items-center gap-3 p-3 bg-accent-glow/50 rounded-xl border border-blue-100/50">
-                    <div className="p-2 bg-card rounded-xl shadow-sm"><Users className="w-4 h-4 text-accent" /></div>
-                    <div className="flex-1">
-                      <p className="text-[10px] text-t3 uppercase font-black">Assignee</p>
-                      <input type="text" placeholder="Select team member" className="w-full bg-transparent border-none p-0 text-sm font-bold text-t1 outline-none" />
-                    </div>
-                  </div>
-                </div>
+            <OverlayScrollbarsComponent
+              className="flex-1 px-12 pb-12"
+              options={{ scrollbars: { autoHide: 'never' } }}
+              defer
+            >
+              <div className="pt-4 pb-6">
+                <EditableTitle
+                  value={selectedWeekly.title}
+                  onChange={(v) => updateWeekly(selectedWeekly.id, { title: v })}
+                  className="text-3xl font-bold text-t1 leading-tight tracking-tight block w-full"
+                  placeholder="Untitled weekly target"
+                  autoFocus={isNewItemRef.current}
+                />
+              </div>
 
-                <div className="pt-6">
-                  <button className="w-full py-2.5 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent-h shadow-lg shadow-[#1e3a8a]/20 transition-all active:scale-[0.98]">
-                    Initialize Task Assignment
-                  </button>
+              <div className="space-y-1 mb-8">
+                <PropertyRow icon={CalendarCheck} label="Monthly target">
+                  <ParentSelect
+                    value={selectedWeekly.monthlyTargetId}
+                    onChange={(id) => updateWeekly(selectedWeekly.id, { monthlyTargetId: id })}
+                    options={monthlyOptions}
+                    placeholder="None"
+                    compact
+                  />
+                </PropertyRow>
+
+                <PropertyRow icon={Clock} label="Progress">
+                  <ProgressBar value={weeklyProgress(selectedWeekly.id, tasks)} />
+                </PropertyRow>
+              </div>
+
+              <div className="border-t border-border-s mb-4" />
+
+              <textarea
+                value={selectedWeekly.description}
+                onChange={(e) => updateWeekly(selectedWeekly.id, { description: e.target.value })}
+                placeholder="Add a description…"
+                rows={5}
+                className="w-full bg-transparent text-sm text-t1 placeholder-t3 outline-none resize-none leading-relaxed mb-6"
+              />
+
+              <div>
+                <h4 className="text-xs font-medium text-t2 uppercase tracking-wider mb-3">
+                  Linked tasks
+                </h4>
+                <div className="space-y-1">
+                  {tasks.filter((t) => t.weeklyTargetId === selectedWeekly.id).length === 0 && (
+                    <p className="text-xs text-t3 italic">No tasks linked yet — progress is 100% by default.</p>
+                  )}
+                  {tasks
+                    .filter((t) => t.weeklyTargetId === selectedWeekly.id)
+                    .map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => {
+                          setSelectedWeeklyId(null);
+                          setSelectedTaskId(t.id);
+                        }}
+                        className="flex items-center justify-between w-full px-2 py-2 rounded-md hover:bg-surface text-left"
+                      >
+                        <span className="text-sm text-t1 truncate">
+                          {t.title || <span className="text-t3 italic">Untitled</span>}
+                        </span>
+                        <StatusPill status={t.status} />
+                      </button>
+                    ))}
                 </div>
               </div>
             </OverlayScrollbarsComponent>
-            <div className="p-4 border-t border-border-s text-[11px] text-t3 italic">
-              Task system synchronized on {new Date().toLocaleTimeString()}
-            </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
+
+      {/* BULK ACTION BAR */}
+      <AnimatePresence>
+        {activeSelected.size > 0 && (
+          <motion.div
+            key="bulk-bar"
+            initial={{ opacity: 0, y: 16, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 16, x: '-50%' }}
+            transition={{ duration: 0.18, ease: EASE_OUT_FAST }}
+            className="fixed bottom-6 left-1/2 z-50 flex items-center gap-1 bg-card/95 backdrop-blur-md border border-border shadow-2xl rounded-2xl pl-4 pr-2 py-2"
+          >
+            <span className="text-sm font-medium text-t1">
+              {activeSelected.size} <span className="text-t3 font-normal">{activeNoun} selected</span>
+            </span>
+            <div className="h-5 w-px bg-border mx-2" />
+            {tab === 'tasks' && (
+              <Popover.Root>
+                <Popover.Trigger asChild>
+                  <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium text-t1 hover:bg-surface transition-colors">
+                    <UsersThree size={14} weight="bold" />
+                    Reassign
+                  </button>
+                </Popover.Trigger>
+                <Popover.Portal>
+                  <Popover.Content
+                    side="top"
+                    align="center"
+                    sideOffset={10}
+                    className="z-[100] w-64 bg-card border border-border rounded-xl shadow-2xl p-1 max-h-(--radix-popover-content-available-height) overflow-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+                  >
+                    <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-t3">
+                      Reassign to
+                    </p>
+                    <button
+                      onClick={() => handleBulkReassign(null)}
+                      className="w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-surface text-left transition-colors"
+                    >
+                      <span className="text-sm text-t3 italic">Unassigned</span>
+                    </button>
+                    {USERS.map((u) => (
+                      <button
+                        key={u.id}
+                        onClick={() => handleBulkReassign(u.id)}
+                        className="w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-surface text-left transition-colors"
+                      >
+                        <Avatar name={u.name} size={24} />
+                        <span className="text-sm text-t1 truncate">{u.name}</span>
+                      </button>
+                    ))}
+                  </Popover.Content>
+                </Popover.Portal>
+              </Popover.Root>
+            )}
+            <button
+              onClick={handleBulkDelete}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors"
+            >
+              <Trash size={14} weight="bold" />
+              Delete
+            </button>
+            <button
+              onClick={() => setActiveSelected(new Set())}
+              aria-label="Clear selection"
+              className="p-1.5 rounded-xl text-t3 hover:bg-surface hover:text-t1 transition-colors"
+            >
+              <X size={14} weight="bold" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MONTHLY PANEL */}
+      <AnimatePresence>
+      {selectedMonthly && (
+        <motion.div key="monthly-panel-host" className="fixed inset-0 z-[60] flex justify-end">
+          <motion.div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={closeMonthlyPanel}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: FADE_DURATION }}
+          />
+          <motion.div
+            className="relative w-full max-w-xl bg-card h-full shadow-2xl flex flex-col"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: PANEL_DURATION, ease: EASE_OUT_FAST }}
+          >
+            <div className="flex items-center px-4 py-3 shrink-0">
+              <button
+                onClick={closeMonthlyPanel}
+                aria-label="Close"
+                className="p-1.5 rounded-md text-t3 hover:bg-surface hover:text-t1 transition-colors"
+              >
+                <X className="w-4 h-4" weight="bold" />
+              </button>
+            </div>
+
+            <OverlayScrollbarsComponent
+              className="flex-1 px-12 pb-12"
+              options={{ scrollbars: { autoHide: 'never' } }}
+              defer
+            >
+              <div className="pt-4 pb-6">
+                <EditableTitle
+                  value={selectedMonthly.title}
+                  onChange={(v) => updateMonthly(selectedMonthly.id, { title: v })}
+                  className="text-3xl font-bold text-t1 leading-tight tracking-tight block w-full"
+                  placeholder="Untitled monthly target"
+                  autoFocus={isNewItemRef.current}
+                />
+              </div>
+
+              <div className="space-y-1 mb-8">
+                <PropertyRow icon={Clock} label="Progress">
+                  <ProgressBar value={monthlyProgress(selectedMonthly.id, weeklies, tasks)} />
+                </PropertyRow>
+              </div>
+
+              <div className="border-t border-border-s mb-4" />
+
+              <textarea
+                value={selectedMonthly.description}
+                onChange={(e) => updateMonthly(selectedMonthly.id, { description: e.target.value })}
+                placeholder="Add a description…"
+                rows={5}
+                className="w-full bg-transparent text-sm text-t1 placeholder-t3 outline-none resize-none leading-relaxed mb-6"
+              />
+
+              <div>
+                <h4 className="text-xs font-medium text-t2 uppercase tracking-wider mb-3">
+                  Weekly targets
+                </h4>
+                <div className="space-y-1">
+                  {weeklies.filter((w) => w.monthlyTargetId === selectedMonthly.id).length === 0 && (
+                    <p className="text-xs text-t3 italic">No weekly targets linked yet — progress is 100% by default.</p>
+                  )}
+                  {weeklies
+                    .filter((w) => w.monthlyTargetId === selectedMonthly.id)
+                    .map((w) => (
+                      <button
+                        key={w.id}
+                        onClick={() => {
+                          setSelectedMonthlyId(null);
+                          setSelectedWeeklyId(w.id);
+                        }}
+                        className="flex items-center justify-between w-full px-2 py-2 rounded-md hover:bg-surface text-left gap-3"
+                      >
+                        <span className="text-sm text-t1 truncate">
+                          {w.title || <span className="text-t3 italic">Untitled</span>}
+                        </span>
+                        <span className="text-xs text-t3 shrink-0">{weeklyProgress(w.id, tasks)}%</span>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            </OverlayScrollbarsComponent>
+          </motion.div>
+        </motion.div>
+      )}
+      </AnimatePresence>
     </div>
   );
 }
