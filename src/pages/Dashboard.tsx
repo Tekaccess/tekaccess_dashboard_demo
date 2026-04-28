@@ -699,10 +699,10 @@ function InventoryDashboard() {
     fill: type === 'RECEIPT' ? '#10b981' : type === 'ISSUE' ? '#f43f5e' : type === 'STOCK_COUNT' ? '#6366f1' : '#f59e0b',
   }));
 
-  const okCount = (s.totalItems ?? 0) - (s.lowStockItems ?? 0);
+  const okCount = (s.totalItems ?? 0) - (s.lowStockRecords ?? 0);
   const healthDonut = [
     { name: 'OK', value: okCount > 0 ? okCount : 0 },
-    { name: 'Low Stock', value: s.lowStockItems ?? 0 },
+    { name: 'Low Stock', value: s.lowStockRecords ?? 0 },
   ].filter(d => d.value > 0);
 
   return (
@@ -714,9 +714,9 @@ function InventoryDashboard() {
             ? `${((s.totalValue ?? 0) / 1_000_000).toFixed(2)}M`
             : `${Math.round((s.totalValue ?? 0) / 1000)}K`
         } Icon={ChartBar} bg="bg-blue-500/10" color="text-blue-400" />
-        <KpiCard label="Low Stock Alerts" value={s.lowStockItems ?? 0} Icon={Warning}
-          bg={(s.lowStockItems ?? 0) > 0 ? 'bg-rose-500/10' : 'bg-emerald-500/10'}
-          color={(s.lowStockItems ?? 0) > 0 ? 'text-rose-400' : 'text-emerald-400'}
+        <KpiCard label="Low Stock Alerts" value={s.lowStockRecords ?? 0} Icon={Warning}
+          bg={(s.lowStockRecords ?? 0) > 0 ? 'bg-rose-500/10' : 'bg-emerald-500/10'}
+          color={(s.lowStockRecords ?? 0) > 0 ? 'text-rose-400' : 'text-emerald-400'}
         />
         <KpiCard label="Warehouses" value={s.warehouseCount ?? 0} Icon={Buildings} bg="bg-purple-500/10" color="text-purple-400" />
       </div>

@@ -61,7 +61,7 @@ const WH_COLS: ColDef[] = [
 
 export default function WarehousesPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [summary, setSummary] = useState({ totalItems: 0, totalValue: 0, warehouseCount: 0, lowStockItems: 0 });
+  const [summary, setSummary] = useState({ totalItems: 0, totalValue: 0, warehouseCount: 0, lowStockRecords: 0 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -366,7 +366,7 @@ export default function WarehousesPage() {
     { label: 'Total Warehouses', value: summary.warehouseCount, Icon: WarehouseIcon, bg: 'bg-blue-500/10', color: 'text-blue-400' },
     { label: 'Stock Items', value: summary.totalItems, Icon: CheckCircle, bg: 'bg-emerald-500/10', color: 'text-emerald-400' },
     { label: 'Total Value', value: `${(summary.totalValue / 1_000_000).toFixed(1)}M`, Icon: Gauge, bg: 'bg-accent-glow', color: 'text-accent' },
-    { label: 'Low Stock Alerts', value: summary.lowStockItems, Icon: Warning, bg: 'bg-rose-500/10', color: 'text-rose-400' },
+    { label: 'Low Stock Alerts', value: summary.lowStockRecords, Icon: Warning, bg: 'bg-rose-500/10', color: 'text-rose-400' },
   ];
 
   return (

@@ -18,10 +18,10 @@ import SearchSelect, { SearchSelectOption } from '../components/ui/SearchSelect'
 import ColumnSelector, { useColumnVisibility, ColDef } from '../components/ui/ColumnSelector';
 import {
   apiListSuppliers, apiListContractsForPO, apiListCurrencies,
-  apiListProjects, apiListClients, apiListStockItems,
+  apiListProjects, apiListClients,
   apiListPurchaseOrders, apiCreatePurchaseOrder, apiUpdatePurchaseOrder, apiDeletePurchaseOrder,
   apiListProducts, apiListWarehouses,
-  Supplier, Contract, Currency, Project, Client, StockItem, PurchaseOrder, POLineItem,
+  Supplier, Contract, Currency, Project, Client, PurchaseOrder, POLineItem,
   Product, Warehouse,
 } from '../lib/api';
 
@@ -101,7 +101,6 @@ function formatCurrency(value: number, code = 'RWF'): string {
 function emptyLineItem(): DraftLineItem {
   return {
     _key: crypto.randomUUID(),
-    stockItemId: null,
     productId: null,
     productName: null,
     description: '',
@@ -118,7 +117,6 @@ function emptyLineItem(): DraftLineItem {
 
 interface DraftLineItem {
   _key: string;
-  stockItemId: string | null;
   itemCode?: string | null;
   productId?: string | null;
   productName?: string | null;
@@ -224,7 +222,6 @@ export default function PurchaseOrdersPage() {
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
 
@@ -236,7 +233,6 @@ export default function PurchaseOrdersPage() {
       apiListCurrencies().then(r => r.success && setCurrencies(r.data.currencies)),
       apiListProjects().then(r => r.success && setProjects(r.data.projects)),
       apiListClients().then(r => r.success && setClients(r.data.clients)),
-      apiListStockItems().then(r => r.success && setStockItems(r.data.items)),
       apiListProducts().then(r => r.success && setProducts(r.data.products)),
       apiListWarehouses().then(r => r.success && setWarehouses(r.data.warehouses)),
     ]);
@@ -277,11 +273,6 @@ export default function PurchaseOrdersPage() {
   const clientOptions = useMemo<SearchSelectOption[]>(() =>
     clients.map(c => ({ value: c._id, label: c.name, sublabel: c.clientCode, meta: c.country })),
     [clients]
-  );
-
-  const stockOptions = useMemo<SearchSelectOption[]>(() =>
-    stockItems.map(s => ({ value: s._id, label: s.name, sublabel: s.itemCode, meta: `${s.availableQty} ${s.stockUnit}` })),
-    [stockItems]
   );
 
   const productOptions = useMemo<SearchSelectOption[]>(() =>
@@ -400,7 +391,6 @@ export default function PurchaseOrdersPage() {
       destinationWarehouseName: order.destinationWarehouseName || '',
       lineItems: order.lineItems.map(li => ({
         _key: crypto.randomUUID(),
-        stockItemId: li.stockItemId || null,
         itemCode: li.itemCode || null,
         productId: li.productId || null,
         productName: li.productName || null,
@@ -451,7 +441,6 @@ export default function PurchaseOrdersPage() {
         return {
           lineNumber: idx + 1,
           description: item.description,
-          stockItemId: item.stockItemId || null,
           itemCode: item.itemCode || null,
           productId: item.productId || null,
           productName: item.productName || null,

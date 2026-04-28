@@ -208,7 +208,6 @@ export type POLineItem = {
   description: string;
   productId?: string | null;
   productName?: string | null;
-  stockItemId?: string | null;
   itemCode?: string | null;
   analyticProjectId?: string | null;
   analyticProjectName?: string | null;
@@ -828,45 +827,6 @@ export async function apiDeleteSite(id: string) {
 
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
-export type StockItem = {
-  _id: string;
-  itemCode: string;
-  name: string;
-  description: string | null;
-  category: string;
-  stockUnit: string;
-  onHandQty: number;
-  availableQty: number;
-  weightedAvgCost: number;
-  currency: string;
-  warehouseId: string;
-  warehouseName: string;
-  taxRateId: string | null;
-  taxRateName: string | null;
-  taxRatePercentage: number;
-};
-
-export async function apiListStockItems(params: Record<string, string> = {}) {
-  const qs = new URLSearchParams({ limit: '200', ...params }).toString();
-  return request<{ items: StockItem[]; pagination: { total: number } }>(`/inventory/stock-items?${qs}`);
-}
-
-export async function apiGetStockItemById(id: string) {
-  return request<{ item: StockItem }>(`/inventory/stock-items/${id}`);
-}
-
-export async function apiCreateStockItem(data: Partial<StockItem> & { warehouseId: string }) {
-  return request<{ item: StockItem }>('/inventory/stock-items', { method: 'POST', body: JSON.stringify(data) });
-}
-
-export async function apiUpdateStockItem(id: string, data: Partial<StockItem>) {
-  return request<{ item: StockItem }>(`/inventory/stock-items/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
-}
-
-export async function apiDeleteStockItem(id: string) {
-  return request<{ item: StockItem }>(`/inventory/stock-items/${id}`, { method: 'DELETE' });
-}
-
 // ─── Warehouses ───────────────────────────────────────────────────────────────
 
 export type Warehouse = {
@@ -908,7 +868,6 @@ export type StockMovement = {
   _id: string;
   movementRef: string;
   movementType: 'INBOUND' | 'OUTBOUND' | 'TRANSFER_OUT' | 'TRANSFER_IN' | 'ADJUSTMENT' | 'STOCK_COUNT' | 'RETURN';
-  stockItemId: string;
   itemCode: string;
   itemName: string;
   warehouseId: string;
@@ -954,7 +913,7 @@ export async function apiListMovements(params: Record<string, string> = {}) {
 
 export async function apiCreateMovement(data: {
   movementType: string;
-  stockItemId: string;
+  warehouseId?: string;
   qty: number;
   unitCost?: number;
   sourceType?: string;
@@ -992,7 +951,6 @@ export async function apiDeleteMovement(id: string) {
 }
 
 export async function apiCreateTransfer(data: {
-  stockItemId: string;
   qty: number;
   destinationWarehouseId: string;
   notes?: string;
@@ -1002,7 +960,7 @@ export async function apiCreateTransfer(data: {
 
 export async function apiGetInventorySummary() {
   return request<{
-    summary: { totalItems: number; totalValue: number; lowStockItems: number; warehouseCount: number };
+    summary: { totalItems: number; totalValue: number; lowStockRecords: number; warehouseCount: number };
     recentMovements: StockMovement[];
     categories: { _id: string; count: number; totalValue: number; totalQty: number }[];
   }>('/inventory/summary');
@@ -1053,7 +1011,7 @@ export type StockRecord = {
   total_value: number;
   paid_amount: number;
   cash_deficit: number;
-  status: 'Complete' | 'Pending';
+  status: 'Pending' | 'Ready to Ship' | 'Complete';
   deadline: string | null;
   supporting_doc: string | null;
   source_po_id: string | null;
@@ -1083,6 +1041,72 @@ export async function apiUpdateStockRecord(id: string, data: Partial<StockRecord
 
 export async function apiDeleteStockRecord(id: string) {
   return request<{ message: string }>(`/inventory/stock-records/${id}`, { method: 'DELETE' });
+}
+
+// ─── Legacy StockItem shim ────────────────────────────────────────────────────
+// The stock_items collection was replaced by products + stock_records.
+// MovementsPage.tsx and StockCountsPage.tsx still reference the old shape;
+// these aliases map StockRecord rows into the legacy StockItem shape so those
+// pages keep compiling. TODO: migrate the consumers to StockRecord and delete
+// the alias + functions below.
+
+/** @deprecated Use StockRecord. Field shape is mapped from a stock_record. */
+export type StockItem = {
+  _id: string;
+  itemCode: string;
+  name: string;
+  description: string | null;
+  category: string;
+  stockUnit: string;
+  onHandQty: number;
+  availableQty: number;
+  weightedAvgCost: number;
+  currency: string;
+  warehouseId: string;
+  warehouseName: string;
+  taxRateId: string | null;
+  taxRateName: string | null;
+  taxRatePercentage: number;
+};
+
+function mapRecordToStockItem(r: StockRecord): StockItem {
+  return {
+    _id: r._id,
+    itemCode: r.item_code,
+    name: r.product_name,
+    description: null,
+    category: '',
+    stockUnit: '',
+    onHandQty: r.on_hand,
+    availableQty: r.on_hand,
+    weightedAvgCost: r.cost_per_unit,
+    currency: r.currency,
+    warehouseId: r.warehouse_id,
+    warehouseName: r.warehouse_name,
+    taxRateId: null,
+    taxRateName: null,
+    taxRatePercentage: 0,
+  };
+}
+
+/** @deprecated Use apiListStockRecords. */
+export async function apiListStockItems(params: Record<string, string> = {}) {
+  const res = await apiListStockRecords(params);
+  if (!res.success) return res;
+  return {
+    ...res,
+    data: {
+      items: res.data.records.map(mapRecordToStockItem),
+      pagination: res.data.pagination,
+    },
+  };
+}
+
+/** @deprecated Look up via apiListStockRecords. */
+export async function apiGetStockItemById(id: string) {
+  const res = await request<{ record: StockRecord }>(`/inventory/stock-records/${id}`);
+  if (!res.success) return res;
+  return { ...res, data: { item: mapRecordToStockItem(res.data.record) } };
 }
 
 // ─── Inventory Documents ──────────────────────────────────────────────────────

@@ -24,6 +24,7 @@ interface CountEntry {
   stockItemId: string;
   itemCode: string;
   itemName: string;
+  warehouseId: string;
   warehouseName: string;
   systemQty: number;
   countedQty: number | '';
@@ -67,7 +68,8 @@ export default function StockCountsPage() {
   function startCount() {
     const initial: CountEntry[] = stockItems.map(si => ({
       stockItemId: si._id, itemCode: si.itemCode, itemName: si.name,
-      warehouseName: si.warehouseName, systemQty: si.onHandQty,
+      warehouseId: si.warehouseId, warehouseName: si.warehouseName,
+      systemQty: si.onHandQty,
       countedQty: '', unit: si.stockUnit, currency: si.currency,
       weightedAvgCost: si.weightedAvgCost,
     }));
@@ -88,7 +90,7 @@ export default function StockCountsPage() {
       const counted = Number(e.countedQty);
       const variance = counted - e.systemQty;
       const res = await apiCreateMovement({
-        movementType: 'STOCK_COUNT', stockItemId: e.stockItemId,
+        movementType: 'STOCK_COUNT', warehouseId: e.warehouseId,
         qty: variance, unitCost: e.weightedAvgCost,
         sourceRef: 'Physical Count',
         reason: `Count: ${counted} (system: ${e.systemQty})`,

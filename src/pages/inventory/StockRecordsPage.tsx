@@ -48,7 +48,7 @@ interface Draft {
   on_hand: number;
   demand: number;
   paid_amount: number;
-  status: 'Complete' | 'Pending';
+  status: 'Pending' | 'Ready to Ship' | 'Complete';
   deadline: string;
   supporting_doc: string;
 }
@@ -130,7 +130,7 @@ function DeficitTooltip({ type, children }: { type: 'stock' | 'cash'; children: 
   );
 }
 
-export default function StockItemsPage() {
+export default function StockRecordsPage() {
   const [records, setRecords] = useState<StockRecord[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -380,8 +380,9 @@ export default function StockItemsPage() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-[10px] text-t3 mb-1">Status</label>
-            <select value={draft.status} onChange={e => setDraft(d => ({ ...d, status: e.target.value as 'Complete' | 'Pending' }))} className={inp}>
+            <select value={draft.status} onChange={e => setDraft(d => ({ ...d, status: e.target.value as 'Pending' | 'Ready to Ship' | 'Complete' }))} className={inp}>
               <option value="Pending">Pending</option>
+              <option value="Ready to Ship">Ready to Ship</option>
               <option value="Complete">Complete</option>
             </select>
           </div>
@@ -432,7 +433,7 @@ export default function StockItemsPage() {
           </div>
         ))}
       </div>
-      <div className={`p-3 rounded-xl text-sm font-medium ${selected.status === 'Complete' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+      <div className={`p-3 rounded-xl text-sm font-medium ${selected.status === 'Complete' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : selected.status === 'Ready to Ship' ? 'bg-sky-50 text-sky-700 border border-sky-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
         Status: {selected.status}
         {selected.deadline && ` · Deadline: ${new Date(selected.deadline).toLocaleDateString()}`}
       </div>
