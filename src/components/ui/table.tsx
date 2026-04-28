@@ -78,6 +78,62 @@ const TableHead = React.forwardRef<
 ));
 TableHead.displayName = 'TableHead';
 
+/**
+ * TableHead with a draggable handle on its right edge that emits the new
+ * column width. Pair with a `<colgroup>` whose `<col>` widths are driven
+ * by `useColumnWidths` so cells inherit the column width automatically.
+ *
+ * The handle uses `position: absolute` so the parent <th> needs `position: relative`
+ * (added here via className).
+ */
+type ResizableTableHeadProps = React.ThHTMLAttributes<HTMLTableCellElement> & {
+  width: number;
+  onWidthChange: (next: number) => void;
+  minWidth?: number;
+  maxWidth?: number;
+};
+
+const ResizableTableHead = React.forwardRef<HTMLTableCellElement, ResizableTableHeadProps>(
+  ({ width, onWidthChange, minWidth = 80, maxWidth = 800, className, children, ...props }, ref) => {
+    const handleMouseDown = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      const startW = width;
+      const onMove = (ev: MouseEvent) => {
+        const delta = ev.clientX - startX;
+        const next = Math.min(maxWidth, Math.max(minWidth, startW + delta));
+        onWidthChange(next);
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    };
+
+    return (
+      <TableHead ref={ref} className={cn('relative', className)} {...props}>
+        {children}
+        <span
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize column"
+          onMouseDown={handleMouseDown}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize select-none bg-transparent hover:bg-accent/40 active:bg-accent/60 transition-colors"
+        />
+      </TableHead>
+    );
+  },
+);
+ResizableTableHead.displayName = 'ResizableTableHead';
+
 const TableCell = React.forwardRef<
   HTMLTableCellElement,
   React.TdHTMLAttributes<HTMLTableCellElement>
@@ -85,7 +141,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      'px-4 py-1 align-middle whitespace-nowrap text-sm text-t1 border-b border-r border-border-s last:border-r-0',
+      'px-4 py-1 h-11 min-h-fit align-middle whitespace-nowrap text-sm text-t1 border-b border-r border-border-s last:border-r-0',
       'group-last/row:border-b-0',
       className
     )}
@@ -108,6 +164,7 @@ export {
   TableBody,
   TableFooter,
   TableHead,
+  ResizableTableHead,
   TableRow,
   TableCell,
   TableCaption,
