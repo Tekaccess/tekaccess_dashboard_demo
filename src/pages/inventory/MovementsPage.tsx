@@ -107,6 +107,7 @@ const TRANSPORT_METHODS = [
 interface NewMovementDraft {
   mode: "inbound" | "outbound" | "transfer";
   stockItemId: string;
+  warehouseId: string;
   qty: number;
   unitCost: number;
   reason: string;
@@ -140,6 +141,7 @@ function emptyDraft(): NewMovementDraft {
   return {
     mode: "inbound",
     stockItemId: "",
+    warehouseId: "",
     qty: 0,
     reason: "",
     notes: "",
@@ -307,10 +309,6 @@ export default function MovementsPage() {
   );
 
   async function handleSave() {
-    if (!draft.stockItemId) {
-      setError("Stock item is required.");
-      return;
-    }
     setSaving(true);
     setError(null);
     let res: any;
@@ -323,7 +321,7 @@ export default function MovementsPage() {
     }
 
     const commonMovementFields = {
-      warehouseId: selectedStock?.warehouseId || '',
+      warehouseId: draft.warehouseId || selectedStock?.warehouseId || '',
       qty,
       unitCost: draft.unitCost || undefined,
       sourceRef: draft.linkedPoRef || "Manual entry",
@@ -442,6 +440,7 @@ export default function MovementsPage() {
                 supplierPhone: "",
                 selectedPoLineIdx: undefined,
                 stockItemId: "",
+                warehouseId: "",
                 unitCost: 0,
                 qty: 0,
               });
@@ -457,6 +456,9 @@ export default function MovementsPage() {
               selectedPoLineIdx:
                 po?.lineItems && po.lineItems.length > 0 ? 0 : undefined,
               stockItemId: "",
+              // PO is pre-filled with the supplier's default warehouse on creation;
+              // use it so the inbound is automatically posted to the right warehouse.
+              warehouseId: po?.destinationWarehouseId || "",
               unitCost: firstLine?.unitPrice ?? 0,
               qty: firstLine?.orderedQty ?? 0,
             });
@@ -494,6 +496,13 @@ export default function MovementsPage() {
                   <span className="text-t3">Value</span>
                   <span className="text-t1 font-medium">
                     {po.currency} {po.totalValueWithTax.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-t3">Warehouse</span>
+                  <span className="text-t1 font-medium">
+                    {warehouses.find((w) => w._id === draft.warehouseId)?.name
+                      || "— not set on PO —"}
                   </span>
                 </div>
               </div>
