@@ -509,9 +509,14 @@ export default function MovementsPage() {
               selectedPoLineIdx:
                 po?.lineItems && po.lineItems.length > 0 ? 0 : undefined,
               stockItemId: "",
-              // PO is pre-filled with the supplier's default warehouse on creation;
-              // use it so the inbound is automatically posted to the right warehouse.
-              warehouseId: po?.destinationWarehouseId || "",
+              // Resolve the destination warehouse via PO → supplier default →
+              // empty (user picks manually). Without this, an inbound on a PO
+              // missing destinationWarehouseId would post with warehouseId=null
+              // and the warehouse usedPct wouldn't move.
+              warehouseId:
+                po?.destinationWarehouseId
+                || poSupplier?.defaultWarehouseId
+                || "",
               productId: firstLine?.productId || "",
               unitCost: firstLine?.unitPrice ?? 0,
               qty: firstLine?.orderedQty ?? 0,

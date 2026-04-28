@@ -119,8 +119,8 @@ export default function SuppliersPage() {
   }
 
   async function handleSave() {
-    if (!draft.supplierCode || !draft.name) {
-      setError('Code and name are required.'); return;
+    if (!draft.name) {
+      setError('Name is required.'); return;
     }
     setSaving(true); setError(null);
     const payload = {
@@ -244,23 +244,23 @@ export default function SuppliersPage() {
       <div>
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Supplier Details</p>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          {modalMode === 'edit' && draft.supplierCode && (
             <div>
-              <label className="block text-xs text-t3 mb-1.5">Supplier Code *</label>
-              <input className={inp} value={draft.supplierCode}
-                onChange={e => setDraft(d => ({ ...d, supplierCode: e.target.value.toUpperCase() }))}
-                placeholder="SUP-001" disabled={modalMode === 'edit'} />
+              <label className="block text-xs text-t3 mb-1.5">Supplier Code</label>
+              <p className="font-mono text-sm text-accent bg-accent/5 border border-accent/20 rounded-lg px-3 py-2">
+                {draft.supplierCode}
+              </p>
             </div>
-            <div>
-              <label className="block text-xs text-t3 mb-1.5">Currency</label>
-              <select className={inp} value={draft.currency} onChange={e => setDraft(d => ({ ...d, currency: e.target.value }))}>
-                {CURRENCIES.map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
+          )}
           <div>
             <label className="block text-xs text-t3 mb-1.5">Name *</label>
             <input className={inp} value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="Company name" />
+          </div>
+          <div>
+            <label className="block text-xs text-t3 mb-1.5">Currency</label>
+            <select className={inp} value={draft.currency} onChange={e => setDraft(d => ({ ...d, currency: e.target.value }))}>
+              {CURRENCIES.map(c => <option key={c}>{c}</option>)}
+            </select>
           </div>
         </div>
       </div>

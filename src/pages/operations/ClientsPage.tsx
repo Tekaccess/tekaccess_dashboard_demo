@@ -102,7 +102,7 @@ export default function ClientsPage() {
   }
 
   async function handleSave() {
-    if (!draft.clientCode || !draft.name) { setError('Client code and name are required.'); return; }
+    if (!draft.name) { setError('Client name is required.'); return; }
     setSaving(true); setError(null);
 
     let finalContractId = draft.contractId;
@@ -149,26 +149,27 @@ export default function ClientsPage() {
       <div>
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Client Details</p>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          {modalMode === 'edit' && draft.clientCode && (
             <div>
-              <label className="block text-xs text-t3 mb-1.5">Client Code *</label>
-              <input className={inp} value={draft.clientCode}
-                onChange={e => setDraft(d => ({ ...d, clientCode: e.target.value.toUpperCase() }))}
-                placeholder="CLT-001" disabled={modalMode === 'edit'} />
+              <label className="block text-xs text-t3 mb-1.5">Client Code</label>
+              <p className="font-mono text-sm text-accent bg-accent/5 border border-accent/20 rounded-lg px-3 py-2">
+                {draft.clientCode}
+              </p>
             </div>
-            <div>
-              <label className="block text-xs text-t3 mb-1.5">Type</label>
-              <select className={inp} value={draft.clientType}
-                onChange={e => setDraft(d => ({ ...d, clientType: e.target.value }))}>
-                {CLIENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-          </div>
+          )}
 
           <div>
             <label className="block text-xs text-t3 mb-1.5">Name *</label>
             <input className={inp} value={draft.name}
               onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="Company name" />
+          </div>
+
+          <div>
+            <label className="block text-xs text-t3 mb-1.5">Type</label>
+            <select className={inp} value={draft.clientType}
+              onChange={e => setDraft(d => ({ ...d, clientType: e.target.value }))}>
+              {CLIENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
           </div>
 
           <div>

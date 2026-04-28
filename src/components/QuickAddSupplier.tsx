@@ -1,26 +1,35 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Spinner } from '@phosphor-icons/react';
-import { apiCreateClient, Client } from '../lib/api';
+import { apiCreateSupplier, Supplier, Warehouse } from '../lib/api';
+import SearchSelect, { SearchSelectOption } from './ui/SearchSelect';
 
-interface QuickAddClientProps {
+interface QuickAddSupplierProps {
   onClose: () => void;
-  onCreated: (client: Client) => void;
+  onCreated: (supplier: Supplier) => void;
+  warehouses: Warehouse[];
 }
 
-export default function QuickAddClient({ onClose, onCreated }: QuickAddClientProps) {
+export default function QuickAddSupplier({ onClose, onCreated, warehouses }: QuickAddSupplierProps) {
   const [form, setForm] = useState({
     name: '',
-    legalName: '',
-    clientType: 'other',
+    defaultWarehouseId: '',
+    defaultWarehouseName: '',
     contactName: '',
     contactEmail: '',
     contactPhone: '',
     address: '',
     country: 'Rwanda',
-    currency: 'RWF',
-    paymentTermsDays: 30,
+    currency: 'USD',
+    creditTermsDays: 30,
+    taxId: '',
+    isCritical: false,
   });
+
+  const warehouseOptions = useMemo<SearchSelectOption[]>(
+    () => warehouses.map(w => ({ value: w._id, label: w.name, sublabel: w.warehouseCode })),
+    [warehouses],
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,15 +39,15 @@ export default function QuickAddClient({ onClose, onCreated }: QuickAddClientPro
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim()) { setError('Client name is required.'); return; }
+    if (!form.name.trim()) { setError('Supplier name is required.'); return; }
 
     setSaving(true);
     setError(null);
-    const res = await apiCreateClient(form as any);
+    const res = await apiCreateSupplier(form as any);
     setSaving(false);
 
-    if (!res.success) { setError(res.message || 'Failed to create client.'); return; }
-    onCreated(res.data.client);
+    if (!res.success) { setError((res as any).message || 'Failed to create supplier.'); return; }
+    onCreated(res.data.supplier);
   }
 
   const inputClass = "w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors";
@@ -48,7 +57,7 @@ export default function QuickAddClient({ onClose, onCreated }: QuickAddClientPro
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-lg border border-border overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-sm font-bold text-t1">Add New Client</h2>
+          <h2 className="text-sm font-bold text-t1">Add New Supplier</h2>
           <button onClick={onClose} className="text-t3 hover:text-t1 transition-colors">
             <X size={18} weight="bold" />
           </button>
@@ -56,27 +65,33 @@ export default function QuickAddClient({ onClose, onCreated }: QuickAddClientPro
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
-            <label className="block text-[10px] text-t3 mb-1">Company Name *</label>
+            <label className="block text-[10px] text-t3 mb-1">Supplier Name *</label>
             <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Company name" className={inputClass} />
           </div>
 
           <div>
-            <label className="block text-[10px] text-t3 mb-1">Type</label>
-            <select value={form.clientType} onChange={e => set('clientType', e.target.value)} className={inputClass}>
-              <option value="construction">Construction</option>
-              <option value="mining">Mining</option>
-              <option value="government">Government</option>
-              <option value="logistics">Logistics</option>
-              <option value="agriculture">Agriculture</option>
-              <option value="retail">Retail</option>
-              <option value="other">Other</option>
-            </select>
+            <label className="block text-[10px] text-t3 mb-1">Tax ID</label>
+            <input
+              value={form.taxId}
+              onChange={e => set('taxId', e.target.value)}
+              placeholder="TIN / VAT registration"
+              className={inputClass}
+            />
           </div>
 
-          <div>
-            <label className="block text-[10px] text-t3 mb-1">Legal Name</label>
-            <input value={form.legalName} onChange={e => set('legalName', e.target.value)} placeholder="Legal registered name" className={inputClass} />
-          </div>
+          <SearchSelect
+            label="Default Warehouse"
+            options={warehouseOptions}
+            value={form.defaultWarehouseId || null}
+            onChange={(val, opt) => {
+              setForm(prev => ({
+                ...prev,
+                defaultWarehouseId: val || '',
+                defaultWarehouseName: opt?.label || '',
+              }));
+            }}
+            placeholder="Pre-fills the destination warehouse on POs..."
+          />
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -107,8 +122,8 @@ export default function QuickAddClient({ onClose, onCreated }: QuickAddClientPro
             <div>
               <label className="block text-[10px] text-t3 mb-1">Currency</label>
               <select value={form.currency} onChange={e => set('currency', e.target.value)} className={inputClass}>
-                <option value="RWF">RWF</option>
                 <option value="USD">USD</option>
+                <option value="RWF">RWF</option>
                 <option value="KES">KES</option>
                 <option value="UGX">UGX</option>
                 <option value="TZS">TZS</option>
@@ -117,10 +132,20 @@ export default function QuickAddClient({ onClose, onCreated }: QuickAddClientPro
               </select>
             </div>
             <div>
-              <label className="block text-[10px] text-t3 mb-1">Payment Days</label>
-              <input type="number" value={form.paymentTermsDays} onChange={e => set('paymentTermsDays', Number(e.target.value))} className={inputClass} />
+              <label className="block text-[10px] text-t3 mb-1">Credit Days</label>
+              <input type="number" value={form.creditTermsDays} onChange={e => set('creditTermsDays', Number(e.target.value))} className={inputClass} />
             </div>
           </div>
+
+          <label className="flex items-center gap-2 text-xs text-t2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.isCritical}
+              onChange={e => set('isCritical', e.target.checked)}
+              className="rounded border-border"
+            />
+            Mark as critical (can halt operations if unpaid)
+          </label>
 
           {error && (
             <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-500">{error}</div>
@@ -136,7 +161,7 @@ export default function QuickAddClient({ onClose, onCreated }: QuickAddClientPro
               className="flex-1 py-2.5 bg-accent text-white rounded-xl text-sm font-bold hover:bg-accent-h transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {saving && <Spinner size={14} className="animate-spin" />}
-              {saving ? 'Saving...' : 'Add Client'}
+              {saving ? 'Saving...' : 'Add Supplier'}
             </button>
           </div>
         </form>
