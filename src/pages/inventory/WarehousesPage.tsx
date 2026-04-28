@@ -193,28 +193,51 @@ export default function WarehousesPage() {
     </div>
   );
 
+  // Right-side summary panel — identity / reference info only.
+  // Operational data (capacity meter + truck activity) lives on the left.
   const viewModalSummary = selected ? (
-    <div className="space-y-6">
-       <div className="bg-card/50 border border-border rounded-xl p-4 space-y-4">
-        <div>
-          <p className="text-[10px] text-t3 uppercase font-black tracking-widest mb-2">Usage Analytics</p>
-          <div className="flex items-center justify-between mb-2">
-             <span className="text-xl font-bold text-t1">{selectedUsedPct.toFixed(1)}%</span>
-             <span className="text-xs text-t3">Occupied</span>
+    <div className="space-y-4">
+      <p className="text-sm font-bold text-t1">Warehouse Overview</p>
+      <div className="bg-card border border-border rounded-xl p-5 space-y-4 text-sm">
+        <p className="font-semibold text-t1 text-base">{selected.name}</p>
+        <div className="space-y-2.5 text-t2">
+          <div>
+            <span className="text-t3">Warehouse ID: </span>
+            <span className="font-mono text-t1">{selected.warehouseCode}</span>
           </div>
-          <div className="h-2 bg-surface rounded-full overflow-hidden">
-             <div className={`h-full rounded-full transition-all ${selectedUsedPct > 80 ? 'bg-rose-500' : selectedUsedPct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(selectedUsedPct, 100)}%` }} />
+          <div>
+            <span className="text-t3">Type: </span>
+            <span className="text-t1 font-medium">{TYPE_LABELS[selected.warehouseType] ?? selected.warehouseType}</span>
           </div>
-          <p className="text-xs text-t3 mt-2">
-            {(selected.currentQty ?? 0).toLocaleString()} / {selected.totalCapacity.toLocaleString()} {selected.capacityUnit}
-          </p>
+          <div>
+            <span className="text-t3">Country: </span>
+            <span className="text-t1">{selected.country}</span>
+          </div>
+          {selected.region && (
+            <div>
+              <span className="text-t3">Region: </span>
+              <span className="text-t1">{selected.region}</span>
+            </div>
+          )}
+          {selected.managerName && (
+            <div>
+              <span className="text-t3">Manager: </span>
+              <span className="text-t1">{selected.managerName}</span>
+            </div>
+          )}
+          {selected.managerContact && (
+            <div>
+              <span className="text-t3">Contact: </span>
+              <span className="text-t1">{selected.managerContact}</span>
+            </div>
+          )}
+          {selected.address && (
+            <div>
+              <span className="text-t3">Address: </span>
+              <span className="text-t1">{selected.address}</span>
+            </div>
+          )}
         </div>
-      </div>
-
-      <div className="pt-4 border-t border-border">
-        <button onClick={() => openEdit(selected)} className="w-full py-2.5 bg-surface border border-border text-t1 rounded-xl text-sm font-bold hover:bg-card transition-all">
-          Edit Warehouse Details
-        </button>
       </div>
     </div>
   ) : null;
@@ -311,145 +334,129 @@ export default function WarehousesPage() {
     </div>
   ) : null;
 
-  const viewContent = modalMode === 'view' && selected ? (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between">
+  const viewContent = modalMode === 'view' && selected ? (() => {
+    const TOTAL_BARS = 50;
+    const filledBars = Math.round((Math.min(selectedUsedPct, 100) / 100) * TOTAL_BARS);
+    const barColor = selectedUsedPct > 80
+      ? 'bg-rose-500'
+      : selectedUsedPct > 60
+      ? 'bg-amber-500'
+      : 'bg-emerald-500';
+    return (
+      <div className="space-y-8">
+        {/* Identity header */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <p className="text-xs text-t3">{selected.warehouseCode}</p>
+            <h3 className="text-2xl font-bold text-t1">{selected.name}</h3>
+            <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-0.5 font-medium ${TYPE_STYLES[selected.warehouseType] ?? 'bg-surface text-t3 border-border'}`}>
+              {TYPE_LABELS[selected.warehouseType] ?? selected.warehouseType}
+            </span>
+          </div>
+          <span className={`text-xs font-medium px-2.5 py-1 rounded-full border shrink-0 ${selected.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-surface text-t3 border-border'}`}>
+            {selected.isActive ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+
+        {/* Overview — 100-bar capacity meter */}
         <div>
-          <p className="text-xs text-t3 mb-1">{selected.warehouseCode}</p>
-          <h3 className="text-lg font-semibold text-t1">{selected.name}</h3>
-          <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-0.5 font-medium mt-1 ${TYPE_STYLES[selected.warehouseType] ?? 'bg-surface text-t3 border-border'}`}>
-            {TYPE_LABELS[selected.warehouseType] ?? selected.warehouseType}
-          </span>
-        </div>
-        <span className={`text-xs font-medium px-2 py-1 rounded-full border ${selected.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-surface text-t3 border-border'}`}>
-          {selected.isActive ? 'Active' : 'Inactive'}
-        </span>
-      </div>
-
-      <div>
-        <p className="text-xs text-t3 mb-2">Capacity Usage</p>
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-2 bg-surface rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${selectedUsedPct > 80 ? 'bg-rose-500' : selectedUsedPct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-              style={{ width: `${Math.min(selectedUsedPct, 100)}%` }} />
+          <p className="text-sm font-bold text-t1 mb-4">Overview</p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 flex items-stretch gap-0.5 h-7">
+              {Array.from({ length: TOTAL_BARS }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`flex-1 rounded-full ${i < filledBars ? barColor : 'bg-slate-200 dark:bg-slate-700/50'}`}
+                />
+              ))}
+            </div>
+            <span className="text-sm font-semibold text-t1 w-14 text-right">
+              {selectedUsedPct.toFixed(1)}%
+            </span>
           </div>
-          <span className="text-sm font-medium text-t1 w-12 text-right">{selectedUsedPct.toFixed(1)}%</span>
-        </div>
-        <p className="text-xs text-t3 mt-1">
-          {(selected.currentQty ?? 0).toLocaleString()} / {selected.totalCapacity.toLocaleString()} {selected.capacityUnit}
-          <span className="text-t3"> · {warehouseAvailable(selected).toLocaleString()} {selected.capacityUnit} free</span>
-        </p>
-        {isNearCapacity(selected) && (
-          <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
-            <Gauge size={12} /> Near capacity threshold ({selected.alertThresholdPct ?? 90}%)
+          <p className="text-xs text-t3 mt-3">
+            Capacity: {(selected.currentQty ?? 0).toLocaleString()} / {selected.totalCapacity.toLocaleString()} {selected.capacityUnit} occupied ({warehouseAvailable(selected).toLocaleString()} {selected.capacityUnit} free)
           </p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        {[
-          ['Type', TYPE_LABELS[selected.warehouseType]],
-          ['Country', selected.country],
-          ['Region', selected.region || '—'],
-          ['Manager', selected.managerName || '—'],
-          ['Contact', selected.managerContact || '—'],
-        ].map(([k, v]) => (
-          <div key={k}>
-            <p className="text-xs text-t3">{k}</p>
-            <p className="text-t1 font-medium">{v}</p>
-          </div>
-        ))}
-      </div>
-
-      {selected.address && (
-        <div className="flex items-start gap-2 text-sm text-t2">
-          <MapPin size={14} className="text-t3 mt-0.5 shrink-0" />
-          <span>{selected.address}</span>
+          {isNearCapacity(selected) && (
+            <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
+              <Gauge size={12} weight="duotone" /> Near capacity threshold ({selected.alertThresholdPct ?? 90}%)
+            </p>
+          )}
         </div>
-      )}
 
-      {/* Truck Activity — chronological inbound/outbound movements at this warehouse */}
-      <div className="border-t border-border pt-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-t3 font-bold uppercase tracking-wider flex items-center gap-1.5">
-            <TruckIcon size={12} weight="duotone" /> Truck Activity
-          </p>
-          <span className="text-[10px] text-t3">
-            {warehouseMovements.length > 0 ? `${warehouseMovements.length} recent` : ''}
-          </span>
+        {/* Truck Activity — table layout */}
+        <div className="border-t border-border pt-6">
+          <div className="flex items-center gap-1.5 mb-4">
+            <TruckIcon size={14} weight="duotone" className="text-t3" />
+            <p className="text-xs text-t3 font-bold uppercase tracking-wider">Truck Activity</p>
+          </div>
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-border">
+              <p className="text-sm font-semibold text-t1">Recent Truck Activity</p>
+            </div>
+            {movementsLoading ? (
+              <div className="flex justify-center py-10">
+                <Spinner size={18} className="animate-spin text-accent" />
+              </div>
+            ) : warehouseMovements.length === 0 ? (
+              <p className="text-xs text-t3 italic py-8 text-center">No movements recorded yet.</p>
+            ) : (
+              <div className="max-h-80 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Truck</TableHead>
+                      <TableHead>Details</TableHead>
+                      <TableHead>Amount ({selected.capacityUnit})</TableHead>
+                      <TableHead>From</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {warehouseMovements.map(m => {
+                      const isInbound = m.movementType === 'INBOUND' || m.movementType === 'TRANSFER_IN' || m.movementType === 'RETURN';
+                      const isOutbound = m.movementType === 'OUTBOUND' || m.movementType === 'TRANSFER_OUT';
+                      const qtyTone = isInbound ? 'text-emerald-500' : isOutbound ? 'text-rose-500' : 'text-t2';
+                      return (
+                        <TableRow key={m._id}>
+                          <TableCell className="py-3.5 font-mono text-xs font-semibold text-t1">
+                            {m.truckPlate || <span className="text-t3 italic font-sans">—</span>}
+                          </TableCell>
+                          <TableCell className="py-3.5 text-xs text-t2">
+                            {m.driverName || '—'}
+                          </TableCell>
+                          <TableCell className={`py-3.5 text-xs font-semibold ${qtyTone}`}>
+                            {m.qty > 0 ? '+' : ''}{m.qty.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="py-3.5 text-xs text-t2 truncate max-w-[180px]">
+                            {m.supplierName || (isOutbound ? 'Outbound' : '—')}
+                          </TableCell>
+                          <TableCell className="py-3.5 text-xs text-t3 whitespace-nowrap">
+                            {(() => {
+                              const d = m.movementDate || m.createdAt;
+                              if (!d) return '—';
+                              const dt = new Date(d);
+                              if (isNaN(dt.getTime())) return '—';
+                              return (
+                                <>
+                                  <div>{dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+                                  <div className="text-t3/70">{dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                </>
+                              );
+                            })()}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
         </div>
-        {movementsLoading ? (
-          <div className="flex justify-center py-6">
-            <Spinner size={18} className="animate-spin text-accent" />
-          </div>
-        ) : warehouseMovements.length === 0 ? (
-          <p className="text-xs text-t3 italic py-2">No movements recorded yet.</p>
-        ) : (
-          <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
-            {warehouseMovements.map(m => {
-              const isInbound = m.movementType === 'INBOUND' || m.movementType === 'TRANSFER_IN' || m.movementType === 'RETURN';
-              const isOutbound = m.movementType === 'OUTBOUND' || m.movementType === 'TRANSFER_OUT';
-              const Icon = isInbound ? ArrowDown : isOutbound ? ArrowUp : ArrowsLeftRight;
-              const tone = isInbound
-                ? 'bg-emerald-500/10 text-emerald-400'
-                : isOutbound
-                ? 'bg-rose-500/10 text-rose-400'
-                : 'bg-blue-500/10 text-blue-400';
-              return (
-                <div key={m._id} className="flex items-center gap-3 p-2.5 bg-surface/50 hover:bg-surface rounded-lg transition-colors">
-                  <div className={`p-1.5 rounded-md shrink-0 ${tone}`}>
-                    <Icon size={12} weight="bold" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="font-mono font-bold text-t1">
-                        {m.truckPlate || <span className="text-t3 italic font-sans">No truck</span>}
-                      </span>
-                      {m.driverName && <span className="text-t3 truncate">· {m.driverName}</span>}
-                    </div>
-                    <p className="text-[11px] text-t3 truncate mt-0.5">
-                      <span className={isInbound ? 'text-emerald-400' : isOutbound ? 'text-rose-400' : 'text-t2'}>
-                        {m.qty > 0 ? '+' : ''}{m.qty.toLocaleString()} {m.stockUnit || ''}
-                      </span>
-                      {m.supplierName && ` · from ${m.supplierName}`}
-                      {m.linkedPoRef && ` · ${m.linkedPoRef}`}
-                    </p>
-                  </div>
-                  <span className="text-[10px] text-t3 shrink-0 text-right">
-                    {m.movementDate ? new Date(m.movementDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
-
-      <div className="flex gap-2 pt-2 border-t border-border">
-        <button onClick={() => openEdit(selected)}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm border border-border rounded-xl hover:bg-surface text-t2 transition-colors">
-          <PencilSimple size={14} /> Edit
-        </button>
-        {deleteConfirm === selected._id ? (
-          <div className="flex gap-1">
-            <button onClick={() => handleDelete(selected._id)}
-              className="flex items-center gap-1 px-3 py-2.5 text-xs bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 transition-colors">
-              Confirm
-            </button>
-            <button onClick={() => setDeleteConfirm(null)}
-              className="px-3 py-2.5 text-xs border border-border rounded-xl text-t2 hover:bg-surface transition-colors">
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button onClick={() => setDeleteConfirm(selected._id)}
-            className="flex items-center gap-1.5 px-3 py-2.5 text-sm border border-rose-500/30 rounded-xl text-rose-400 hover:bg-rose-500/10 transition-colors">
-            <Trash size={14} /> Delete
-          </button>
-        )}
-      </div>
-    </div>
-  ) : null;
+    );
+  })() : null;
 
   const kpiCards = [
     { label: 'Total Warehouses', value: summary.warehouseCount, Icon: WarehouseIcon, bg: 'bg-blue-500/10', color: 'text-blue-400' },
@@ -552,20 +559,20 @@ export default function WarehousesPage() {
                         className="cursor-pointer"
                       >
                         {colVis.has('ref') && (
-                          <TableCell className="font-mono text-xs text-accent">{w.warehouseCode}</TableCell>
+                          <TableCell className="py-4 font-mono text-xs text-accent">{w.warehouseCode}</TableCell>
                         )}
                         {colVis.has('name') && (
-                          <TableCell className="font-medium text-t1">{w.name}</TableCell>
+                          <TableCell className="py-4 font-medium text-t1">{w.name}</TableCell>
                         )}
                         {colVis.has('type') && (
-                          <TableCell>
+                          <TableCell className="py-4">
                             <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${TYPE_STYLES[w.warehouseType] ?? 'bg-surface text-t3 border-border'}`}>
                               {TYPE_LABELS[w.warehouseType] ?? w.warehouseType}
                             </span>
                           </TableCell>
                         )}
                         {colVis.has('usage') && (
-                          <TableCell>
+                          <TableCell className="py-4">
                             <div className="flex items-center gap-2">
                               <div className="w-16 h-1.5 bg-surface rounded-full overflow-hidden">
                                 <div className={`h-full rounded-full ${pct > 80 ? 'bg-rose-500' : pct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
@@ -575,13 +582,13 @@ export default function WarehousesPage() {
                           </TableCell>
                         )}
                         {colVis.has('manager') && (
-                          <TableCell className="text-t2 text-xs">
+                          <TableCell className="py-4 text-t2 text-xs">
                             {w.managerName || '—'}
-                            {w.managerContact && <p className="text-t3">{w.managerContact}</p>}
+                            {w.managerContact && <p className="text-t3 mt-0.5">{w.managerContact}</p>}
                           </TableCell>
                         )}
                         {colVis.has('actions') && (
-                          <TableCell className="text-right">
+                          <TableCell className="py-4 text-right">
                             <div className="flex justify-end gap-2 text-t3" onClick={e => e.stopPropagation()}>
                               <button onClick={() => openEdit(w)} className="hover:text-t1 p-1"><PencilSimple size={14} /></button>
                               <button onClick={() => openView(w)} className="hover:text-t1 p-1"><Eye size={14} /></button>
@@ -609,18 +616,52 @@ export default function WarehousesPage() {
       <ModernModal
         isOpen={modalMode !== null}
         onClose={() => setModalMode(null)}
-        title={modalMode === 'new' ? 'Initialize Warehouse' : modalMode === 'edit' ? 'Update Warehouse' : selected?.name ?? ''}
+        title={modalMode === 'new' ? 'Initialize Warehouse' : modalMode === 'edit' ? 'Update Warehouse' : (selected?.name ?? '').toUpperCase()}
         summaryContent={modalMode === 'view' ? viewModalSummary : modalSummary}
-        actions={modalMode !== 'view' ? (
-          <button 
-            onClick={handleSave} 
-            disabled={saving} 
-            className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {saving && <Spinner size={14} className="animate-spin" />}
-            {modalMode === 'new' ? 'Create Warehouse' : 'Save Changes'}
-          </button>
-        ) : undefined}
+        actions={
+          modalMode === 'view' && selected ? (
+            <div className="flex items-center gap-2">
+              {deleteConfirm === selected._id ? (
+                <>
+                  <button
+                    onClick={() => handleDelete(selected._id)}
+                    className="px-4 py-2.5 text-xs bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 transition-colors"
+                  >
+                    Confirm Delete
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirm(null)}
+                    className="px-4 py-2.5 text-xs border border-border rounded-xl text-t2 hover:bg-surface transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setDeleteConfirm(selected._id)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 text-sm border border-rose-500/30 rounded-xl text-rose-400 hover:bg-rose-500/10 transition-colors"
+                >
+                  <Trash size={14} /> Delete
+                </button>
+              )}
+              <button
+                onClick={() => openEdit(selected)}
+                className="flex items-center gap-1.5 px-5 py-2.5 text-sm bg-t1 text-card rounded-xl font-semibold hover:opacity-90 transition-opacity"
+              >
+                <PencilSimple size={14} /> Edit Warehouse Details
+              </button>
+            </div>
+          ) : modalMode !== 'view' ? (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {saving && <Spinner size={14} className="animate-spin" />}
+              {modalMode === 'new' ? 'Create Warehouse' : 'Save Changes'}
+            </button>
+          ) : undefined
+        }
       >
         {modalMode === 'view' ? viewContent : formContent}
       </ModernModal>

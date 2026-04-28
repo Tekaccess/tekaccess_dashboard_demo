@@ -50,7 +50,6 @@ const SH_COLS: ColDef[] = [
   { key: 'item',      label: 'Item',          defaultVisible: true },
   { key: 'warehouse', label: 'Warehouse',     defaultVisible: true },
   { key: 'qty',       label: 'Qty Change',    defaultVisible: true },
-  { key: 'balance',   label: 'Before → After', defaultVisible: false },
   { key: 'source',    label: 'Source',        defaultVisible: true },
   { key: 'datetime',  label: 'Date & Time',   defaultVisible: true },
   { key: 'by',        label: 'By',            defaultVisible: false },
@@ -206,11 +205,6 @@ export default function StockHistoryPage() {
                         </span>
                       </td>
                     )}
-                    {colVis.has('balance') && (
-                      <td className="px-4 py-3.5 text-right text-xs text-t3 whitespace-nowrap font-mono">
-                        {m.qtyBefore.toLocaleString()} → {m.qtyAfter.toLocaleString()}
-                      </td>
-                    )}
                     {colVis.has('source') && (
                       <td className="px-4 py-3.5 text-xs text-t2 max-w-[140px] truncate" title={m.sourceRef ?? ''}>
                         {m.sourceRef ?? '—'}
@@ -218,7 +212,12 @@ export default function StockHistoryPage() {
                     )}
                     {colVis.has('datetime') && (
                       <td className="px-4 py-3.5 text-xs text-t3 whitespace-nowrap">
-                        {formatDateTime(m.postedAt)}
+                        {(() => {
+                          const d = m.movementDate || m.createdAt;
+                          if (!d) return '—';
+                          const dt = new Date(d);
+                          return isNaN(dt.getTime()) ? '—' : formatDateTime(dt.toISOString());
+                        })()}
                       </td>
                     )}
                     {colVis.has('by') && (
