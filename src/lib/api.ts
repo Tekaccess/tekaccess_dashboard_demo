@@ -991,6 +991,7 @@ export async function apiListMovements(params: Record<string, string> = {}) {
 export async function apiCreateMovement(data: {
   movementType: string;
   warehouseId?: string;
+  productId?: string;
   qty: number;
   unitCost?: number;
   sourceType?: string;
