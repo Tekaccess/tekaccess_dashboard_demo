@@ -1498,3 +1498,79 @@ export async function apiBulkDeleteMonthlyTargets(ids: string[]) {
     method: 'POST', body: JSON.stringify({ ids }),
   });
 }
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export type NotificationCategory = 'task' | 'target' | 'system';
+export type NotificationType =
+  | 'task_created'
+  | 'task_status_changed'
+  | 'task_assigned'
+  | 'task_due_soon'
+  | 'weekly_target_created'
+  | 'monthly_target_created'
+  | 'system';
+
+export type NotificationRecord = {
+  _id: string;
+  userId: string;
+  type: NotificationType;
+  category: NotificationCategory;
+  title: string;
+  message: string;
+  link: string | null;
+  metadata: Record<string, unknown>;
+  read: boolean;
+  readAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type NotificationFilters = {
+  read?: 'true' | 'false';
+  category?: NotificationCategory;
+  type?: NotificationType;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  limit?: string;
+};
+
+export async function apiListNotifications(filters: NotificationFilters = {}) {
+  const params = Object.fromEntries(
+    Object.entries(filters).filter(([, v]) => v !== undefined && v !== '') as [string, string][]
+  );
+  const qs = new URLSearchParams(params).toString();
+  return request<{ notifications: NotificationRecord[]; unreadCount: number }>(
+    `/notifications${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function apiGetUnreadNotificationCount() {
+  return request<{ unreadCount: number }>('/notifications/unread-count');
+}
+
+export async function apiMarkNotificationRead(id: string) {
+  return request<{ notification: NotificationRecord }>(`/notifications/${id}/read`, {
+    method: 'PATCH',
+  });
+}
+
+export async function apiMarkNotificationUnread(id: string) {
+  return request<{ notification: NotificationRecord }>(`/notifications/${id}/unread`, {
+    method: 'PATCH',
+  });
+}
+
+export async function apiMarkAllNotificationsRead() {
+  return request<{ modified: number }>('/notifications/mark-all-read', { method: 'POST' });
+}
+
+export async function apiDeleteNotification(id: string) {
+  return request<{ id: string }>(`/notifications/${id}`, { method: 'DELETE' });
+}
+
+export async function apiClearNotifications(opts: { read?: boolean } = {}) {
+  const qs = opts.read !== undefined ? `?read=${opts.read}` : '';
+  return request<{ deleted: number }>(`/notifications/clear${qs}`, { method: 'DELETE' });
+}

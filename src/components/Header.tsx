@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { MagnifyingGlass, Bell, List, SignOut, KeyIcon, GearIcon, PencilSimpleIcon, X, CheckIcon, ShieldCheck, ClockCounterClockwise, ClockCounterClockwiseIcon, CircleNotchIcon, DotsSixVerticalIcon, CheckCircleIcon, CameraIcon } from '@phosphor-icons/react';
+import { MagnifyingGlass, List, SignOut, KeyIcon, GearIcon, PencilSimpleIcon, X, CheckIcon, ShieldCheck, ClockCounterClockwise, ClockCounterClockwiseIcon, CircleNotchIcon, DotsSixVerticalIcon, CheckCircleIcon, CameraIcon } from '@phosphor-icons/react';
 import { Eye, EyeSlash, CircleNotch, CheckCircle } from '@phosphor-icons/react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,6 +8,7 @@ import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { apiChangePassword, apiGetMyActivity, type ActivityLog } from '../lib/api';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
+import NotificationBell from './NotificationBell';
 
 const SLUG_LABELS: Record<string, string> = {
   executive: 'Executive',
@@ -218,10 +219,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
             />
           </div>
 
-          <button className="relative p-1.5 text-t3 hover:text-t1 border border-border rounded-lg bg-card transition-colors">
-            <Bell size={18} weight="duotone" />
-            <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-accent rounded-full ring-1 ring-card" />
-          </button>
+          <NotificationBell />
 
           {/* Profile dropdown */}
           <div className="relative ml-2">

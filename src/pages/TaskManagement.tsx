@@ -923,37 +923,30 @@ export default function TaskManagement() {
 
   // Inline-add drafts always commit on blur — empty title is allowed and
   // persists as a placeholder row the user can fill in later.
+  // Note: do the lookup OUTSIDE the setState updater so the API call fires
+  // exactly once (StrictMode invokes updater functions twice in dev).
   const onTaskDraftBlur = (id: string, value: string) => {
     if (inlineDraftTaskId !== id) return;
     setInlineDraftTaskId(null);
-    setTasks((prev) => {
-      const draft = prev.find((t) => t.id === id);
-      if (!draft) return prev;
-      commitTaskDraft({ ...draft, title: value });
-      return prev;
-    });
+    const draft = tasks.find((t) => t.id === id);
+    if (!draft) return;
+    commitTaskDraft({ ...draft, title: value });
   };
 
   const onWeeklyDraftBlur = (id: string, value: string) => {
     if (inlineDraftWeeklyId !== id) return;
     setInlineDraftWeeklyId(null);
-    setWeeklies((prev) => {
-      const draft = prev.find((w) => w.id === id);
-      if (!draft) return prev;
-      commitWeeklyDraft({ ...draft, title: value });
-      return prev;
-    });
+    const draft = weeklies.find((w) => w.id === id);
+    if (!draft) return;
+    commitWeeklyDraft({ ...draft, title: value });
   };
 
   const onMonthlyDraftBlur = (id: string, value: string) => {
     if (inlineDraftMonthlyId !== id) return;
     setInlineDraftMonthlyId(null);
-    setMonthlies((prev) => {
-      const draft = prev.find((m) => m.id === id);
-      if (!draft) return prev;
-      commitMonthlyDraft({ ...draft, title: value });
-      return prev;
-    });
+    const draft = monthlies.find((m) => m.id === id);
+    if (!draft) return;
+    commitMonthlyDraft({ ...draft, title: value });
   };
 
   const closeTaskPanel = () => {
@@ -1317,11 +1310,11 @@ export default function TaskManagement() {
                         onClick={() => setSelectedTaskId(task.id)}
                         className="w-full text-left bg-card rounded-xl border border-border p-4 hover:shadow-md hover:border-accent/40 transition-all"
                       >
-                        <h4 className="text-sm font-medium text-t1 mb-1.5">
+                        <h4 className="text-sm font-medium text-t1 mb-1.5 break-words">
                           {task.title || <span className="text-t3 italic">Untitled</span>}
                         </h4>
                         {task.description && (
-                          <p className="text-xs text-t2 mb-3 line-clamp-2">{task.description}</p>
+                          <p className="text-xs text-t2 mb-3 line-clamp-2 break-words">{task.description}</p>
                         )}
 
                         <div className="flex items-center justify-between">
@@ -1376,7 +1369,7 @@ export default function TaskManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12 pr-6">
+                  <TableHead className="w-12 pr-6 border-r-0">
                     <Checkbox
                       checked={allChecked}
                       indeterminate={!allChecked && someChecked}
@@ -1403,7 +1396,7 @@ export default function TaskManagement() {
                       onClick={() => setSelectedWeeklyId(w.id)}
                       className="cursor-pointer"
                     >
-                      <TableCell className="pr-6" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="pr-6 border-r-0" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selected}
                           onCheckedChange={(v) => setToggle(setSelectedWeeklyIds, w.id, v)}
@@ -1493,7 +1486,7 @@ export default function TaskManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12 pr-6">
+                  <TableHead className="w-12 pr-6 border-r-0">
                     <Checkbox
                       checked={allChecked}
                       indeterminate={!allChecked && someChecked}
@@ -1518,7 +1511,7 @@ export default function TaskManagement() {
                       onClick={() => setSelectedMonthlyId(m.id)}
                       className="cursor-pointer"
                     >
-                      <TableCell className="pr-6" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="pr-6 border-r-0" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selected}
                           onCheckedChange={(v) => setToggle(setSelectedMonthlyIds, m.id, v)}
