@@ -294,7 +294,7 @@ export default function ProjectsPage() {
                   <tr className="border-b border-border bg-surface/30">
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">ID</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Name</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider">Quantity (Tonnes)</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Quantity (Tonnes)</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Timeline</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Status</th>
                     <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider">Actions</th>
@@ -305,7 +305,7 @@ export default function ProjectsPage() {
                     <tr key={p._id} className="hover:bg-surface/50 transition-colors">
                       <td className="px-4 py-3.5 font-mono text-xs text-accent">{p.projectCode}</td>
                       <td className="px-4 py-3.5 font-medium text-t1">{p.name}</td>
-                      <td className="px-4 py-3.5 text-right text-t2">
+                      <td className="px-4 py-3.5 text-left text-t2">
                         {p.quantityTonnes != null
                           ? <span className="font-semibold text-t1">{p.quantityTonnes.toLocaleString()} <span className="text-t3 font-normal text-xs">t</span></span>
                           : <span className="text-t3">—</span>}
