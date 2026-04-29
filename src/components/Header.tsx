@@ -856,7 +856,7 @@ function ActivityEntry({ log }: { log: import('../lib/api').ActivityLog }) {
           <p className="text-xs text-red-500 truncate mt-0.5">{log.errorMessage}</p>
         )}
         <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs text-t3 italic">{formatted}</span>
+          <span className="text-xs text-accent font-medium">{formatted}</span>
           <span className="text-sm">·</span>
           <span className="text-xs italic text-t3 ">{DASHBOARD_LABELS[log.dashboard] ?? log.dashboard}</span>
           <span className={`ml-auto text-xs text-t3 font-mono capitalize font-normal`}>
