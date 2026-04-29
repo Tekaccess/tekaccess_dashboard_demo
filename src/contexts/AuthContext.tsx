@@ -7,11 +7,13 @@ import {
   apiUpdateProfile,
   apiUpdateDashboardOrder,
   apiUploadAvatar,
+  apiSaveTheme,
   getAccessToken,
   setAccessToken,
   setRefreshToken,
   type BackendUser,
 } from "../lib/api";
+import type { ThemeColors } from "../lib/themes";
 
 export type UserRole = "super_admin" | "admin" | "user";
 
@@ -24,6 +26,8 @@ export interface User {
   avatarUrl: string | null;
   preferences: {
     dashboardOrder: string[];
+    theme: string;
+    customTheme: ThemeColors | null;
   };
 }
 
@@ -38,6 +42,7 @@ interface AuthContextType {
   updateName: (fullName: string) => Promise<string | null>;
   updateDashboardOrder: (order: string[]) => Promise<string | null>;
   uploadAvatar: (file: File) => Promise<string | null>;
+  updateTheme: (themeId: string, customTheme: ThemeColors | null) => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,6 +57,8 @@ function toUser(u: BackendUser): User {
     avatarUrl: u.avatarUrl ?? null,
     preferences: {
       dashboardOrder: u.preferences?.dashboardOrder ?? [],
+      theme: u.preferences?.theme ?? 'default',
+      customTheme: u.preferences?.customTheme ?? null,
     },
   };
 }
@@ -143,6 +150,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   };
 
+  const updateTheme = async (themeId: string, customTheme: ThemeColors | null): Promise<string | null> => {
+    if (!userRef.current) return 'Not authenticated.';
+    const res = await apiSaveTheme(userRef.current.id, themeId, customTheme);
+    if (!res.success || !res.data) {
+      return res.message || 'Failed to save theme.';
+    }
+    const updated = {
+      ...userRef.current,
+      preferences: { ...userRef.current.preferences, theme: themeId, customTheme },
+    };
+    userRef.current = updated;
+    setUser(updated);
+    localStorage.setItem('tekaccess_user', JSON.stringify(updated));
+    return null;
+  };
+
   const resetPassword = async (token: string, password: string): Promise<string | null> => {
     const res = await apiResetPassword(token, password);
     if (!res.success) {
@@ -165,6 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateName,
         updateDashboardOrder,
         uploadAvatar,
+        updateTheme,
       }}
     >
       {children}

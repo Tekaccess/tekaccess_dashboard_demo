@@ -128,6 +128,8 @@ export type BackendUser = {
     dateFormat: string;
     alertsEnabled: boolean;
     dashboardOrder: string[];
+    theme?: string;
+    customTheme?: import('./themes').ThemeColors | null;
   };
 };
 
@@ -207,6 +209,17 @@ export async function apiUpdateDashboardOrder(userId: string, dashboardOrder: st
   return request<{ user: BackendUser }>(`/users/${userId}`, {
     method: 'PATCH',
     body: JSON.stringify({ preferences: { dashboardOrder } }),
+  });
+}
+
+export async function apiSaveTheme(
+  userId: string,
+  theme: string,
+  customTheme: import('./themes').ThemeColors | null,
+) {
+  return request<{ user: BackendUser }>(`/users/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ preferences: { theme, customTheme: customTheme ?? null } }),
   });
 }
 

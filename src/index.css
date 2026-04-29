@@ -10,7 +10,45 @@ button, a {
   user-select: none;
 }
 
-/* ── Light mode ──────────────────────────────────────────────── */
+/* ── Light mode (original) ───────────────────────────────────── */
+/* :root {
+  --app-bg: #f6f6f6;
+  --card-bg: #ffffff;
+  --surface: #f5f5f5;
+  --surface-hover: #ebebeb;
+  --text-1: #0f0f0f;
+  --text-2: #4a4a4a;
+  --text-3: #888888;
+  --accent: #1e3a8a;
+  --accent-h: #162d6e;
+  --accent-glow: #1e3a8a1a;
+  --accent-border: #1e3a8a4d;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-s: rgba(0, 0, 0, 0.05);
+  --scrollbar-bg: #e5e5e5;
+  --scrollbar-thumb: #c0c0c0;
+} */
+
+/* ── Pinterest theme ─────────────────────────────────────────── */
+/* :root {
+  --app-bg: #f9f9f9;
+  --card-bg: #ffffff;
+  --surface: #efefef;
+  --surface-hover: #e2e2e2;
+  --text-1: #111111;
+  --text-2: #767676;
+  --text-3: #adadad;
+  --accent: #e60023;
+  --accent-h: #c20f2f;
+  --accent-glow: #e600231a;
+  --accent-border: #e600234d;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-s: rgba(0, 0, 0, 0.04);
+  --scrollbar-bg: #e9e9e9;
+  --scrollbar-thumb: #c4c4c4;
+} */
+
+/* ── Default (TekAccess) — baseline before JS applies user theme ── */
 :root {
   --app-bg: #f6f6f6;
   --card-bg: #ffffff;

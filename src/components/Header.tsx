@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { MagnifyingGlass, List, SignOut, KeyIcon, GearIcon, PencilSimpleIcon, X, CheckIcon, ShieldCheck, ClockCounterClockwise, ClockCounterClockwiseIcon, CircleNotchIcon, DotsSixVerticalIcon, CheckCircleIcon, CameraIcon } from '@phosphor-icons/react';
+import { MagnifyingGlass, List, SignOut, KeyIcon, GearIcon, PencilSimpleIcon, X, CheckIcon, ShieldCheck, ClockCounterClockwise, ClockCounterClockwiseIcon, CircleNotchIcon, DotsSixVerticalIcon, CheckCircleIcon, CameraIcon, PaintBrushIcon } from '@phosphor-icons/react';
 import { Eye, EyeSlash, CircleNotch, CheckCircle } from '@phosphor-icons/react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,6 +9,7 @@ import { apiChangePassword, apiGetMyActivity, type ActivityLog } from '../lib/ap
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import NotificationBell from './NotificationBell';
+import ThemePickerModal from './ThemePickerModal';
 
 const SLUG_LABELS: Record<string, string> = {
   executive: 'Executive',
@@ -28,7 +29,7 @@ interface HeaderProps {
 type ModalState = 'idle' | 'open' | 'success';
 
 export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderProps) {
-  const { theme, toggleTheme } = useTheme();
+  const { currentThemeId } = useTheme();
   const { user, logout, updateName, updateDashboardOrder, uploadAvatar } = useAuth();
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -59,6 +60,9 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
   const [avatarError, setAvatarError] = useState('');
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Theme picker state
+  const [showThemePicker, setShowThemePicker] = useState(false);
 
   // Activity modal state
   const [showActivity, setShowActivity] = useState(false);
@@ -270,6 +274,13 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                       >
                         <ClockCounterClockwise size={18} weight="regular" className="text-t3" />
                         Activity
+                      </button>
+                      <button
+                        onClick={() => { setIsProfileOpen(false); setShowThemePicker(true); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
+                      >
+                        <PaintBrushIcon size={18} weight="regular" className="text-t3" />
+                        Appearance
                       </button>
                       <button
                         onClick={openChangePassword}
@@ -751,6 +762,9 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
           </>
         )}
       </AnimatePresence>
+
+      {/* Theme Picker Modal */}
+      <ThemePickerModal isOpen={showThemePicker} onClose={() => setShowThemePicker(false)} />
 
       {/* Logout Confirmation Modal */}
       <AnimatePresence>
