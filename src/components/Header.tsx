@@ -832,10 +832,12 @@ function ActivityEntry({ log }: { log: import('../lib/api').ActivityLog }) {
     hour: '2-digit', minute: '2-digit',
   });
 
-  const description = [
-    log.collection.replace(/_/g, ' '),
-    log.documentRef ? `· ${log.documentRef}` : null,
-  ].filter(Boolean).join(' ');
+  const description = log.note
+    ? log.note
+    : [
+        log.collection.replace(/_/g, ' '),
+        log.documentRef ? `· ${log.documentRef}` : null,
+      ].filter(Boolean).join(' ');
 
   return (
     <div className="flex items-start gap-3 px-5 py-4 bg-card border-b border-border transition-colors">
@@ -845,21 +847,20 @@ function ActivityEntry({ log }: { log: import('../lib/api').ActivityLog }) {
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-t1 truncate ">{description}</p>
+        <p className="text-sm font-medium text-t1 truncate">{description}</p>
         {log.changedFields.length > 0 && (
           <p className="text-xs text-t3 truncate mt-0.5">
             Changed: {log.changedFields.join(', ')}
           </p>
         )}
-        {log.note && <p className="text-xs mb-1 text-t2 font-medium truncate mt-1.5">{log.note}</p>}
         {log.status === 'failed' && log.errorMessage && (
           <p className="text-xs text-red-500 truncate mt-0.5">{log.errorMessage}</p>
         )}
         <div className="flex items-center gap-2 mt-1">
           <span className="text-xs text-accent font-medium">{formatted}</span>
           <span className="text-sm">·</span>
-          <span className="text-xs italic text-t3 ">{DASHBOARD_LABELS[log.dashboard] ?? log.dashboard}</span>
-          <span className={`ml-auto text-xs text-t3 font-mono capitalize font-normal`}>
+          <span className="text-xs italic text-t3">{DASHBOARD_LABELS[log.dashboard] ?? log.dashboard}</span>
+          <span className="ml-auto text-xs text-t3 font-mono capitalize font-normal">
             {log.status}
           </span>
         </div>
