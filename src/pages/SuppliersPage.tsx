@@ -33,7 +33,8 @@ interface DraftSupplier {
   address: string; country: string; currency: string;
   creditTermsDays: number; taxId: string; isCritical: boolean; notes: string;
   hasCrusher: boolean | null; extraFeesNote: string;
-  defaultWarehouseId: string; defaultWarehouseName: string;
+  mineWarehouseId: string; mineWarehouseName: string;
+  crushingWarehouseId: string; crushingWarehouseName: string;
 }
 
 function emptyDraft(): DraftSupplier {
@@ -43,20 +44,22 @@ function emptyDraft(): DraftSupplier {
     address: '', country: 'Rwanda', currency: 'USD',
     creditTermsDays: 30, taxId: '', isCritical: false, notes: '',
     hasCrusher: null, extraFeesNote: '',
-    defaultWarehouseId: '', defaultWarehouseName: '',
+    mineWarehouseId: '', mineWarehouseName: '',
+    crushingWarehouseId: '', crushingWarehouseName: '',
   };
 }
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
 
 const SUPPLIER_COLS: ColDef[] = [
-  { key: 'code',      label: 'Code',      defaultVisible: true },
-  { key: 'name',      label: 'Name',      defaultVisible: true },
-  { key: 'warehouse', label: 'Warehouse', defaultVisible: true },
-  { key: 'contact',   label: 'Contact',   defaultVisible: true },
-  { key: 'country',   label: 'Country',   defaultVisible: true },
-  { key: 'currency',  label: 'Currency',  defaultVisible: false },
-  { key: 'crusher',   label: 'Crusher',   defaultVisible: true },
+  { key: 'code',      label: 'Code',                    defaultVisible: true },
+  { key: 'name',      label: 'Supplier Name',            defaultVisible: true },
+  { key: 'mine',      label: 'Warehouse/Mine',           defaultVisible: true },
+  { key: 'crushing',  label: 'Warehouse/Crushing Point', defaultVisible: true },
+  { key: 'contact',   label: 'Contact',                  defaultVisible: true },
+  { key: 'country',   label: 'Country',                  defaultVisible: true },
+  { key: 'currency',  label: 'Currency',                 defaultVisible: false },
+  { key: 'crusher',   label: 'Crusher',                  defaultVisible: true },
   { key: 'status',    label: 'Status',    defaultVisible: true },
   { key: 'actions',   label: 'Actions',   defaultVisible: true },
 ];
@@ -100,8 +103,10 @@ export default function SuppliersPage() {
       taxId: (s as any).taxId || '', isCritical: s.isCritical || false, notes: (s as any).notes || '',
       hasCrusher: s.hasCrusher ?? null,
       extraFeesNote: s.extraFeesNote || '',
-      defaultWarehouseId: s.defaultWarehouseId || '',
-      defaultWarehouseName: s.defaultWarehouseName || '',
+      mineWarehouseId: s.mineWarehouseId || '',
+      mineWarehouseName: s.mineWarehouseName || '',
+      crushingWarehouseId: s.crushingWarehouseId || '',
+      crushingWarehouseName: s.crushingWarehouseName || '',
     });
     setSelected(s); setError(null); setModalMode('edit');
   }
@@ -125,8 +130,10 @@ export default function SuppliersPage() {
     setSaving(true); setError(null);
     const payload = {
       ...draft,
-      defaultWarehouseId: draft.defaultWarehouseId || null,
-      defaultWarehouseName: draft.defaultWarehouseName || null,
+      mineWarehouseId: draft.mineWarehouseId || null,
+      mineWarehouseName: draft.mineWarehouseName || null,
+      crushingWarehouseId: draft.crushingWarehouseId || null,
+      crushingWarehouseName: draft.crushingWarehouseName || null,
     };
     const res = modalMode === 'new'
       ? await apiCreateSupplier(payload as any)
@@ -147,9 +154,9 @@ export default function SuppliersPage() {
       <div className="aspect-video bg-gradient-to-br from-accent/20 to-surface rounded-xl flex items-center justify-center p-6 border border-border">
         {draft.name ? (
           <div className="text-center">
-            {draft.defaultWarehouseName && (
+            {draft.mineWarehouseName && (
               <span className="inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium mb-3 bg-accent/10 text-accent border-accent/20">
-                {draft.defaultWarehouseName}
+                {draft.mineWarehouseName}
               </span>
             )}
             <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-3 text-accent border border-accent/20 shadow-lg shadow-accent/10">
@@ -266,19 +273,38 @@ export default function SuppliersPage() {
       </div>
 
       <div>
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Default Warehouse</p>
-        <select className={inp} value={draft.defaultWarehouseId}
-          onChange={e => {
-            const id = e.target.value;
-            const wh = warehouses.find(w => w._id === id);
-            setDraft(d => ({ ...d, defaultWarehouseId: id, defaultWarehouseName: wh?.name || '' }));
-          }}>
-          <option value="">— Select warehouse —</option>
-          {warehouses.map(w => (
-            <option key={w._id} value={w._id}>{w.name} ({w.warehouseCode})</option>
-          ))}
-        </select>
-        <p className="text-[11px] text-t3 mt-1.5">When this supplier is chosen on a purchase order, this warehouse is auto-filled as the destination.</p>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Warehouses</p>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-t3 mb-1.5">Warehouse / Mine</label>
+            <select className={inp} value={draft.mineWarehouseId}
+              onChange={e => {
+                const id = e.target.value;
+                const wh = warehouses.find(w => w._id === id);
+                setDraft(d => ({ ...d, mineWarehouseId: id, mineWarehouseName: wh?.name || '' }));
+              }}>
+              <option value="">— Select mine —</option>
+              {warehouses.map(w => (
+                <option key={w._id} value={w._id}>{w.name} ({w.warehouseCode})</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-t3 mt-1.5">Auto-filled as PO destination when this supplier is selected.</p>
+          </div>
+          <div>
+            <label className="block text-xs text-t3 mb-1.5">Warehouse / Crushing Point</label>
+            <select className={inp} value={draft.crushingWarehouseId}
+              onChange={e => {
+                const id = e.target.value;
+                const wh = warehouses.find(w => w._id === id);
+                setDraft(d => ({ ...d, crushingWarehouseId: id, crushingWarehouseName: wh?.name || '' }));
+              }}>
+              <option value="">— Select crushing point —</option>
+              {warehouses.map(w => (
+                <option key={w._id} value={w._id}>{w.name} ({w.warehouseCode})</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       <div>
@@ -376,10 +402,19 @@ export default function SuppliersPage() {
         <div>
           <p className="text-xs text-t3 font-mono">{selected.supplierCode}</p>
           <h3 className="text-base font-semibold text-t1 mt-0.5">{selected.name}</h3>
-          {selected.defaultWarehouseName && (
-            <span className="inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium mt-1 bg-accent/10 text-accent border-accent/20">
-              {selected.defaultWarehouseName}
-            </span>
+          {(selected.mineWarehouseName || selected.crushingWarehouseName) && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {selected.mineWarehouseName && (
+                <span className="inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium bg-accent/10 text-accent border-accent/20">
+                  Mine: {selected.mineWarehouseName}
+                </span>
+              )}
+              {selected.crushingWarehouseName && (
+                <span className="inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium bg-blue-500/10 text-blue-400 border-blue-500/20">
+                  Crushing: {selected.crushingWarehouseName}
+                </span>
+              )}
+            </div>
           )}
         </div>
         <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-0.5 font-medium ${STATUS_STYLES[selected.status] ?? ''}`}>
@@ -495,8 +530,9 @@ export default function SuppliersPage() {
                 <thead>
                   <tr className="border-b border-border">
                     {colVis.has('code') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Code</th>}
-                    {colVis.has('name') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Name</th>}
-                    {colVis.has('warehouse') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse</th>}
+                    {colVis.has('name') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Supplier Name</th>}
+                    {colVis.has('mine') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse/Mine</th>}
+                    {colVis.has('crushing') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse/Crushing Point</th>}
                     {colVis.has('contact') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Contact</th>}
                     {colVis.has('country') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Country</th>}
                     {colVis.has('currency') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Currency</th>}
@@ -512,9 +548,14 @@ export default function SuppliersPage() {
                       onClick={() => { setSelected(s); setModalMode('view'); }}>
                       {colVis.has('code') && <td className="px-4 py-3.5 font-mono text-xs text-accent">{s.supplierCode}</td>}
                       {colVis.has('name') && <td className="px-4 py-3.5 font-medium text-t1">{s.name}</td>}
-                      {colVis.has('warehouse') && (
-                        <td className="px-4 py-3.5 text-t2 text-xs">
-                          {s.defaultWarehouseName || <span className="text-t3">—</span>}
+                      {colVis.has('mine') && (
+                        <td className="px-4 py-3.5 text-xs text-t2">
+                          {s.mineWarehouseName || <span className="text-t3">—</span>}
+                        </td>
+                      )}
+                      {colVis.has('crushing') && (
+                        <td className="px-4 py-3.5 text-xs text-t2">
+                          {s.crushingWarehouseName || <span className="text-t3">—</span>}
                         </td>
                       )}
                       {colVis.has('contact') && (

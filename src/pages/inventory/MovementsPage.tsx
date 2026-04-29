@@ -965,7 +965,7 @@ export default function MovementsPage() {
               // and the warehouse usedPct wouldn't move.
               warehouseId:
                 po?.destinationWarehouseId ||
-                poSupplier?.defaultWarehouseId ||
+                poSupplier?.mineWarehouseId ||
                 "",
               productId: firstLine?.productId || "",
               unitCost: firstLine?.unitPrice ?? 0,

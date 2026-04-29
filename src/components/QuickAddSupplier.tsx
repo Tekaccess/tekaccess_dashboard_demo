@@ -13,8 +13,10 @@ interface QuickAddSupplierProps {
 export default function QuickAddSupplier({ onClose, onCreated, warehouses }: QuickAddSupplierProps) {
   const [form, setForm] = useState({
     name: '',
-    defaultWarehouseId: '',
-    defaultWarehouseName: '',
+    mineWarehouseId: '',
+    mineWarehouseName: '',
+    crushingWarehouseId: '',
+    crushingWarehouseName: '',
     contactName: '',
     contactEmail: '',
     contactPhone: '',
@@ -80,17 +82,31 @@ export default function QuickAddSupplier({ onClose, onCreated, warehouses }: Qui
           </div>
 
           <SearchSelect
-            label="Default Warehouse"
+            label="Warehouse / Mine"
             options={warehouseOptions}
-            value={form.defaultWarehouseId || null}
+            value={form.mineWarehouseId || null}
             onChange={(val, opt) => {
               setForm(prev => ({
                 ...prev,
-                defaultWarehouseId: val || '',
-                defaultWarehouseName: opt?.label || '',
+                mineWarehouseId: val || '',
+                mineWarehouseName: opt?.label || '',
               }));
             }}
-            placeholder="Pre-fills the destination warehouse on POs..."
+            placeholder="Extraction site — auto-fills PO destination..."
+          />
+
+          <SearchSelect
+            label="Warehouse / Crushing Point"
+            options={warehouseOptions}
+            value={form.crushingWarehouseId || null}
+            onChange={(val, opt) => {
+              setForm(prev => ({
+                ...prev,
+                crushingWarehouseId: val || '',
+                crushingWarehouseName: opt?.label || '',
+              }));
+            }}
+            placeholder="Processing / crushing site..."
           />
 
           <div className="grid grid-cols-2 gap-3">

@@ -261,8 +261,10 @@ export type Supplier = {
   currency: string;
   creditTermsDays: number;
   status: string;
-  defaultWarehouseId: string | null;
-  defaultWarehouseName: string | null;
+  mineWarehouseId: string | null;
+  mineWarehouseName: string | null;
+  crushingWarehouseId: string | null;
+  crushingWarehouseName: string | null;
   hasCrusher?: boolean | null;
   extraFeesNote?: string | null;
   isCritical?: boolean;
@@ -1151,6 +1153,7 @@ export type StockRecord = {
   total_value: number;
   paid_amount: number;
   cash_deficit: number;
+  unit: 'grams' | 'kg' | 'tons' | 'litres' | 'ml' | 'units' | 'boxes';
   status: 'Pending' | 'Ready to Ship' | 'Complete';
   deadline: string | null;
   supporting_doc: string | null;

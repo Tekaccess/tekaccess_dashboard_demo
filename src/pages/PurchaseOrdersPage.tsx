@@ -388,18 +388,18 @@ export default function PurchaseOrdersPage() {
 
   // Pick the right default destination for a supplier:
   //   - hasCrusher === false (uncrushed) → first crushing site
-  //   - otherwise → supplier's stored defaultWarehouseId, or first standard
+  //   - otherwise → supplier's stored mineWarehouseId, or first standard
   // Always returns the chosen warehouse object so we can grab its name too.
   function resolveDefaultDestination(supplier: Supplier | undefined) {
     if (!supplier) return null;
     const ws = warehouses;
     if (supplier.hasCrusher === false) {
-      const stored = ws.find((w) => w._id === supplier.defaultWarehouseId);
-      if (stored?.siteType === "crushing_site") return stored;
-      return ws.find((w) => w.siteType === "crushing_site") || stored || null;
+      const crushing = ws.find((w) => w._id === supplier.crushingWarehouseId);
+      if (crushing) return crushing;
+      return ws.find((w) => w.siteType === "crushing_site") || null;
     }
     return (
-      ws.find((w) => w._id === supplier.defaultWarehouseId)
+      ws.find((w) => w._id === supplier.mineWarehouseId)
       || ws.find((w) => w.siteType !== "crushing_site")
       || null
     );

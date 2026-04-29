@@ -302,8 +302,8 @@ export default function StockRecordsPage() {
       <section className="space-y-2">
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Quantities</p>
         {([
-          ['On Hand', `${selected.on_hand.toLocaleString()} units`],
-          ['Demand', `${selected.demand.toLocaleString()} units`],
+          ['On Hand', `${selected.on_hand.toLocaleString()} ${selected.unit}`],
+          ['Demand', `${selected.demand.toLocaleString()} ${selected.unit}`],
         ] as [string, string][]).map(([l, v]) => (
           <div key={l} className="flex justify-between text-sm">
             <span className="text-t3">{l}</span>
@@ -315,11 +315,11 @@ export default function StockRecordsPage() {
           {selected.stock_deficit > 0 ? (
             <DeficitTooltip type="stock">
               <span className="font-semibold text-rose-400 underline decoration-dotted underline-offset-2 cursor-help">
-                {selected.stock_deficit.toLocaleString()} units
+                {selected.stock_deficit.toLocaleString()} {selected.unit}
               </span>
             </DeficitTooltip>
           ) : (
-            <span className="font-semibold text-t1">0 units</span>
+            <span className="font-semibold text-t1">0 {selected.unit}</span>
           )}
         </div>
       </section>
