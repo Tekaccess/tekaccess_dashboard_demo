@@ -352,10 +352,11 @@ export default function MovementsPage() {
         const pct = w.totalCapacity > 0
           ? +((w.currentQty / w.totalCapacity) * 100).toFixed(0)
           : 0;
+        const isCrushing = w.siteType === 'crushing_site';
         return {
           value: w._id,
-          label: w.name,
-          sublabel: w.warehouseCode,
+          label: isCrushing ? `🔨 ${w.name}` : w.name,
+          sublabel: isCrushing ? `${w.warehouseCode} · Crushing Site` : w.warehouseCode,
           meta: `${pct}% used`,
         };
       }),
@@ -377,6 +378,9 @@ export default function MovementsPage() {
   const destWhOptions = useMemo<SearchSelectOption[]>(
     () =>
       warehouses
+        // Transfers always end in a Standard Warehouse — material is processed
+        // out of the Crushing Site, never moved into another one.
+        .filter((w) => w.siteType !== 'crushing_site')
         .filter((w) => w._id !== (selectedStock as any)?.warehouseId)
         .map((w) => ({
           value: w._id,
