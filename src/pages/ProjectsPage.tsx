@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, BriefcaseMetal, PencilSimple,
-  Spinner, Trash, CalendarBlank, Package,
+  Spinner, Trash, CalendarBlank, Package, Truck, Timer,
 } from '@phosphor-icons/react';
 import { apiListProjects, apiCreateProject, apiUpdateProject, apiDeleteProject, Project } from '../lib/api';
 import ModernModal from '../components/ui/ModernModal';
@@ -38,14 +38,24 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 const PROJ_COLS: ColDef[] = [
-  { key: 'code',      label: 'ID',                 defaultVisible: true },
-  { key: 'name',      label: 'Name',               defaultVisible: true },
-  { key: 'demand',    label: 'Demand (Tonnes)',     defaultVisible: true },
-  { key: 'delivered', label: 'Delivered (Tonnes)',  defaultVisible: true },
-  { key: 'timeline',  label: 'Timeline',            defaultVisible: true },
-  { key: 'status',    label: 'Status',              defaultVisible: true },
-  { key: 'actions',   label: 'Actions',             defaultVisible: true },
+  { key: 'code',          label: 'ID',                  defaultVisible: true },
+  { key: 'name',          label: 'Name',                defaultVisible: true },
+  { key: 'demand',        label: 'Demand (Tonnes)',      defaultVisible: true },
+  { key: 'delivered',     label: 'Delivered (Tonnes)',   defaultVisible: true },
+  { key: 'enrouting',     label: 'Enrouting (Tonnes)',   defaultVisible: true },
+  { key: 'remaining',     label: 'Remaining (Tonnes)',   defaultVisible: true },
+  { key: 'deadline',      label: 'Deadline',             defaultVisible: true },
+  { key: 'remainingDays', label: 'Remaining Days',       defaultVisible: true },
+  { key: 'status',        label: 'Status',               defaultVisible: true },
+  { key: 'actions',       label: 'Actions',              defaultVisible: true },
 ];
+
+function remainingDays(endDate: string | null | undefined): number | null {
+  if (!endDate) return null;
+  const d = new Date(endDate);
+  if (isNaN(d.getTime())) return null;
+  return Math.ceil((d.getTime() - Date.now()) / 86_400_000);
+}
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -313,13 +323,16 @@ export default function ProjectsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {colVis.has('code')      && <TableHead>ID</TableHead>}
-                    {colVis.has('name')      && <TableHead>Name</TableHead>}
-                    {colVis.has('demand')    && <TableHead className="text-right">Demand (Tonnes)</TableHead>}
-                    {colVis.has('delivered') && <TableHead className="text-right">Delivered (Tonnes)</TableHead>}
-                    {colVis.has('timeline')  && <TableHead>Timeline</TableHead>}
-                    {colVis.has('status')    && <TableHead>Status</TableHead>}
-                    {colVis.has('actions')   && <TableHead className="text-right">Actions</TableHead>}
+                    {colVis.has('code')          && <TableHead>ID</TableHead>}
+                    {colVis.has('name')          && <TableHead>Name</TableHead>}
+                    {colVis.has('demand')        && <TableHead className="text-right">Demand (Tonnes)</TableHead>}
+                    {colVis.has('delivered')     && <TableHead className="text-right">Delivered (Tonnes)</TableHead>}
+                    {colVis.has('enrouting')     && <TableHead className="text-right">Enrouting (Tonnes)</TableHead>}
+                    {colVis.has('remaining')     && <TableHead className="text-right">Remaining (Tonnes)</TableHead>}
+                    {colVis.has('deadline')      && <TableHead>Deadline</TableHead>}
+                    {colVis.has('remainingDays') && <TableHead className="text-right">Remaining Days</TableHead>}
+                    {colVis.has('status')        && <TableHead>Status</TableHead>}
+                    {colVis.has('actions')       && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -348,13 +361,43 @@ export default function ProjectsPage() {
                             : <span className="text-t3">—</span>}
                         </TableCell>
                       )}
-                      {colVis.has('timeline') && (
-                        <TableCell className="text-t2 whitespace-nowrap">
-                          {p.endDate
-                            ? <span className="inline-flex items-center gap-1.5"><CalendarBlank size={12} className="text-t3" />{fmtDate(p.endDate)}</span>
+                      {colVis.has('enrouting') && (
+                        <TableCell className="text-right">
+                          {(p.enroutingTonnes ?? 0) > 0
+                            ? <span className="inline-flex items-center gap-1 font-semibold text-sky-400">
+                                <Truck size={12} />
+                                {(p.enroutingTonnes!).toLocaleString()} <span className="text-t3 font-normal text-xs">Tonnes</span>
+                              </span>
                             : <span className="text-t3">—</span>}
                         </TableCell>
                       )}
+                      {colVis.has('remaining') && (
+                        <TableCell className="text-right">
+                          <span className="text-t3">—</span>
+                        </TableCell>
+                      )}
+                      {colVis.has('deadline') && (
+                        <TableCell className="text-t2 whitespace-nowrap">
+                          {p.endDate
+                            ? <span className="inline-flex items-center gap-1.5"><CalendarBlank size={13} className="text-t3" />{fmtDate(p.endDate)}</span>
+                            : <span className="text-t3">—</span>}
+                        </TableCell>
+                      )}
+                      {colVis.has('remainingDays') && (() => {
+                        const days = remainingDays(p.endDate);
+                        const urgent = days !== null && days <= 7;
+                        const overdue = days !== null && days < 0;
+                        return (
+                          <TableCell className="text-right">
+                            {days === null
+                              ? <span className="text-t3">—</span>
+                              : <span className={`inline-flex items-center gap-1 font-semibold text-sm ${overdue ? 'text-rose-400' : urgent ? 'text-amber-400' : 'text-t1'}`}>
+                                  <Timer size={13} />
+                                  {overdue ? `${Math.abs(days)}d overdue` : `${days}d`}
+                                </span>}
+                          </TableCell>
+                        );
+                      })()}
                       {colVis.has('status') && (
                         <TableCell>
                           <span className={`inline-flex items-center text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${STATUS_STYLES[p.status] ?? 'text-t3 border-border'}`}>

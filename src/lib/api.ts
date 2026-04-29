@@ -606,6 +606,7 @@ export type Project = {
   endDate: string | null;
   quantityTonnes: number | null;
   deliveredTonnes: number | null;
+  enroutingTonnes?: number;
   managerName: string | null;
   notes: string | null;
 };
