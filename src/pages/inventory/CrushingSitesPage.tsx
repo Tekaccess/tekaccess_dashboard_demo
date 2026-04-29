@@ -9,6 +9,7 @@ import {
   Warehouse, warehouseUsedPct,
 } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
+import { TableSkeleton } from '../../components/ui/Skeleton';
 
 const CAPACITY_UNITS = ['tons', 'cubic_metres', 'pallets', 'litres', 'units'];
 
@@ -300,11 +301,7 @@ export default function CrushingSitesPage() {
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <p className="text-sm font-semibold text-t1">{sites.length} Crushing Site{sites.length !== 1 ? 's' : ''}</p>
           </div>
-          {loading ? (
-            <div className="flex items-center justify-center h-48">
-              <Spinner size={28} className="animate-spin text-accent" />
-            </div>
-          ) : sites.length === 0 ? (
+          {!loading && sites.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-56 text-t3 px-4 text-center">
               <Hammer size={40} weight="duotone" className="mb-2 opacity-40" />
               <p className="text-sm font-medium text-t2">No Crushing Sites yet</p>
@@ -332,7 +329,8 @@ export default function CrushingSitesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {sites.map(s => {
+                  {loading && <TableSkeleton rows={5} columns={6} />}
+                  {!loading && sites.map(s => {
                     const used = warehouseUsedPct(s);
                     return (
                       <tr
