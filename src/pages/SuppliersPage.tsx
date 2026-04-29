@@ -3,6 +3,7 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, Handshake, PencilSimple, Eye,
   Spinner, Phone, Envelope, Globe, Warning, Star, Trash,
+  Hammer, CurrencyCircleDollar, CheckCircle,
 } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'motion/react';
 import { apiListSuppliers, apiCreateSupplier, apiUpdateSupplier, apiDeleteSupplier, apiListWarehouses, Supplier, Warehouse } from '../lib/api';
@@ -32,7 +33,7 @@ interface DraftSupplier {
   contactName: string; contactEmail: string; contactPhone: string;
   address: string; country: string; currency: string;
   creditTermsDays: number; taxId: string; isCritical: boolean; notes: string;
-  hasCrusher: boolean | null; extraFeesNote: string;
+  crusherPaymentTerms: 'we_pay' | 'they_pay' | 'they_have_crusher' | null; extraFeesNote: string;
   mineWarehouseId: string; mineWarehouseName: string;
   crushingWarehouseId: string; crushingWarehouseName: string;
 }
@@ -43,7 +44,7 @@ function emptyDraft(): DraftSupplier {
     contactName: '', contactEmail: '', contactPhone: '',
     address: '', country: 'Rwanda', currency: 'USD',
     creditTermsDays: 30, taxId: '', isCritical: false, notes: '',
-    hasCrusher: null, extraFeesNote: '',
+    crusherPaymentTerms: null, extraFeesNote: '',
     mineWarehouseId: '', mineWarehouseName: '',
     crushingWarehouseId: '', crushingWarehouseName: '',
   };
@@ -101,7 +102,7 @@ export default function SuppliersPage() {
       contactPhone: s.contactPhone || '', address: (s as any).address || '',
       country: s.country, currency: s.currency, creditTermsDays: s.creditTermsDays,
       taxId: (s as any).taxId || '', isCritical: s.isCritical || false, notes: (s as any).notes || '',
-      hasCrusher: s.hasCrusher ?? null,
+      crusherPaymentTerms: s.crusherPaymentTerms ?? null,
       extraFeesNote: s.extraFeesNote || '',
       mineWarehouseId: s.mineWarehouseId || '',
       mineWarehouseName: s.mineWarehouseName || '',
@@ -147,7 +148,7 @@ export default function SuppliersPage() {
   const onHoldCount = suppliers.filter(s => s.status === 'on_hold').length;
   const blacklistedCount = suppliers.filter(s => s.status === 'blacklisted').length;
   const criticalCount = suppliers.filter(s => s.isCritical).length;
-  const noCrusherCount = suppliers.filter(s => s.hasCrusher === false).length;
+  const noCrusherCount = suppliers.filter(s => s.crusherPaymentTerms === 'we_pay').length;
 
   const modalSummary = (
     <div className="space-y-4">
@@ -356,20 +357,30 @@ export default function SuppliersPage() {
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Site Processing</p>
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-t3 mb-1.5">Crusher capability</label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { v: true, label: 'Has crusher' },
-                { v: false, label: 'We pay crushing' },
-                { v: null, label: 'Unspecified' },
-              ].map(opt => (
-                <button key={String(opt.v)} type="button"
-                  onClick={() => setDraft(d => ({ ...d, hasCrusher: opt.v as boolean | null }))}
-                  className={`px-3 py-1.5 text-xs border rounded-lg transition-colors ${
-                    draft.hasCrusher === opt.v ? 'border-accent bg-accent/10 text-accent' : 'border-border text-t3 hover:text-t1'
-                  }`}>
-                  {opt.label}
-                </button>
+            <label className="block text-xs text-t3 mb-3">Crusher Payment Terms</label>
+            <div className="space-y-2">
+              {([
+                { v: 'we_pay',            label: 'We Pay for Crushing',  Icon: Hammer,               style: 'bg-amber-500/10 text-amber-500 border-amber-500/30' },
+                { v: 'they_pay',          label: 'They Pay for Crushing', Icon: CurrencyCircleDollar, style: 'bg-violet-500/10 text-violet-400 border-violet-500/30' },
+                { v: 'they_have_crusher', label: 'They Have Crusher',     Icon: CheckCircle,          style: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' },
+              ] as const).map(opt => (
+                <label
+                  key={opt.v}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                    draft.crusherPaymentTerms === opt.v ? opt.style : 'border-border hover:bg-surface'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="crusherPaymentTerms"
+                    value={opt.v}
+                    checked={draft.crusherPaymentTerms === opt.v}
+                    onChange={() => setDraft(d => ({ ...d, crusherPaymentTerms: opt.v }))}
+                    className="accent-accent"
+                  />
+                  <opt.Icon size={14} weight="duotone" />
+                  <span className="text-sm font-medium">{opt.label}</span>
+                </label>
               ))}
             </div>
           </div>
@@ -435,11 +446,27 @@ export default function SuppliersPage() {
         <div><p className="text-xs text-t3">Credit Terms</p><p className="font-medium text-t1">{selected.creditTermsDays} days</p></div>
       </div>
 
-      {selected.hasCrusher === false && (
-        <div className="bg-orange-500/5 rounded-xl border border-orange-500/20 p-3 space-y-1.5">
+      {selected.crusherPaymentTerms && (
+        <div className={`rounded-xl border p-3 space-y-1.5 ${
+          selected.crusherPaymentTerms === 'we_pay'
+            ? 'bg-amber-500/5 border-amber-500/20'
+            : selected.crusherPaymentTerms === 'they_pay'
+            ? 'bg-violet-500/5 border-violet-500/20'
+            : 'bg-emerald-500/5 border-emerald-500/20'
+        }`}>
           <div className="flex items-center gap-2">
-            <Warning size={14} weight="fill" className="text-orange-400 shrink-0" />
-            <p className="text-xs font-semibold text-orange-400">We pay crushing for this supplier</p>
+            {selected.crusherPaymentTerms === 'we_pay' && <Hammer size={14} weight="duotone" className="text-amber-500 shrink-0" />}
+            {selected.crusherPaymentTerms === 'they_pay' && <CurrencyCircleDollar size={14} weight="duotone" className="text-violet-400 shrink-0" />}
+            {selected.crusherPaymentTerms === 'they_have_crusher' && <CheckCircle size={14} weight="duotone" className="text-emerald-400 shrink-0" />}
+            <p className={`text-xs font-semibold ${
+              selected.crusherPaymentTerms === 'we_pay' ? 'text-amber-500'
+              : selected.crusherPaymentTerms === 'they_pay' ? 'text-violet-400'
+              : 'text-emerald-400'
+            }`}>
+              {selected.crusherPaymentTerms === 'we_pay' ? 'We Pay for Crushing'
+                : selected.crusherPaymentTerms === 'they_pay' ? 'They Pay for Crushing'
+                : 'They Have Crusher'}
+            </p>
           </div>
           {selected.extraFeesNote && (
             <p className="text-xs text-t2 whitespace-pre-line pl-6">{selected.extraFeesNote}</p>
@@ -568,19 +595,22 @@ export default function SuppliersPage() {
                       {colVis.has('currency') && <td className="px-4 py-3.5 text-t2">{s.currency}</td>}
                       {colVis.has('crusher') && (
                         <td className="px-4 py-3.5">
-                          {s.hasCrusher === false ? (
+                          {s.crusherPaymentTerms === 'we_pay' ? (
                             <div className="flex flex-col gap-0.5">
-                              <span className="inline-flex items-center gap-1.5 text-xs border rounded-full px-2 py-0.5 font-medium bg-orange-500/10 text-orange-400 border-orange-500/20 w-fit">
-                                <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
-                                We pay crushing
+                              <span className="inline-flex items-center gap-1.5 text-[10px] border rounded-full px-2 py-0.5 font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border-amber-500/20 w-fit">
+                                <Hammer size={10} weight="duotone" /> We Pay
                               </span>
                               {s.extraFeesNote && (
                                 <span className="text-[10px] text-t3 truncate max-w-[180px]" title={s.extraFeesNote}>{s.extraFeesNote}</span>
                               )}
                             </div>
-                          ) : s.hasCrusher === true ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs text-t3">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Has crusher
+                          ) : s.crusherPaymentTerms === 'they_pay' ? (
+                            <span className="inline-flex items-center gap-1.5 text-[10px] border rounded-full px-2 py-0.5 font-bold uppercase tracking-wider bg-violet-500/10 text-violet-400 border-violet-500/20 w-fit">
+                              <CurrencyCircleDollar size={10} weight="duotone" /> They Pay
+                            </span>
+                          ) : s.crusherPaymentTerms === 'they_have_crusher' ? (
+                            <span className="inline-flex items-center gap-1.5 text-[10px] border rounded-full px-2 py-0.5 font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border-emerald-500/20 w-fit">
+                              <CheckCircle size={10} weight="duotone" /> Has Crusher
                             </span>
                           ) : (
                             <span className="text-t3 text-xs">—</span>

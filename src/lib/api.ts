@@ -265,7 +265,7 @@ export type Supplier = {
   mineWarehouseName: string | null;
   crushingWarehouseId: string | null;
   crushingWarehouseName: string | null;
-  hasCrusher?: boolean | null;
+  crusherPaymentTerms?: 'we_pay' | 'they_pay' | 'they_have_crusher' | null;
   extraFeesNote?: string | null;
   isCritical?: boolean;
 };
@@ -913,7 +913,6 @@ export type Warehouse = {
   warehouseCode: string;
   name: string;
   siteType?: 'standard' | 'crushing_site' | 'loading_site';
-  crusherPaymentTerms?: 'we_pay' | 'they_pay' | 'they_have_crusher';
   address: string | null;
   region: string | null;
   country: string;
