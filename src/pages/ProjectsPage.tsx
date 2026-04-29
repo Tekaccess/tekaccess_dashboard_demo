@@ -379,7 +379,7 @@ export default function ProjectsPage() {
                       {colVis.has('deadline') && (
                         <TableCell className="text-t2 whitespace-nowrap">
                           {p.endDate
-                            ? <span className="inline-flex items-center gap-1.5"><CalendarBlank size={13} className="text-t3" />{fmtDate(p.endDate)}</span>
+                            ? <span className="inline-flex items-center gap-1.5">{fmtDate(p.endDate)}</span>
                             : <span className="text-t3">—</span>}
                         </TableCell>
                       )}
@@ -392,7 +392,6 @@ export default function ProjectsPage() {
                             {days === null
                               ? <span className="text-t3">—</span>
                               : <span className={`inline-flex items-center gap-1 font-semibold text-sm ${overdue ? 'text-rose-400' : urgent ? 'text-amber-400' : 'text-t1'}`}>
-                                  <Timer size={13} />
                                   {overdue ? `${Math.abs(days)}days overdue` : `${days}days`}
                                 </span>}
                           </TableCell>
