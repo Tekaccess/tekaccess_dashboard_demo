@@ -376,13 +376,37 @@ export default function PurchaseOrdersPage() {
 
   const warehouseOptions = useMemo<SearchSelectOption[]>(
     () =>
-      warehouses.map((w) => ({
-        value: w._id,
-        label: w.name,
-        sublabel: w.warehouseCode,
-      })),
+      warehouses.map((w) => {
+        const isCrushing = w.siteType === "crushing_site";
+        return {
+          value: w._id,
+          label: isCrushing ? `🔨 ${w.name}` : w.name,
+          sublabel: isCrushing
+            ? `${w.warehouseCode} · Crushing Site`
+            : w.warehouseCode,
+        };
+      }),
     [warehouses],
   );
+
+  // Pick the right default destination for a supplier:
+  //   - hasCrusher === false (uncrushed) → first crushing site
+  //   - otherwise → supplier's stored defaultWarehouseId, or first standard
+  // Always returns the chosen warehouse object so we can grab its name too.
+  function resolveDefaultDestination(supplier: Supplier | undefined) {
+    if (!supplier) return null;
+    const ws = warehouses;
+    if (supplier.hasCrusher === false) {
+      const stored = ws.find((w) => w._id === supplier.defaultWarehouseId);
+      if (stored?.siteType === "crushing_site") return stored;
+      return ws.find((w) => w.siteType === "crushing_site") || stored || null;
+    }
+    return (
+      ws.find((w) => w._id === supplier.defaultWarehouseId)
+      || ws.find((w) => w.siteType !== "crushing_site")
+      || null
+    );
+  }
 
   // Filter orders
   const filteredOrders = useMemo(() => {
@@ -682,12 +706,13 @@ export default function PurchaseOrdersPage() {
                 return;
               }
               const supplier = suppliers.find((s) => s._id === val);
+              const dest = resolveDefaultDestination(supplier);
               updateDraft({
                 supplierId: val,
                 supplierName: opt.label,
                 vendorReference: supplier?.supplierCode || "",
-                destinationWarehouseId: supplier?.defaultWarehouseId || "",
-                destinationWarehouseName: supplier?.defaultWarehouseName || "",
+                destinationWarehouseId: dest?._id || "",
+                destinationWarehouseName: dest?.name || "",
               });
             }}
             placeholder="Search supplier..."
@@ -749,19 +774,36 @@ export default function PurchaseOrdersPage() {
         </div>
 
         {draft.procurementType === "trading" && (
-          <SearchSelect
-            label="Destination Warehouse *"
-            options={warehouseOptions}
-            value={draft.destinationWarehouseId || null}
-            onChange={(val, opt) =>
-              updateDraft({
-                destinationWarehouseId: val || "",
-                destinationWarehouseName: opt?.label || "",
-              })
-            }
-            placeholder="Select destination warehouse..."
-            clearable={false}
-          />
+          <div className="space-y-2">
+            {(() => {
+              const sup = suppliers.find((s) => s._id === draft.supplierId);
+              if (!sup || sup.hasCrusher !== false) return null;
+              return (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs">
+                  <span className="text-amber-500 mt-0.5">🔨</span>
+                  <div className="text-amber-200 leading-relaxed">
+                    <span className="font-bold">{sup.name}</span> delivers
+                    <span className="font-bold"> uncrushed</span> material —
+                    defaulted to a <span className="font-bold">Crushing Site</span>.
+                    You can pick any warehouse below if needed.
+                  </div>
+                </div>
+              );
+            })()}
+            <SearchSelect
+              label="Destination Warehouse *"
+              options={warehouseOptions}
+              value={draft.destinationWarehouseId || null}
+              onChange={(val, opt) =>
+                updateDraft({
+                  destinationWarehouseId: val || "",
+                  destinationWarehouseName: opt?.label?.replace(/^🔨\s*/, "") || "",
+                })
+              }
+              placeholder="Select destination warehouse..."
+              clearable={false}
+            />
+          </div>
         )}
 
         <div className="grid grid-cols-2 gap-3">
@@ -1977,12 +2019,13 @@ export default function PurchaseOrdersPage() {
           onClose={() => setShowAddSupplier(false)}
           onCreated={(newSupplier) => {
             setSuppliers((prev) => [...prev, newSupplier]);
+            const dest = resolveDefaultDestination(newSupplier);
             updateDraft({
               supplierId: newSupplier._id,
               supplierName: newSupplier.name,
               vendorReference: newSupplier.supplierCode || "",
-              destinationWarehouseId: newSupplier.defaultWarehouseId || "",
-              destinationWarehouseName: newSupplier.defaultWarehouseName || "",
+              destinationWarehouseId: dest?._id || "",
+              destinationWarehouseName: dest?.name || "",
             });
             setShowAddSupplier(false);
           }}

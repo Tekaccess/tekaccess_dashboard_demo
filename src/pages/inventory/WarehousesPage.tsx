@@ -15,35 +15,25 @@ import ModernModal from '../../components/ui/ModernModal';
 import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 import { Input } from '../../components/ui/input';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '../../components/ui/select';
-import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../../components/ui/table';
 
-const TYPE_LABELS: Record<string, string> = {
-  commercial: 'Commercial',
-  workshop_store: 'Workshop / Store',
-  fuel_tank: 'Fuel Tank',
-  transit: 'Transit',
-  bonded: 'Bonded',
+const SITE_LABELS: Record<string, string> = {
+  standard: 'Standard Warehouse',
+  crushing_site: 'Crushing Site',
 };
 
-const TYPE_STYLES: Record<string, string> = {
-  commercial:     'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  workshop_store: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  fuel_tank:      'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  transit:        'bg-teal-500/10 text-teal-400 border-teal-500/20',
-  bonded:         'bg-rose-500/10 text-rose-400 border-rose-500/20',
+const SITE_STYLES: Record<string, string> = {
+  standard:      'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  crushing_site: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
 };
 
 const CAPACITY_UNITS = ['tons', 'cubic_metres', 'pallets', 'litres', 'units'];
-const WAREHOUSE_TYPES = ['commercial', 'workshop_store', 'fuel_tank', 'transit', 'bonded'];
 
 type ModalMode = 'new' | 'edit' | 'view' | null;
 
 interface DraftWarehouse {
-  warehouseCode: string; name: string; warehouseType: string;
+  warehouseCode: string; name: string;
   siteType: 'standard' | 'crushing_site';
   address: string; region: string; country: string;
   capacityUnit: string; totalCapacity: number;
@@ -52,7 +42,7 @@ interface DraftWarehouse {
 
 function emptyDraft(): DraftWarehouse {
   return {
-    warehouseCode: '', name: '', warehouseType: 'commercial',
+    warehouseCode: '', name: '',
     siteType: 'standard',
     address: '', region: '', country: 'Rwanda',
     capacityUnit: 'tons', totalCapacity: 0,
@@ -65,7 +55,7 @@ const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm
 const WH_COLS: ColDef[] = [
   { key: 'ref',     label: 'Ref',     defaultVisible: true },
   { key: 'name',    label: 'Name',    defaultVisible: true },
-  { key: 'type',    label: 'Type',    defaultVisible: true },
+  { key: 'role',    label: 'Role',    defaultVisible: true },
   { key: 'usage',   label: 'Usage',   defaultVisible: true },
   { key: 'manager', label: 'Manager', defaultVisible: true },
   { key: 'actions', label: 'Actions', defaultVisible: true },
@@ -76,7 +66,6 @@ export default function WarehousesPage() {
   const [summary, setSummary] = useState({ totalItems: 0, totalValue: 0, warehouseCount: 0, lowStockRecords: 0 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
   const [selected, setSelected] = useState<Warehouse | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [draft, setDraft] = useState<DraftWarehouse>(emptyDraft());
@@ -91,7 +80,6 @@ export default function WarehousesPage() {
     setLoading(true);
     const params: Record<string, string> = {};
     if (search) params.search = search;
-    if (typeFilter) params.type = typeFilter;
     const [whRes, summaryRes] = await Promise.all([
       apiListWarehouses(params),
       apiGetInventorySummary(),
@@ -99,7 +87,7 @@ export default function WarehousesPage() {
     if (whRes.success) setWarehouses(whRes.data.warehouses);
     if (summaryRes.success) setSummary(summaryRes.data.summary);
     setLoading(false);
-  }, [search, typeFilter]);
+  }, [search]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -132,7 +120,7 @@ export default function WarehousesPage() {
 
   function openEdit(w: Warehouse) {
     setDraft({
-      warehouseCode: w.warehouseCode, name: w.name, warehouseType: w.warehouseType,
+      warehouseCode: w.warehouseCode, name: w.name,
       siteType: w.siteType || 'standard',
       address: w.address || '', region: w.region || '', country: w.country,
       capacityUnit: w.capacityUnit, totalCapacity: w.totalCapacity,
@@ -151,9 +139,14 @@ export default function WarehousesPage() {
   }
 
   async function handleSave() {
-    if (!draft.warehouseCode || !draft.name) { setError('Warehouse code and name are required.'); return; }
+    if (!draft.name) { setError('Warehouse name is required.'); return; }
     setSaving(true); setError(null);
-    const payload = { ...draft, totalCapacity: Number(draft.totalCapacity) } as Parameters<typeof apiCreateWarehouse>[0];
+    // On create, drop warehouseCode so the backend auto-assigns it.
+    const { warehouseCode, ...rest } = draft;
+    const payload = (modalMode === 'new'
+      ? { ...rest, totalCapacity: Number(draft.totalCapacity) }
+      : { ...draft, totalCapacity: Number(draft.totalCapacity) }
+    ) as Parameters<typeof apiCreateWarehouse>[0];
     const res = modalMode === 'new'
       ? await apiCreateWarehouse(payload)
       : await apiUpdateWarehouse(selected!._id, payload);
@@ -171,11 +164,11 @@ export default function WarehousesPage() {
         <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-t3">Code</span>
-            <span className="font-mono font-bold text-accent">{draft.warehouseCode || '—'}</span>
+            <span className="font-mono font-bold text-accent">{draft.warehouseCode || 'auto-assigned'}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-t3">Type</span>
-            <span className="text-t1 font-medium">{TYPE_LABELS[draft.warehouseType] || draft.warehouseType}</span>
+            <span className="text-t3">Role</span>
+            <span className="text-t1 font-medium">{SITE_LABELS[draft.siteType]}</span>
           </div>
         </div>
       </div>
@@ -209,8 +202,8 @@ export default function WarehousesPage() {
             <span className="font-mono text-t1">{selected.warehouseCode}</span>
           </div>
           <div>
-            <span className="text-t3">Type: </span>
-            <span className="text-t1 font-medium">{TYPE_LABELS[selected.warehouseType] ?? selected.warehouseType}</span>
+            <span className="text-t3">Role: </span>
+            <span className="text-t1 font-medium">{SITE_LABELS[selected.siteType || 'standard']}</span>
           </div>
           <div>
             <span className="text-t3">Country: </span>
@@ -252,21 +245,16 @@ export default function WarehousesPage() {
       <div>
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Warehouse Details</p>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          {modalMode === 'edit' ? (
             <div>
-              <label className="block text-xs text-t3 mb-1.5">Warehouse Code *</label>
-              <input className={inp}
-                value={draft.warehouseCode} onChange={e => updateDraft({ warehouseCode: e.target.value.toUpperCase() })}
-                placeholder="e.g. WH-KGL-01" disabled={modalMode === 'edit'} />
+              <label className="block text-xs text-t3 mb-1.5">Warehouse Code</label>
+              <input className={inp} value={draft.warehouseCode} disabled />
             </div>
-            <div>
-              <label className="block text-xs text-t3 mb-1.5">Type *</label>
-              <select className={inp}
-                value={draft.warehouseType} onChange={e => updateDraft({ warehouseType: e.target.value })}>
-                {WAREHOUSE_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
-              </select>
-            </div>
-          </div>
+          ) : (
+            <p className="text-[11px] text-t3 italic px-1">
+              Warehouse code is auto-assigned on save (WH-### for standard, CS-### for crushing sites).
+            </p>
+          )}
           <div>
             <label className="block text-xs text-t3 mb-1.5">Name *</label>
             <input className={inp}
@@ -364,8 +352,8 @@ export default function WarehousesPage() {
           <div className="space-y-2">
             <p className="text-xs text-t3">{selected.warehouseCode}</p>
             <h3 className="text-2xl font-bold text-t1">{selected.name}</h3>
-            <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-0.5 font-medium ${TYPE_STYLES[selected.warehouseType] ?? 'bg-surface text-t3 border-border'}`}>
-              {TYPE_LABELS[selected.warehouseType] ?? selected.warehouseType}
+            <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-0.5 font-medium ${SITE_STYLES[selected.siteType || 'standard']}`}>
+              {SITE_LABELS[selected.siteType || 'standard']}
             </span>
           </div>
           <span className={`text-xs font-medium px-2.5 py-1 rounded-full border shrink-0 ${selected.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-surface text-t3 border-border'}`}>
@@ -523,17 +511,6 @@ export default function WarehousesPage() {
                 className="pl-9"
               />
             </div>
-            <Select value={typeFilter || 'all'} onValueChange={(v) => setTypeFilter(v === 'all' ? '' : v)}>
-              <SelectTrigger className="h-9 min-w-44 focus:ring-0 focus:border-border">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {WAREHOUSE_TYPES.map(t => (
-                  <SelectItem key={t} value={t}>{TYPE_LABELS[t]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <div className="ml-auto">
               <ColumnSelector cols={WH_COLS} visible={colVis} onToggle={colToggle} />
             </div>
@@ -558,7 +535,7 @@ export default function WarehousesPage() {
                   <TableRow>
                     {colVis.has('ref')     && <TableHead>Ref</TableHead>}
                     {colVis.has('name')    && <TableHead>Name</TableHead>}
-                    {colVis.has('type')    && <TableHead>Type</TableHead>}
+                    {colVis.has('role')    && <TableHead>Role</TableHead>}
                     {colVis.has('usage')   && <TableHead>Usage</TableHead>}
                     {colVis.has('manager') && <TableHead>Manager</TableHead>}
                     {colVis.has('actions') && <TableHead className="text-right">Actions</TableHead>}
@@ -579,10 +556,10 @@ export default function WarehousesPage() {
                         {colVis.has('name') && (
                           <TableCell className="py-4 font-medium text-t1">{w.name}</TableCell>
                         )}
-                        {colVis.has('type') && (
+                        {colVis.has('role') && (
                           <TableCell className="py-4">
-                            <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${TYPE_STYLES[w.warehouseType] ?? 'bg-surface text-t3 border-border'}`}>
-                              {TYPE_LABELS[w.warehouseType] ?? w.warehouseType}
+                            <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${SITE_STYLES[w.siteType || 'standard']}`}>
+                              {SITE_LABELS[w.siteType || 'standard']}
                             </span>
                           </TableCell>
                         )}

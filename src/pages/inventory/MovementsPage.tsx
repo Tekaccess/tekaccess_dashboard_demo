@@ -16,6 +16,7 @@ import {
   UserCircle,
   Scales,
   Hammer,
+  MapPin,
 } from "@phosphor-icons/react";
 import {
   apiListMovements,
@@ -28,6 +29,7 @@ import {
   apiListTrucks,
   apiListSuppliers,
   apiListProducts,
+  apiListSites,
   apiListInventoryDocs,
   apiCreateInventoryDoc,
   StockMovement,
@@ -36,6 +38,7 @@ import {
   PurchaseOrder,
   Supplier,
   Product,
+  Site,
   InventoryDoc,
   Truck as TruckType,
 } from "../../lib/api";
@@ -121,6 +124,9 @@ interface NewMovementDraft {
   reason: string;
   notes: string;
   destinationWarehouseId: string;
+  // Outbound destination — a Loading Site (operations.sites with siteType='loading')
+  destinationSiteId: string;
+  destinationSiteName: string;
   // Inbound / weighbridge fields
   linkedPoId: string;
   linkedPoRef: string;
@@ -146,7 +152,7 @@ interface NewMovementDraft {
   otherProcessingDescription: string;
   // Source supporting doc — uploaded after the movement is created
   sourceImage: File | null;
-  sourceDocType: 'Invoice' | 'Receipt' | 'Waybill' | 'Weighbridge';
+  sourceDocType: "Invoice" | "Receipt" | "Waybill" | "Weighbridge";
 }
 
 function emptyDraft(): NewMovementDraft {
@@ -159,6 +165,8 @@ function emptyDraft(): NewMovementDraft {
     reason: "",
     notes: "",
     destinationWarehouseId: "",
+    destinationSiteId: "",
+    destinationSiteName: "",
     linkedPoId: "",
     linkedPoRef: "",
     supplierId: "",
@@ -181,7 +189,7 @@ function emptyDraft(): NewMovementDraft {
     otherProcessingCost: "",
     otherProcessingDescription: "",
     sourceImage: null,
-    sourceDocType: 'Weighbridge',
+    sourceDocType: "Weighbridge",
   };
 }
 
@@ -209,9 +217,12 @@ export default function MovementsPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [trucks, setTrucks] = useState<TruckType[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
   // Map of movement_id → docs[] so the Source column can render a thumbnail
   // of the first attached image without a per-row fetch.
-  const [movementDocs, setMovementDocs] = useState<Record<string, InventoryDoc[]>>({});
+  const [movementDocs, setMovementDocs] = useState<
+    Record<string, InventoryDoc[]>
+  >({});
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -246,9 +257,12 @@ export default function MovementsPage() {
       setTotal(movRes.data.pagination.total);
       // Pull docs for the loaded movement IDs so the Source column can
       // thumbnail the first attached image without N round-trips.
-      const ids = movRes.data.movements.map(m => m._id);
+      const ids = movRes.data.movements.map((m) => m._id);
       if (ids.length > 0) {
-        apiListInventoryDocs({ movement_ids: ids.join(','), limit: '500' }).then(dr => {
+        apiListInventoryDocs({
+          movement_ids: ids.join(","),
+          limit: "500",
+        }).then((dr) => {
           if (!dr.success) return;
           const grouped: Record<string, InventoryDoc[]> = {};
           for (const d of dr.data.documents) {
@@ -282,6 +296,7 @@ export default function MovementsPage() {
         (r) => r.success && setProducts(r.data.products),
       ),
       apiListTrucks().then((r) => r.success && setTrucks(r.data.trucks)),
+      apiListSites().then((r) => r.success && setSites(r.data.sites)),
     ]);
   }, []);
 
@@ -349,14 +364,17 @@ export default function MovementsPage() {
   const warehouseOptions = useMemo<SearchSelectOption[]>(
     () =>
       warehouses.map((w) => {
-        const pct = w.totalCapacity > 0
-          ? +((w.currentQty / w.totalCapacity) * 100).toFixed(0)
-          : 0;
-        const isCrushing = w.siteType === 'crushing_site';
+        const pct =
+          w.totalCapacity > 0
+            ? +((w.currentQty / w.totalCapacity) * 100).toFixed(0)
+            : 0;
+        const isCrushing = w.siteType === "crushing_site";
         return {
           value: w._id,
           label: isCrushing ? `🔨 ${w.name}` : w.name,
-          sublabel: isCrushing ? `${w.warehouseCode} · Crushing Site` : w.warehouseCode,
+          sublabel: isCrushing
+            ? `${w.warehouseCode} · Crushing Site`
+            : w.warehouseCode,
           meta: `${pct}% used`,
         };
       }),
@@ -374,13 +392,26 @@ export default function MovementsPage() {
     [trucks],
   );
 
+  const loadingSiteOptions = useMemo<SearchSelectOption[]>(
+    () =>
+      sites
+        .filter((s) => s.siteType?.includes("loading"))
+        .map((s) => ({
+          value: s._id,
+          label: s.name,
+          sublabel: s.siteCode,
+          meta: s.region || s.country,
+        })),
+    [sites],
+  );
+
   const selectedStock = stockItems.find((s) => s._id === draft.stockItemId);
   const destWhOptions = useMemo<SearchSelectOption[]>(
     () =>
       warehouses
         // Transfers always end in a Standard Warehouse — material is processed
         // out of the Crushing Site, never moved into another one.
-        .filter((w) => w.siteType !== 'crushing_site')
+        .filter((w) => w.siteType !== "crushing_site")
         .filter((w) => w._id !== (selectedStock as any)?.warehouseId)
         .map((w) => ({
           value: w._id,
@@ -403,7 +434,7 @@ export default function MovementsPage() {
     }
 
     const commonMovementFields = {
-      warehouseId: draft.warehouseId || selectedStock?.warehouseId || '',
+      warehouseId: draft.warehouseId || selectedStock?.warehouseId || "",
       stockItemId: draft.stockItemId || undefined,
       productId: draft.productId || undefined,
       qty,
@@ -437,7 +468,11 @@ export default function MovementsPage() {
         ? parseFloat(draft.otherProcessingCost)
         : undefined,
       otherProcessingDescription: draft.otherProcessingDescription || undefined,
-    };
+      // Outbound destination — passed through for the backend to persist
+      // when a Loading Site is the drop-off point.
+      destinationSiteId: draft.destinationSiteId || undefined,
+      destinationSiteName: draft.destinationSiteName || undefined,
+    } as any;
 
     if (draft.mode === "transfer") {
       if (!draft.destinationWarehouseId) {
@@ -480,7 +515,9 @@ export default function MovementsPage() {
       });
       if (!docRes.success) {
         setSaving(false);
-        setError(`Movement saved, but image upload failed: ${(docRes as any).message || 'unknown error'}`);
+        setError(
+          `Movement saved, but image upload failed: ${(docRes as any).message || "unknown error"}`,
+        );
         load();
         return;
       }
@@ -569,9 +606,9 @@ export default function MovementsPage() {
               // missing destinationWarehouseId would post with warehouseId=null
               // and the warehouse usedPct wouldn't move.
               warehouseId:
-                po?.destinationWarehouseId
-                || poSupplier?.defaultWarehouseId
-                || "",
+                po?.destinationWarehouseId ||
+                poSupplier?.defaultWarehouseId ||
+                "",
               productId: firstLine?.productId || "",
               unitCost: firstLine?.unitPrice ?? 0,
               qty: firstLine?.orderedQty ?? 0,
@@ -615,8 +652,8 @@ export default function MovementsPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-t3">Warehouse</span>
                   <span className="text-t1 font-medium">
-                    {warehouses.find((w) => w._id === draft.warehouseId)?.name
-                      || "— not set on PO —"}
+                    {warehouses.find((w) => w._id === draft.warehouseId)
+                      ?.name || "— not set on PO —"}
                   </span>
                 </div>
               </div>
@@ -717,11 +754,18 @@ export default function MovementsPage() {
           if (!sup || sup.hasCrusher !== false) return null;
           return (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs">
-              <Hammer size={14} weight="duotone" className="text-amber-500 mt-0.5 shrink-0" />
+              <Hammer
+                size={14}
+                weight="duotone"
+                className="text-amber-500 mt-0.5 shrink-0"
+              />
               <div className="text-amber-200 leading-relaxed">
-                <span className="font-bold">{sup.name}</span> delivers <span className="font-bold">uncrushed</span> material.
-                Pick a <span className="font-bold">Crushing Site</span> as the destination below. Once it's processed, use
-                <span className="font-bold"> Transfer</span> to move it to a regular warehouse.
+                <span className="font-bold">{sup.name}</span> delivers{" "}
+                <span className="font-bold">uncrushed</span> material. Pick a{" "}
+                <span className="font-bold">Crushing Site</span> as the
+                destination below. Once it's processed, use
+                <span className="font-bold"> Transfer</span> to move it to a
+                regular warehouse.
               </div>
             </div>
           );
@@ -742,29 +786,17 @@ export default function MovementsPage() {
           placeholder="Search warehouse..."
         />
 
-        <SearchSelect
-          label="Item"
-          options={stockOptions}
-          value={draft.stockItemId || null}
-          onChange={(v) => {
-            const si = stockItems.find((s) => s._id === v);
-            upd({
-              stockItemId: v ?? "",
-              warehouseId: draft.warehouseId || si?.warehouseId || "",
-            });
-          }}
-          placeholder="Search item..."
-        />
-
-        {draft.linkedPoId &&
+        {draft.linkedPoId ? (
+          // Product, qty, and unit cost are auto-filled from the PO line —
+          // the preview block below shows what came over. No manual picker.
           (() => {
             const po = purchaseOrders.find((p) => p._id === draft.linkedPoId);
             const li = po?.lineItems[draft.selectedPoLineIdx ?? 0];
             if (!li) return null;
             return (
-              <div className="rounded-lg border border-border bg-surface/50 px-3 py-2 text-xs space-y-0.5">
+              <div className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs space-y-0.5">
                 <p className="text-t2 font-medium">
-                  PO line: {li.productName || li.description}
+                  Product (from PO): {li.productName || li.description}
                 </p>
                 <div className="flex items-center gap-3 text-t3">
                   {li.itemCode && <span>{li.itemCode}</span>}
@@ -775,15 +807,57 @@ export default function MovementsPage() {
                 </div>
               </div>
             );
-          })()}
+          })()
+        ) : draft.mode === "inbound" ? (
+          // Inbound without a PO: pick any product from the full catalog so
+          // brand-new stock can be received without needing a pre-existing
+          // stock item.
+          <SearchSelect
+            label="Product *"
+            options={productOptions}
+            value={draft.productId || null}
+            onChange={(v) => {
+              const p = products.find((x) => x._id === v);
+              upd({
+                productId: v ?? "",
+                stockItemId: "",
+                unitCost: p?.cost_per_unit ?? draft.unitCost,
+              });
+            }}
+            placeholder="Search product..."
+          />
+        ) : (
+          // Outbound / Transfer: must pick from existing stock so we know
+          // which warehouse the item leaves and that there's enough on hand.
+          <SearchSelect
+            label="Item *"
+            options={stockOptions}
+            value={draft.stockItemId || null}
+            onChange={(v) => {
+              const si = stockItems.find((s) => s._id === v);
+              upd({
+                stockItemId: v ?? "",
+                productId: "",
+                warehouseId: draft.warehouseId || si?.warehouseId || "",
+              });
+            }}
+            placeholder="Search item..."
+          />
+        )}
 
         {draft.mode === "transfer" && (
           <>
             <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs">
-              <Hammer size={14} weight="duotone" className="text-emerald-400 mt-0.5 shrink-0" />
+              <Hammer
+                size={14}
+                weight="duotone"
+                className="text-emerald-400 mt-0.5 shrink-0"
+              />
               <div className="text-emerald-200 leading-relaxed">
-                Use <span className="font-bold">Transfer</span> to move material from a <span className="font-bold">Crushing Site</span> to a regular warehouse once it has been processed,
-                or to rebalance stock between any two warehouses.
+                Use <span className="font-bold">Transfer</span> to move material
+                from a <span className="font-bold">Crushing Site</span> to a
+                regular warehouse once it has been processed, or to rebalance
+                stock between any two warehouses.
               </div>
             </div>
             <SearchSelect
@@ -796,56 +870,34 @@ export default function MovementsPage() {
             />
           </>
         )}
-      </section>
 
-      {/* ── Source Document (image upload) ── */}
-      <section className="space-y-3">
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
-          <Receipt size={11} weight="duotone" /> Source Document
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-[10px] text-t3 mb-1">Document Type</label>
-            <select
-              className={inp}
-              value={draft.sourceDocType}
-              onChange={(e) => upd({ sourceDocType: e.target.value as NewMovementDraft['sourceDocType'] })}
-            >
-              <option value="Weighbridge">Weighbridge</option>
-              <option value="Receipt">Receipt</option>
-              <option value="Invoice">Invoice</option>
-              <option value="Waybill">Waybill</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] text-t3 mb-1">Image</label>
-            <input
-              type="file"
-              accept="image/*"
-              className={`${inp} file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-accent/10 file:text-accent file:text-xs file:font-semibold cursor-pointer`}
-              onChange={(e) => upd({ sourceImage: e.target.files?.[0] || null })}
-            />
-          </div>
-        </div>
-        {draft.sourceImage && (
-          <div className="flex items-center gap-3 p-2 bg-surface/50 border border-border rounded-lg">
-            <img
-              src={URL.createObjectURL(draft.sourceImage)}
-              alt="preview"
-              className="w-16 h-16 rounded object-cover border border-border"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-t1 truncate font-medium">{draft.sourceImage.name}</p>
-              <p className="text-[10px] text-t3">{(draft.sourceImage.size / 1024).toFixed(1)} KB</p>
+        {draft.mode === "outbound" && (
+          <>
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs">
+              <MapPin
+                size={14}
+                weight="duotone"
+                className="text-rose-400 mt-0.5 shrink-0"
+              />
+              <div className="text-rose-200 leading-relaxed">
+                Pick the <span className="font-bold">Loading Site</span> where
+                this stock is being dropped off. Optional — leave blank if the
+                outbound is not headed to a tracked site.
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => upd({ sourceImage: null })}
-              className="text-t3 hover:text-rose-400 text-xs"
-            >
-              Remove
-            </button>
-          </div>
+            <SearchSelect
+              label="Destination Loading Site"
+              options={loadingSiteOptions}
+              value={draft.destinationSiteId || null}
+              onChange={(v, opt) =>
+                upd({
+                  destinationSiteId: v ?? "",
+                  destinationSiteName: opt?.label || "",
+                })
+              }
+              placeholder="Search loading site..."
+            />
+          </>
         )}
       </section>
 
@@ -856,11 +908,18 @@ export default function MovementsPage() {
         </p>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[10px] text-t3 mb-1">Document Type</label>
+            <label className="block text-[10px] text-t3 mb-1">
+              Document Type
+            </label>
             <select
               className={inp}
               value={draft.sourceDocType}
-              onChange={(e) => upd({ sourceDocType: e.target.value as NewMovementDraft['sourceDocType'] })}
+              onChange={(e) =>
+                upd({
+                  sourceDocType: e.target
+                    .value as NewMovementDraft["sourceDocType"],
+                })
+              }
             >
               <option value="Weighbridge">Weighbridge</option>
               <option value="Receipt">Receipt</option>
@@ -874,7 +933,9 @@ export default function MovementsPage() {
               type="file"
               accept="image/*"
               className={`${inp} file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-accent/10 file:text-accent file:text-xs file:font-semibold cursor-pointer`}
-              onChange={(e) => upd({ sourceImage: e.target.files?.[0] || null })}
+              onChange={(e) =>
+                upd({ sourceImage: e.target.files?.[0] || null })
+              }
             />
           </div>
         </div>
@@ -886,8 +947,12 @@ export default function MovementsPage() {
               className="w-16 h-16 rounded object-cover border border-border"
             />
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-t1 truncate font-medium">{draft.sourceImage.name}</p>
-              <p className="text-[10px] text-t3">{(draft.sourceImage.size / 1024).toFixed(1)} KB</p>
+              <p className="text-xs text-t1 truncate font-medium">
+                {draft.sourceImage.name}
+              </p>
+              <p className="text-[10px] text-t3">
+                {(draft.sourceImage.size / 1024).toFixed(1)} KB
+              </p>
             </div>
             <button
               type="button"
@@ -1303,20 +1368,25 @@ export default function MovementsPage() {
                           <td className="px-4 py-3.5 whitespace-nowrap">
                             {(() => {
                               const docs = movementDocs[m._id] || [];
-                              const firstImg = docs.find(d => d.image_path);
+                              const firstImg = docs.find((d) => d.image_path);
                               if (firstImg) {
                                 return (
                                   <button
-                                    onClick={e => { e.stopPropagation(); setPreviewImageUrl(firstImg.image_path); }}
-                                    title={`${docs.length} doc${docs.length > 1 ? 's' : ''} attached — click to preview`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPreviewImageUrl(firstImg.image_path);
+                                    }}
+                                    title={`${docs.length} doc${docs.length > 1 ? "s" : ""} attached — click to preview`}
                                     className="inline-block cursor-pointer"
                                   >
                                     <img
                                       src={firstImg.image_path}
-                                      alt={firstImg.doc_type || 'source'}
+                                      alt={firstImg.doc_type || "source"}
                                       className="w-12 h-12 rounded-md object-cover border border-border hover:border-accent transition-colors"
-                                      onError={e => {
-                                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                      onError={(e) => {
+                                        (
+                                          e.currentTarget as HTMLImageElement
+                                        ).style.display = "none";
                                       }}
                                     />
                                   </button>
@@ -1326,7 +1396,9 @@ export default function MovementsPage() {
                                 return (
                                   <span className="text-t2 text-xs">
                                     {m.linkedPoRef ? (
-                                      <span className="text-accent">{m.linkedPoRef}</span>
+                                      <span className="text-accent">
+                                        {m.linkedPoRef}
+                                      </span>
                                     ) : (
                                       m.sourceRef
                                     )}
@@ -1334,7 +1406,10 @@ export default function MovementsPage() {
                                 );
                               }
                               return (
-                                <div className="w-12 h-12 rounded-md border border-dashed border-border flex items-center justify-center text-t3" title="No supporting doc">
+                                <div
+                                  className="w-12 h-12 rounded-md border border-dashed border-border flex items-center justify-center text-t3"
+                                  title="No supporting doc"
+                                >
                                   <Receipt size={16} weight="duotone" />
                                 </div>
                               );
@@ -1352,7 +1427,10 @@ export default function MovementsPage() {
                                 <>
                                   <p>{dt.toLocaleDateString()}</p>
                                   <p className="text-t3/70">
-                                    {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {dt.toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
                                   </p>
                                 </>
                               );

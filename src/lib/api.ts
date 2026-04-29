@@ -910,7 +910,6 @@ export type Warehouse = {
   _id: string;
   warehouseCode: string;
   name: string;
-  warehouseType: 'commercial' | 'workshop_store' | 'fuel_tank' | 'transit' | 'bonded';
   siteType?: 'standard' | 'crushing_site';
   address: string | null;
   region: string | null;

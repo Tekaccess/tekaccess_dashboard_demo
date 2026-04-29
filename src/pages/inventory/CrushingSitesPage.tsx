@@ -85,18 +85,17 @@ export default function CrushingSitesPage() {
   }
 
   async function handleSave() {
-    if (!draft.warehouseCode || !draft.name) {
-      setError('Site code and name are required.');
+    if (!draft.name) {
+      setError('Site name is required.');
       return;
     }
     setSaving(true);
     setError(null);
-    const payload = {
-      ...draft,
-      totalCapacity: Number(draft.totalCapacity),
-      siteType: 'crushing_site' as const,
-      warehouseType: selected?.warehouseType || ('commercial' as const),
-    };
+    // On create, drop warehouseCode so the backend auto-assigns CS-###.
+    const { warehouseCode, ...rest } = draft;
+    const payload = modalMode === 'new'
+      ? { ...rest, totalCapacity: Number(draft.totalCapacity), siteType: 'crushing_site' as const }
+      : { ...draft, totalCapacity: Number(draft.totalCapacity), siteType: 'crushing_site' as const };
     const res = modalMode === 'new'
       ? await apiCreateWarehouse(payload)
       : await apiUpdateWarehouse(selected!._id, payload);
@@ -123,22 +122,22 @@ export default function CrushingSitesPage() {
       <div>
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Site Details</p>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          {modalMode === 'edit' ? (
             <div>
-              <label className="block text-xs text-t3 mb-1.5">Site Code *</label>
-              <input className={inp}
-                value={draft.warehouseCode}
-                onChange={e => updateDraft({ warehouseCode: e.target.value.toUpperCase() })}
-                placeholder="e.g. CS-RUSI-01"
-                disabled={modalMode === 'edit'} />
+              <label className="block text-xs text-t3 mb-1.5">Site Code</label>
+              <input className={inp} value={draft.warehouseCode} disabled />
             </div>
-            <div>
-              <label className="block text-xs text-t3 mb-1.5">Name *</label>
-              <input className={inp}
-                value={draft.name}
-                onChange={e => updateDraft({ name: e.target.value })}
-                placeholder="e.g. Rusizi Crusher" />
-            </div>
+          ) : (
+            <p className="text-[11px] text-t3 italic px-1">
+              Site code is auto-assigned on save (CS-001, CS-002, ...).
+            </p>
+          )}
+          <div>
+            <label className="block text-xs text-t3 mb-1.5">Name *</label>
+            <input className={inp}
+              value={draft.name}
+              onChange={e => updateDraft({ name: e.target.value })}
+              placeholder="e.g. Rusizi Crusher" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -215,7 +214,7 @@ export default function CrushingSitesPage() {
         <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-t3">Code</span>
-            <span className="font-mono font-bold text-accent">{draft.warehouseCode || '—'}</span>
+            <span className="font-mono font-bold text-accent">{draft.warehouseCode || 'auto-assigned'}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-t3">Role</span>
