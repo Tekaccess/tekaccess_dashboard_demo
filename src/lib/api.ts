@@ -1258,7 +1258,7 @@ export type InventoryDoc = {
   _id: string;
   movement_id: string;
   movement_ref?: string;
-  doc_type: 'Invoice' | 'Receipt' | 'Waybill' | 'Weighbridge';
+  doc_type: 'Invoice' | 'Receipt' | 'Waybill' | 'Weighbridge' | 'Site Photo';
   image_path: string;
   uploaded_at?: string;
 };

@@ -160,7 +160,7 @@ interface NewMovementDraft {
   otherProcessingDescription: string;
   // Source supporting doc — uploaded after the movement is created
   sourceImage: File | null;
-  sourceDocType: "Invoice" | "Receipt" | "Waybill" | "Weighbridge";
+  sourceDocType: "Invoice" | "Receipt" | "Waybill" | "Weighbridge" | "Site Photo";
 }
 
 function emptyDraft(): NewMovementDraft {
@@ -263,7 +263,7 @@ export default function MovementsPage() {
   const [detailsError, setDetailsError] = useState<string | null>(null);
   const [detailsRefreshing, setDetailsRefreshing] = useState(false);
   // Add-document state — used when the user attaches a source doc post-hoc.
-  const [docUploadType, setDocUploadType] = useState<'Weighbridge' | 'Receipt' | 'Invoice' | 'Waybill'>('Weighbridge');
+  const [docUploadType, setDocUploadType] = useState<'Weighbridge' | 'Receipt' | 'Invoice' | 'Waybill' | 'Site Photo'>('Weighbridge');
   const [docUploadFile, setDocUploadFile] = useState<File | null>(null);
   const [docUploading, setDocUploading] = useState(false);
   const { visible: colVis, toggle: colToggle } = useColumnVisibility(
@@ -1298,6 +1298,7 @@ export default function MovementsPage() {
               <option value="Receipt">Receipt</option>
               <option value="Invoice">Invoice</option>
               <option value="Waybill">Waybill</option>
+              <option value="Site Photo">Site Photo</option>
             </select>
           </div>
           <div>
@@ -2012,6 +2013,7 @@ export default function MovementsPage() {
                         <option value="Receipt">Receipt</option>
                         <option value="Invoice">Invoice</option>
                         <option value="Waybill">Waybill</option>
+                        <option value="Site Photo">Site Photo</option>
                       </select>
                     </div>
                     <div className="flex-1 min-w-[160px]">
