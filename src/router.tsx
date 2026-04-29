@@ -42,6 +42,7 @@ import TripsPage from "./pages/transport/TripsPage";
 import FuelPage from "./pages/transport/FuelPage";
 import MaintenancePage from "./pages/transport/MaintenancePage";
 import ProcurementInvoicesPage from "./pages/procurement/InvoicesPage";
+import ProcurementContractsPage from "./pages/procurement/ContractsPage";
 
 export const rootRoute = createRootRoute({
   component: RootLayout,
@@ -185,6 +186,12 @@ const procurementInvoicesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/procurement/invoices",
   component: ProcurementInvoicesPage,
+});
+
+const procurementContractsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/procurement/contracts",
+  component: ProcurementContractsPage,
 });
 
 // ── Explicit Transport Routes ───────────────────────────────────────────────
@@ -332,6 +339,7 @@ const routeTree = rootRoute.addChildren([
   transportersRoute,
   procurementReportsRoute,
   procurementInvoicesRoute,
+  procurementContractsRoute,
   // Operations explicit pages
   contractsRoute,
   deliveriesRoute,
