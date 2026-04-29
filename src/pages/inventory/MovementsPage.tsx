@@ -39,6 +39,7 @@ import {
   apiDeleteMovement,
   apiListInventoryDocs,
   apiCreateInventoryDoc,
+  apiDeleteInventoryDoc,
   StockMovement,
   StockItem,
   Warehouse,
@@ -267,6 +268,8 @@ export default function MovementsPage() {
   const [docUploadType, setDocUploadType] = useState<'Weighbridge' | 'Receipt' | 'Invoice' | 'Waybill' | 'Site Photo'>('Weighbridge');
   const [docUploadFile, setDocUploadFile] = useState<File | null>(null);
   const [docUploading, setDocUploading] = useState(false);
+  const [docDeleteId, setDocDeleteId] = useState<string | null>(null);
+  const [docDeleting, setDocDeleting] = useState(false);
   const { visible: colVis, toggle: colToggle } = useColumnVisibility(
     "movements",
     MOV_COLS,
@@ -855,6 +858,23 @@ export default function MovementsPage() {
         ...prev,
         [detailsMovement._id]: docRes.data.documents,
       }));
+    }
+  }
+
+  async function removeDoc(docId: string) {
+    setDocDeleting(true);
+    const res = await apiDeleteInventoryDoc(docId);
+    setDocDeleting(false);
+    setDocDeleteId(null);
+    if (!res.success) {
+      setDetailsError((res as any).message || 'Delete failed.');
+      return;
+    }
+    if (detailsMovement) {
+      const docRes = await apiListInventoryDocs({ movement_ids: detailsMovement._id, limit: '100' });
+      if (docRes.success) {
+        setMovementDocs((prev) => ({ ...prev, [detailsMovement._id]: docRes.data.documents }));
+      }
     }
   }
 
@@ -1909,6 +1929,77 @@ export default function MovementsPage() {
         </div>
       )}
 
+      {/* Delete movement confirmation modal */}
+      {detailsDeleteConfirm && detailsMovement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div
+            className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 bg-rose-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash size={22} weight="duotone" className="text-rose-400" />
+            </div>
+            <h3 className="text-base font-bold text-t1 text-center mb-1">Delete Movement?</h3>
+            <p className="text-xs font-mono text-t3 text-center mb-2">{detailsMovement.movementRef}</p>
+            <p className="text-xs text-t3 text-center mb-6">
+              This will reverse its effect on warehouse capacity and permanently remove all attached documents. This cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDetailsDeleteConfirm(false)}
+                disabled={detailsSaving}
+                className="flex-1 py-2.5 border border-border text-t2 hover:bg-surface rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteDetails}
+                disabled={detailsSaving}
+                className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {detailsSaving && <Spinner size={14} className="animate-spin" />}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove document confirmation modal */}
+      {docDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div
+            className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 bg-rose-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash size={22} weight="duotone" className="text-rose-400" />
+            </div>
+            <h3 className="text-base font-bold text-t1 text-center mb-1">Remove Image?</h3>
+            <p className="text-xs text-t3 text-center mb-6">
+              The image will be permanently deleted from Cloudinary and cannot be recovered.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDocDeleteId(null)}
+                disabled={docDeleting}
+                className="flex-1 py-2.5 border border-border text-t2 hover:bg-surface rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => removeDoc(docDeleteId)}
+                disabled={docDeleting}
+                className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {docDeleting && <Spinner size={14} className="animate-spin" />}
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {detailsMovement && (() => {
         const m = detailsMovement;
         const meta = TYPE_META[m.movementType] ?? {
@@ -1979,25 +2070,37 @@ export default function MovementsPage() {
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {images.map((d) => (
-                        <button
+                        <div
                           key={d._id}
-                          type="button"
-                          onClick={() => setPreviewImageUrl(d.image_path)}
                           className="group relative rounded-lg overflow-hidden border border-border hover:border-accent transition-colors"
-                          title={`${d.doc_type || "doc"} — click to expand`}
                         >
-                          <img
-                            src={d.image_path}
-                            alt={d.doc_type || "source"}
-                            className="w-full h-32 object-cover"
-                            onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).style.display = "none";
-                            }}
-                          />
-                          <span className="absolute bottom-0 inset-x-0 px-2 py-1 text-[10px] bg-black/60 text-white font-medium truncate">
-                            {d.doc_type || "Document"}
-                          </span>
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewImageUrl(d.image_path)}
+                            className="w-full block"
+                            title={`${d.doc_type || "doc"} — click to expand`}
+                          >
+                            <img
+                              src={d.image_path}
+                              alt={d.doc_type || "source"}
+                              className="w-full h-32 object-cover"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).style.display = "none";
+                              }}
+                            />
+                            <span className="absolute bottom-0 inset-x-0 px-2 py-1 text-[10px] bg-black/60 text-white font-medium truncate">
+                              {d.doc_type || "Document"}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDocDeleteId(d._id)}
+                            className="absolute top-1.5 right-1.5 p-1 bg-black/60 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500/80"
+                            title="Remove image"
+                          >
+                            <Trash size={12} weight="bold" />
+                          </button>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -2079,44 +2182,18 @@ export default function MovementsPage() {
 
               {/* Footer actions */}
               <div className="flex items-center justify-between gap-2 p-4 border-t border-border shrink-0">
-                {detailsDeleteConfirm ? (
-                  <>
-                    <span className="text-xs text-rose-400 font-medium">
-                      Delete this movement? Capacity will be reversed.
-                    </span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setDetailsDeleteConfirm(false)}
-                        className="px-3 py-2 text-xs border border-border rounded-lg text-t2 hover:bg-surface transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={deleteDetails}
-                        disabled={detailsSaving}
-                        className="px-3 py-2 text-xs font-bold bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors disabled:opacity-60 inline-flex items-center gap-1.5"
-                      >
-                        {detailsSaving && <Spinner size={11} className="animate-spin" />}
-                        Confirm Delete
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => setDetailsDeleteConfirm(true)}
-                      className="px-3 py-2 text-xs border border-rose-500/30 text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors inline-flex items-center gap-1.5"
-                    >
-                      <Trash size={12} /> Delete
-                    </button>
-                    <button
-                      onClick={() => openEditFullForm(m)}
-                      className="px-4 py-2 text-xs font-bold bg-accent text-white rounded-lg hover:bg-accent-h transition-colors inline-flex items-center gap-1.5"
-                    >
-                      <PencilSimple size={12} /> Edit in Full Editor
-                    </button>
-                  </>
-                )}
+                <button
+                  onClick={() => setDetailsDeleteConfirm(true)}
+                  className="px-3 py-2 text-xs border border-rose-500/30 text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors inline-flex items-center gap-1.5"
+                >
+                  <Trash size={12} /> Delete
+                </button>
+                <button
+                  onClick={() => openEditFullForm(m)}
+                  className="px-4 py-2 text-xs font-bold bg-accent text-white rounded-lg hover:bg-accent-h transition-colors inline-flex items-center gap-1.5"
+                >
+                  <PencilSimple size={12} /> Edit in Full Editor
+                </button>
               </div>
             </div>
           </div>

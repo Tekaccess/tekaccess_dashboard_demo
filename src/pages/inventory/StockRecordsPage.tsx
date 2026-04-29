@@ -140,6 +140,7 @@ export default function StockRecordsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [warehouseFilter, setWarehouseFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [visibleCols, setVisibleCols] = useState<Record<ColKey, boolean>>(
     () => Object.fromEntries(ALL_COLS.map(c => [c.key, true])) as Record<ColKey, boolean>
   );
@@ -161,6 +162,7 @@ export default function StockRecordsPage() {
     const params: Record<string, string> = {};
     if (search) params.search = search;
     if (warehouseFilter) params.warehouse_id = warehouseFilter;
+    if (statusFilter) params.status = statusFilter;
     const [recRes, sumRes, prodRes, whRes] = await Promise.all([
       apiListStockRecords(params),
       apiGetStockRecordsSummary(),
@@ -172,7 +174,7 @@ export default function StockRecordsPage() {
     if (prodRes.success) setProducts(prodRes.data.products);
     if (whRes.success) setWarehouses(whRes.data.warehouses);
     setLoading(false);
-  }, [search, warehouseFilter]);
+  }, [search, warehouseFilter, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -358,16 +360,9 @@ export default function StockRecordsPage() {
       <div className="flex gap-2 pt-2">
         <button onClick={() => openEdit(selected)} className="flex-1 py-2.5 border border-accent text-accent rounded-xl text-sm font-bold hover:bg-accent/5 transition-all">Edit</button>
       </div>
-      {deleteConfirm === selected._id ? (
-        <div className="flex gap-2">
-          <button onClick={() => handleDelete(selected._id)} className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 transition-all">Confirm Delete</button>
-          <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2.5 border border-border text-t2 rounded-xl text-sm font-bold hover:bg-surface transition-all">Cancel</button>
-        </div>
-      ) : (
-        <button onClick={() => setDeleteConfirm(selected._id)} className="w-full py-2.5 border border-rose-500/30 text-rose-400 rounded-xl text-sm font-bold hover:bg-rose-500/10 transition-all flex items-center justify-center gap-2">
-          <Trash size={14} /> Delete Record
-        </button>
-      )}
+      <button onClick={() => setDeleteConfirm(selected._id)} className="w-full py-2.5 border border-rose-500/30 text-rose-400 rounded-xl text-sm font-bold hover:bg-rose-500/10 transition-all flex items-center justify-center gap-2">
+        <Trash size={14} /> Delete Record
+      </button>
     </div>
   ) : (
     <div className="space-y-5 pb-10">
@@ -524,6 +519,12 @@ export default function StockRecordsPage() {
           <select value={warehouseFilter} onChange={e => setWarehouseFilter(e.target.value)} className="px-3 py-2 border border-border rounded-lg text-sm bg-surface text-t2 outline-none focus:border-accent transition-colors">
             <option value="">All Warehouses</option>
             {warehouses.map(w => <option key={w._id} value={w._id}>{w.name}</option>)}
+          </select>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3 py-2 border border-border rounded-lg text-sm bg-surface text-t2 outline-none focus:border-accent transition-colors">
+            <option value="">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="Ready to Ship">Ready to Ship</option>
+            <option value="Complete">Complete</option>
           </select>
           <div className="relative" ref={colsBtnRef}>
             <button
@@ -684,14 +685,7 @@ export default function StockRecordsPage() {
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={e => { e.stopPropagation(); openView(r); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"><Eye size={14} weight="duotone" /></button>
                       <button onClick={e => { e.stopPropagation(); openEdit(r); }} className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"><PencilSimple size={14} weight="duotone" /></button>
-                      {deleteConfirm === r._id ? (
-                        <>
-                          <button onClick={e => { e.stopPropagation(); handleDelete(r._id); }} className="text-[10px] font-bold px-2 py-1 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors">Yes</button>
-                          <button onClick={e => { e.stopPropagation(); setDeleteConfirm(null); }} className="text-[10px] px-2 py-1 border border-border rounded-lg text-t3 hover:bg-surface transition-colors">No</button>
-                        </>
-                      ) : (
-                        <button onClick={e => { e.stopPropagation(); setDeleteConfirm(r._id); }} className="p-1.5 text-t3 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"><Trash size={14} weight="duotone" /></button>
-                      )}
+                      <button onClick={e => { e.stopPropagation(); setDeleteConfirm(r._id); }} className="p-1.5 text-t3 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"><Trash size={14} weight="duotone" /></button>
                     </div>
                   </td>
                 </tr>
@@ -710,6 +704,39 @@ export default function StockRecordsPage() {
         formContent={formContent}
         previewContent={previewContent}
       />
+
+      {/* Delete confirmation modal */}
+      {deleteConfirm && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setDeleteConfirm(null)}>
+          <div className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-12 bg-rose-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash size={22} weight="duotone" className="text-rose-400" />
+            </div>
+            <h3 className="text-base font-bold text-t1 text-center mb-1">Delete Stock Record?</h3>
+            <p className="text-xs font-mono text-accent text-center mb-2">
+              {records.find(r => r._id === deleteConfirm)?.item_code}
+            </p>
+            <p className="text-xs text-t3 text-center mb-6">
+              This will permanently remove the record. This cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 py-2.5 border border-border text-t2 hover:bg-surface rounded-xl text-sm font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirm)}
+                className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-sm font-bold transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Route-stop editor */}
       {routeEditing && createPortal(
