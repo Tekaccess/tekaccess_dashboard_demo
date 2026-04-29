@@ -44,6 +44,7 @@ type ModalMode = 'new' | 'edit' | 'view' | null;
 
 interface DraftWarehouse {
   warehouseCode: string; name: string; warehouseType: string;
+  siteType: 'standard' | 'crushing_site';
   address: string; region: string; country: string;
   capacityUnit: string; totalCapacity: number;
   managerName: string; managerContact: string;
@@ -52,6 +53,7 @@ interface DraftWarehouse {
 function emptyDraft(): DraftWarehouse {
   return {
     warehouseCode: '', name: '', warehouseType: 'commercial',
+    siteType: 'standard',
     address: '', region: '', country: 'Rwanda',
     capacityUnit: 'tons', totalCapacity: 0,
     managerName: '', managerContact: '',
@@ -131,6 +133,7 @@ export default function WarehousesPage() {
   function openEdit(w: Warehouse) {
     setDraft({
       warehouseCode: w.warehouseCode, name: w.name, warehouseType: w.warehouseType,
+      siteType: w.siteType || 'standard',
       address: w.address || '', region: w.region || '', country: w.country,
       capacityUnit: w.capacityUnit, totalCapacity: w.totalCapacity,
       managerName: w.managerName || '', managerContact: w.managerContact || '',
@@ -246,6 +249,18 @@ export default function WarehousesPage() {
             <input className={inp}
               value={draft.name} onChange={e => updateDraft({ name: e.target.value })}
               placeholder="e.g. Kigali Main Warehouse" />
+          </div>
+          <div>
+            <label className="block text-xs text-t3 mb-1.5">Site Role *</label>
+            <select className={inp}
+              value={draft.siteType}
+              onChange={e => updateDraft({ siteType: e.target.value as 'standard' | 'crushing_site' })}>
+              <option value="standard">Standard Warehouse — holds processed / sellable stock</option>
+              <option value="crushing_site">Crushing Site — holds raw / uncrushed material to be processed</option>
+            </select>
+            <p className="text-[10px] text-t3 mt-1 leading-relaxed">
+              Crushing Sites receive uncrushed material from suppliers. Once processed, transfer the stock to a Standard Warehouse.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
