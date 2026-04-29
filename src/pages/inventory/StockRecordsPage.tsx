@@ -14,6 +14,7 @@ import {
 } from '../../lib/api';
 import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSelect';
 import DocumentSidePanel from '../../components/DocumentSidePanel';
+import { TableSkeleton, KpiCardsSkeleton } from '../../components/ui/Skeleton';
 
 const STATUS_STYLES: Record<string, string> = {
   Complete: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
@@ -495,6 +496,7 @@ export default function StockRecordsPage() {
         <p className="text-sm text-t3 mt-0.5">Monitor inventory levels, demand gaps, and cash deficits</p>
       </div>
 
+      {loading ? <KpiCardsSkeleton count={4} /> : (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Records', value: summary.totalItems, Icon: Cube, color: 'text-accent', bg: 'bg-accent-glow' },
@@ -511,6 +513,7 @@ export default function StockRecordsPage() {
           </div>
         ))}
       </div>
+      )}
 
       <div className="bg-card rounded-xl border border-border">
         <div className="flex flex-wrap items-center gap-3 p-4 border-b border-border">
@@ -577,7 +580,7 @@ export default function StockRecordsPage() {
             </thead>
             <tbody className="bg-card divide-y divide-border-s">
               {loading ? (
-                <tr><td colSpan={ALL_COLS.filter(c => visibleCols[c.key]).length + 2} className="px-4 py-16 text-center"><Spinner size={24} className="animate-spin text-t3 mx-auto" /></td></tr>
+                <TableSkeleton rows={6} columns={ALL_COLS.filter(c => visibleCols[c.key]).length + 2} />
               ) : records.length === 0 ? (
                 <tr><td colSpan={ALL_COLS.filter(c => visibleCols[c.key]).length + 2} className="px-4 py-16 text-center text-sm text-t3">
                   <div className="flex flex-col items-center gap-3">

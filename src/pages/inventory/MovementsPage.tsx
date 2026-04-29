@@ -58,6 +58,7 @@ import ColumnSelector, {
   useColumnVisibility,
   ColDef,
 } from "../../components/ui/ColumnSelector";
+import { TableSkeleton } from "../../components/ui/Skeleton";
 
 const MOVEMENT_TABS = [
   { id: "", label: "All" },
@@ -1597,11 +1598,7 @@ export default function MovementsPage() {
             />
           </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center h-48">
-              <Spinner size={28} className="animate-spin text-accent" />
-            </div>
-          ) : movements.length === 0 ? (
+          {!loading && movements.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-t3">
               <ArrowsCounterClockwise size={40} className="mb-2 opacity-40" />
               <p>No movements found.</p>
@@ -1661,7 +1658,13 @@ export default function MovementsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {movements.map((m) => {
+                  {loading && (
+                    <TableSkeleton
+                      rows={8}
+                      columns={MOV_COLS.filter((c) => colVis.has(c.key)).length}
+                    />
+                  )}
+                  {!loading && movements.map((m) => {
                     const meta = TYPE_META[m.movementType] ?? {
                       label: m.movementType,
                       style: "bg-surface text-t3 border-border",

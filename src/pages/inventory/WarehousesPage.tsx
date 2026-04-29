@@ -17,6 +17,7 @@ import { Input } from '../../components/ui/input';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../../components/ui/table';
+import { TableSkeleton, KpiCardsSkeleton } from '../../components/ui/Skeleton';
 
 const SITE_LABELS: Record<string, string> = {
   standard: 'Standard Warehouse',
@@ -484,6 +485,7 @@ export default function WarehousesPage() {
         </div>
 
         {/* KPI Cards */}
+        {loading ? <KpiCardsSkeleton count={4} /> : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {kpiCards.map(({ label, value, Icon, bg, color }) => (
             <div key={label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
@@ -497,6 +499,7 @@ export default function WarehousesPage() {
             </div>
           ))}
         </div>
+        )}
 
         {/* Search + Filter */}
         <div className="bg-card rounded-xl border border-border p-4">
@@ -519,11 +522,7 @@ export default function WarehousesPage() {
 
         {/* Warehouses Table */}
         <div className="bg-card rounded-xl border border-border overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center h-48">
-              <Spinner size={28} className="animate-spin text-accent" />
-            </div>
-          ) : warehouses.length === 0 ? (
+          {!loading && warehouses.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-t3">
               <WarehouseIcon size={40} className="mb-2 opacity-40" />
               <p>No warehouses found.</p>
@@ -542,7 +541,13 @@ export default function WarehousesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {warehouses.map(w => {
+                  {loading && (
+                    <TableSkeleton
+                      rows={6}
+                      columns={WH_COLS.filter(c => colVis.has(c.key)).length}
+                    />
+                  )}
+                  {!loading && warehouses.map(w => {
                     const pct = warehouseUsedPct(w);
                     return (
                       <TableRow
