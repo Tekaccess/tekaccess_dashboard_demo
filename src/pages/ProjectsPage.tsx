@@ -6,18 +6,25 @@ import {
 } from '@phosphor-icons/react';
 import { apiListProjects, apiCreateProject, apiUpdateProject, apiDeleteProject, Project } from '../lib/api';
 import ModernModal from '../components/ui/ModernModal';
+import ColumnSelector, { useColumnVisibility, ColDef } from '../components/ui/ColumnSelector';
+import { Input } from '../components/ui/input';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '../components/ui/table';
+import { TableSkeleton } from '../components/ui/Skeleton';
 
 type ModalMode = 'new' | 'edit' | null;
 
 interface DraftProject {
   name: string;
   quantityTonnes: string;
+  deliveredTonnes: string;
   endDate: string;
   status: 'active' | 'completed';
 }
 
 function emptyDraft(): DraftProject {
-  return { name: '', quantityTonnes: '', endDate: '', status: 'active' };
+  return { name: '', quantityTonnes: '', deliveredTonnes: '', endDate: '', status: 'active' };
 }
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
@@ -29,6 +36,16 @@ const STATUS_STYLES: Record<string, string> = {
   on_hold:   'bg-amber-500/10 text-amber-500 border-amber-500/20',
   cancelled: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
 };
+
+const PROJ_COLS: ColDef[] = [
+  { key: 'code',      label: 'ID',                 defaultVisible: true },
+  { key: 'name',      label: 'Name',               defaultVisible: true },
+  { key: 'demand',    label: 'Demand (Tonnes)',     defaultVisible: true },
+  { key: 'delivered', label: 'Delivered (Tonnes)',  defaultVisible: true },
+  { key: 'timeline',  label: 'Timeline',            defaultVisible: true },
+  { key: 'status',    label: 'Status',              defaultVisible: true },
+  { key: 'actions',   label: 'Actions',             defaultVisible: true },
+];
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -48,6 +65,7 @@ export default function ProjectsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('projects', PROJ_COLS);
 
   const loadProjects = useCallback(async () => {
     setLoading(true);
@@ -69,8 +87,9 @@ export default function ProjectsPage() {
     setDraft({
       name: p.name,
       quantityTonnes: p.quantityTonnes != null ? String(p.quantityTonnes) : '',
+      deliveredTonnes: p.deliveredTonnes != null ? String(p.deliveredTonnes) : '',
       endDate: p.endDate ? p.endDate.slice(0, 10) : '',
-      status: (p.status === 'completed' ? 'completed' : 'active'),
+      status: p.status === 'completed' ? 'completed' : 'active',
     });
     setSelected(p);
     setError(null);
@@ -78,26 +97,20 @@ export default function ProjectsPage() {
   }
 
   async function handleSave() {
-    if (!draft.name.trim()) {
-      setError('Project name is required.');
-      return;
-    }
-    setSaving(true);
-    setError(null);
+    if (!draft.name.trim()) { setError('Project name is required.'); return; }
+    setSaving(true); setError(null);
     const payload: Partial<Project> = {
       name: draft.name.trim(),
       status: draft.status,
       quantityTonnes: draft.quantityTonnes !== '' ? Number(draft.quantityTonnes) : null,
+      deliveredTonnes: draft.deliveredTonnes !== '' ? Number(draft.deliveredTonnes) : null,
       endDate: draft.endDate || null,
     };
     const res = modalMode === 'new'
       ? await apiCreateProject(payload)
       : await apiUpdateProject(selected!._id, payload);
     setSaving(false);
-    if (!res.success) {
-      setError((res as any).message || 'Save failed.');
-      return;
-    }
+    if (!res.success) { setError((res as any).message || 'Save failed.'); return; }
     setModalMode(null);
     loadProjects();
   }
@@ -139,42 +152,40 @@ export default function ProjectsPage() {
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs text-t3 mb-1.5">Quantity (tonnes)</label>
-          <input
-            type="number" min={0} step="any"
-            className={inp}
+          <label className="block text-xs text-t3 mb-1.5">Demand (Tonnes)</label>
+          <input type="number" min={0} step="any" className={inp}
             value={draft.quantityTonnes}
             onChange={e => setDraft(d => ({ ...d, quantityTonnes: e.target.value }))}
             placeholder="e.g. 5000" />
         </div>
         <div>
-          <label className="block text-xs text-t3 mb-1.5">Timeline (deadline)</label>
-          <input
-            type="date"
-            className={inp}
-            value={draft.endDate}
-            onChange={e => setDraft(d => ({ ...d, endDate: e.target.value }))} />
+          <label className="block text-xs text-t3 mb-1.5">Delivered (Tonnes)</label>
+          <input type="number" min={0} step="any" className={inp}
+            value={draft.deliveredTonnes}
+            onChange={e => setDraft(d => ({ ...d, deliveredTonnes: e.target.value }))}
+            placeholder="e.g. 2500" />
         </div>
+      </div>
+
+      <div>
+        <label className="block text-xs text-t3 mb-1.5">Timeline (deadline)</label>
+        <input type="date" className={inp}
+          value={draft.endDate}
+          onChange={e => setDraft(d => ({ ...d, endDate: e.target.value }))} />
       </div>
 
       <div>
         <label className="block text-xs text-t3 mb-3">Status</label>
         <div className="flex gap-3">
           {(['active', 'completed'] as const).map(s => (
-            <label
-              key={s}
+            <label key={s}
               className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-colors text-sm font-medium ${
                 draft.status === s ? STATUS_STYLES[s] : 'border-border hover:bg-surface text-t3'
-              }`}
-            >
-              <input
-                type="radio"
-                name="status"
-                value={s}
+              }`}>
+              <input type="radio" name="status" value={s}
                 checked={draft.status === s}
                 onChange={() => setDraft(d => ({ ...d, status: s }))}
-                className="sr-only"
-              />
+                className="sr-only" />
               {s.charAt(0).toUpperCase() + s.slice(1)}
             </label>
           ))}
@@ -207,9 +218,15 @@ export default function ProjectsPage() {
         <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Delivery</p>
         <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
           <div className="flex justify-between text-sm">
-            <span className="text-t3">Quantity</span>
+            <span className="text-t3">Demand</span>
             <span className="text-t1 font-bold">
-              {draft.quantityTonnes !== '' ? `${Number(draft.quantityTonnes).toLocaleString()} t` : '—'}
+              {draft.quantityTonnes !== '' ? `${Number(draft.quantityTonnes).toLocaleString()} Tonnes` : '—'}
+            </span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-t3">Delivered</span>
+            <span className="text-t1 font-bold">
+              {draft.deliveredTonnes !== '' ? `${Number(draft.deliveredTonnes).toLocaleString()} Tonnes` : '—'}
             </span>
           </div>
           <div className="flex justify-between text-sm">
@@ -224,6 +241,7 @@ export default function ProjectsPage() {
   return (
     <>
       <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-t1">Projects</h1>
@@ -238,12 +256,12 @@ export default function ProjectsPage() {
         {/* KPI cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: 'Total',     value: projects.length, bg: 'bg-blue-500/10',    color: 'text-blue-400',    Icon: BriefcaseMetal },
-            { label: 'Active',    value: activeCount,     bg: 'bg-emerald-500/10', color: 'text-emerald-400', Icon: BriefcaseMetal },
-            { label: 'Completed', value: completedCount,  bg: 'bg-accent-glow',    color: 'text-accent',      Icon: BriefcaseMetal },
+            { label: 'Total',        value: projects.length, bg: 'bg-blue-500/10',    color: 'text-blue-400',    Icon: BriefcaseMetal },
+            { label: 'Active',       value: activeCount,     bg: 'bg-emerald-500/10', color: 'text-emerald-400', Icon: BriefcaseMetal },
+            { label: 'Completed',    value: completedCount,  bg: 'bg-accent-glow',    color: 'text-accent',      Icon: BriefcaseMetal },
             {
-              label: 'Total Tonnes',
-              value: projects.reduce((s, p) => s + (p.quantityTonnes ?? 0), 0).toLocaleString(),
+              label: 'Total Demand',
+              value: `${projects.reduce((s, p) => s + (p.quantityTonnes ?? 0), 0).toLocaleString()} T`,
               bg: 'bg-amber-500/10', color: 'text-amber-500', Icon: Package,
             },
           ].map(({ label, value, bg, color, Icon }) => (
@@ -259,93 +277,116 @@ export default function ProjectsPage() {
           ))}
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
-            <input
-              className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors"
-              placeholder="Search projects..." value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-t1 outline-none focus:border-accent transition-colors">
-            <option value="all">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-          </select>
-        </div>
-
+        {/* Table card */}
         <div className="bg-card rounded-xl border border-border overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center h-48">
-              <Spinner size={28} className="animate-spin text-accent" />
+          {/* Filter bar */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border flex-wrap">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+              <Input
+                placeholder="Search projects..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-9" />
             </div>
-          ) : projects.length === 0 ? (
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-t1 outline-none focus:border-accent transition-colors">
+              <option value="all">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+            </select>
+            <div className="ml-auto">
+              <ColumnSelector cols={PROJ_COLS} visible={colVis} onToggle={colToggle} />
+            </div>
+          </div>
+
+          {/* Table */}
+          {!loading && projects.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-t3">
               <BriefcaseMetal size={40} className="mb-2 opacity-40" />
               <p>No projects found.</p>
             </div>
           ) : (
             <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'never' } }}>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-surface/30">
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">ID</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Quantity (Tonnes)</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Timeline</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Status</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {projects.map(p => (
-                    <tr key={p._id} className="hover:bg-surface/50 transition-colors">
-                      <td className="px-4 py-3.5 font-mono text-xs text-accent">{p.projectCode}</td>
-                      <td className="px-4 py-3.5 font-medium text-t1">{p.name}</td>
-                      <td className="px-4 py-3.5 text-left text-t2">
-                        {p.quantityTonnes != null
-                          ? <span className="font-semibold text-t1">{p.quantityTonnes.toLocaleString()} <span className="text-t3 font-normal text-xs">t</span></span>
-                          : <span className="text-t3">—</span>}
-                      </td>
-                      <td className="px-4 py-3.5 text-t2 whitespace-nowrap">
-                        {p.endDate ? (
-                          <span className="inline-flex items-center gap-1.5">
-                            <CalendarBlank size={12} className="text-t3" />
-                            {fmtDate(p.endDate)}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {colVis.has('code')      && <TableHead>ID</TableHead>}
+                    {colVis.has('name')      && <TableHead>Name</TableHead>}
+                    {colVis.has('demand')    && <TableHead className="text-right">Demand (Tonnes)</TableHead>}
+                    {colVis.has('delivered') && <TableHead className="text-right">Delivered (Tonnes)</TableHead>}
+                    {colVis.has('timeline')  && <TableHead>Timeline</TableHead>}
+                    {colVis.has('status')    && <TableHead>Status</TableHead>}
+                    {colVis.has('actions')   && <TableHead className="text-right">Actions</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading && (
+                    <TableSkeleton rows={6} columns={PROJ_COLS.filter(c => colVis.has(c.key)).length} />
+                  )}
+                  {!loading && projects.map(p => (
+                    <TableRow key={p._id} className="hover:bg-surface/50 transition-colors">
+                      {colVis.has('code') && (
+                        <TableCell className="font-mono text-xs text-accent">{p.projectCode}</TableCell>
+                      )}
+                      {colVis.has('name') && (
+                        <TableCell className="font-medium text-t1">{p.name}</TableCell>
+                      )}
+                      {colVis.has('demand') && (
+                        <TableCell className="text-right">
+                          {p.quantityTonnes != null
+                            ? <span className="font-semibold text-t1">{p.quantityTonnes.toLocaleString()} <span className="text-t3 font-normal text-xs">Tonnes</span></span>
+                            : <span className="text-t3">—</span>}
+                        </TableCell>
+                      )}
+                      {colVis.has('delivered') && (
+                        <TableCell className="text-right">
+                          {p.deliveredTonnes != null
+                            ? <span className="font-semibold text-emerald-400">{p.deliveredTonnes.toLocaleString()} <span className="text-t3 font-normal text-xs">Tonnes</span></span>
+                            : <span className="text-t3">—</span>}
+                        </TableCell>
+                      )}
+                      {colVis.has('timeline') && (
+                        <TableCell className="text-t2 whitespace-nowrap">
+                          {p.endDate
+                            ? <span className="inline-flex items-center gap-1.5"><CalendarBlank size={12} className="text-t3" />{fmtDate(p.endDate)}</span>
+                            : <span className="text-t3">—</span>}
+                        </TableCell>
+                      )}
+                      {colVis.has('status') && (
+                        <TableCell>
+                          <span className={`inline-flex items-center text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${STATUS_STYLES[p.status] ?? 'text-t3 border-border'}`}>
+                            {p.status.replace('_', ' ')}
                           </span>
-                        ) : <span className="text-t3">—</span>}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className={`inline-flex items-center text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${STATUS_STYLES[p.status] ?? 'text-t3 border-border'}`}>
-                          {p.status.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <div className="flex justify-end gap-2 text-t3">
-                          <button onClick={() => openEdit(p)}
-                            className="hover:text-t1 p-1.5 rounded hover:bg-surface transition-colors">
-                            <PencilSimple size={14} />
-                          </button>
-                          {confirmDeleteId === p._id ? (
-                            <button onClick={() => handleDelete(p._id)} disabled={saving}
-                              className="px-2 py-1 text-[11px] border border-rose-500 text-rose-400 bg-rose-500/10 rounded hover:bg-rose-500/20 transition-colors flex items-center gap-1">
-                              {saving ? <Spinner size={11} className="animate-spin" /> : <Trash size={11} />} Confirm
+                        </TableCell>
+                      )}
+                      {colVis.has('actions') && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2 text-t3">
+                            <button onClick={() => openEdit(p)}
+                              className="hover:text-t1 p-1.5 rounded hover:bg-surface transition-colors">
+                              <PencilSimple size={14} />
                             </button>
-                          ) : (
-                            <button onClick={() => setConfirmDeleteId(p._id)}
-                              className="hover:text-rose-400 p-1.5 rounded hover:bg-rose-500/10 transition-colors">
-                              <Trash size={14} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                            {confirmDeleteId === p._id ? (
+                              <button onClick={() => handleDelete(p._id)} disabled={saving}
+                                className="px-2 py-1 text-[11px] border border-rose-500 text-rose-400 bg-rose-500/10 rounded hover:bg-rose-500/20 transition-colors flex items-center gap-1">
+                                {saving ? <Spinner size={11} className="animate-spin" /> : <Trash size={11} />} Confirm
+                              </button>
+                            ) : (
+                              <button onClick={() => setConfirmDeleteId(p._id)}
+                                className="hover:text-rose-400 p-1.5 rounded hover:bg-rose-500/10 transition-colors">
+                                <Trash size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </OverlayScrollbarsComponent>
           )}
         </div>
@@ -357,11 +398,8 @@ export default function ProjectsPage() {
         title={modalMode === 'new' ? 'Create New Project' : 'Edit Project'}
         summaryContent={modalSummary}
         actions={
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-          >
+          <button onClick={handleSave} disabled={saving}
+            className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
             {saving && <Spinner size={14} className="animate-spin" />}
             {modalMode === 'new' ? 'Create Project' : 'Save Changes'}
           </button>

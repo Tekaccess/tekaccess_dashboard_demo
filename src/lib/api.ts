@@ -605,6 +605,7 @@ export type Project = {
   startDate: string | null;
   endDate: string | null;
   quantityTonnes: number | null;
+  deliveredTonnes: number | null;
   managerName: string | null;
   notes: string | null;
 };
