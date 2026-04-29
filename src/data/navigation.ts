@@ -64,7 +64,6 @@ export const departmentsData = [
           { name: "Finance Overview", icon: CurrencyCircleDollar },
           { name: "Transport Overview", icon: Truck },
           { name: "Operations Overview", icon: Pulse },
-          { name: "Inventory Overview", icon: Cube },
           { name: "Procurement Overview", icon: ShoppingCart },
         ],
       },
@@ -163,6 +162,11 @@ export const departmentsData = [
               "Maintenance History",
             ],
           },
+          {
+            name: "Spare Parts",
+            icon: Gear,
+            subItems: [],
+          },
         ],
       },
     ],
@@ -206,15 +210,8 @@ export const departmentsData = [
           },
         ],
       },
-    ],
-  },
-  {
-    id: "inventory",
-    name: "Inventory Department",
-    role: "Inventory Manager",
-    sections: [
       {
-        title: "Inventory Department",
+        title: "Inventory",
         items: [
           { name: "Products", icon: Package },
           { name: "Stock", icon: Cube },
@@ -253,11 +250,6 @@ export const departmentsData = [
           {
             name: "Shipments",
             icon: Boat,
-            subItems: [],
-          },
-          {
-            name: "Spare Parts",
-            icon: Gear,
             subItems: [],
           },
           {

@@ -72,13 +72,12 @@ export const adminRoute = createRoute({
 
 // ── Shared Routes ──────────────────────────────────────────────────────────
 
-const ALL_DEPT_IDS = ['executive', 'finance', 'transport', 'operations', 'inventory', 'procurement', 'data_team'];
+const ALL_DEPT_IDS = ['executive', 'finance', 'transport', 'operations', 'procurement', 'data_team'];
 const DEPT_ACCESS_SLUGS: Record<string, string[]> = {
   executive:   ['executive'],
   finance:     ['finance'],
   transport:   ['transport'],
-  operations:  ['operations'],
-  inventory:   ['inventory'],
+  operations:  ['operations', 'inventory'],
   procurement: ['procurement'],
   data_team:   ['data_entry'],
 };
