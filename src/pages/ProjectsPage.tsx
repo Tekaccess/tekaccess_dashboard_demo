@@ -393,7 +393,7 @@ export default function ProjectsPage() {
                               ? <span className="text-t3">—</span>
                               : <span className={`inline-flex items-center gap-1 font-semibold text-sm ${overdue ? 'text-rose-400' : urgent ? 'text-amber-400' : 'text-t1'}`}>
                                   <Timer size={13} />
-                                  {overdue ? `${Math.abs(days)}d overdue` : `${days}d`}
+                                  {overdue ? `${Math.abs(days)}days overdue` : `${days}days`}
                                 </span>}
                           </TableCell>
                         );
