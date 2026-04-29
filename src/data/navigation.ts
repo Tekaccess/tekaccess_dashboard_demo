@@ -31,6 +31,7 @@ import {
   Desktop,
   CurrencyCircleDollar,
   Invoice,
+  Storefront,
   SpeedometerIcon,
   CheckFatIcon,
   ClipboardTextIcon,
@@ -39,6 +40,7 @@ import {
   ShieldWarningIcon,
   ChatTextIcon,
   HardDrivesIcon,
+  ReceiptIcon,
 } from "@phosphor-icons/react";
 
 
@@ -245,6 +247,11 @@ export const departmentsData = [
             subItems: [],
           },
           {
+            name: "Invoices",
+            icon: ReceiptIcon,
+            subItems: [],
+          },
+          {
             name: "Reports",
             icon: ChartPie,
             subItems: [],
@@ -252,6 +259,12 @@ export const departmentsData = [
         ],
       },
     ],
+  },
+  {
+    id: "sales",
+    name: "Sales Department",
+    role: "Sales Manager",
+    sections: [],
   },
   {
     id: "data_team",

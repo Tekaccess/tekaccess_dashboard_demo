@@ -18,6 +18,7 @@ const EXPLICIT_ROUTES: Record<string, string> = {
   "transport/spare-parts": "/procurement/spare-parts",
   "procurement/transporters": "/procurement/transporters",
   "procurement/reports": "/procurement/reports",
+  "procurement/invoices": "/procurement/invoices",
   "operations/contracts": "/operations/contracts",
   "operations/deliveries": "/operations/deliveries",
   "operations/sites": "/operations/sites",
@@ -40,6 +41,7 @@ const DEPT_ACCESS_SLUGS: Record<string, string[]> = {
   transport:   ["transport"],
   operations:  ["operations", "inventory"],
   procurement: ["procurement"],
+  sales:       ["sales"],
   data_team:   ["data_entry"],
 };
 

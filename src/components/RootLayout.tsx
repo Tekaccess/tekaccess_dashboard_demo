@@ -5,7 +5,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import { useAuth } from '../contexts/AuthContext';
 
-const ALL_DEPT_IDS = ['executive', 'finance', 'transport', 'operations', 'procurement', 'data_team'];
+const ALL_DEPT_IDS = ['executive', 'finance', 'transport', 'operations', 'procurement', 'sales', 'data_team'];
 
 const DEPT_ACCESS_SLUGS: Record<string, string[]> = {
   executive:   ['executive'],
@@ -13,6 +13,7 @@ const DEPT_ACCESS_SLUGS: Record<string, string[]> = {
   transport:   ['transport'],
   operations:  ['operations', 'inventory'],
   procurement: ['procurement'],
+  sales:       ['sales'],
   data_team:   ['data_entry'],
 };
 

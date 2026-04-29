@@ -1637,6 +1637,68 @@ export async function apiIssueTransporterInvoice(id: string) {
   });
 }
 
+// ─── Procurement Invoices ─────────────────────────────────────────────────────
+
+export type ProcurementInvoice = {
+  _id: string;
+  invoiceRef: string;
+  counterpartyType: 'supplier' | 'transporter';
+  counterpartyId: string;
+  counterpartyName: string;
+  counterpartyCode: string | null;
+  linkedPoId: string | null;
+  linkedPoRef: string | null;
+  amount: number;
+  currency: string;
+  taxAmount: number;
+  totalAmount: number;
+  invoiceDate: string;
+  dueDate: string | null;
+  paidAt: string | null;
+  status: 'draft' | 'sent' | 'received' | 'approved' | 'paid' | 'rejected' | 'overdue';
+  paymentMethod: string | null;
+  paymentRef: string | null;
+  description: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProcurementInvoiceSummary = {
+  draft: number; sent: number; received: number; approved: number;
+  paid: number; rejected: number; overdue: number;
+  totalApproved: number; totalPaid: number;
+};
+
+export async function apiGetProcurementInvoicesSummary() {
+  return request<{ summary: ProcurementInvoiceSummary }>('/procurement/invoices/summary');
+}
+
+export async function apiListProcurementInvoices(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ invoices: ProcurementInvoice[]; pagination: { total: number; pages: number; page: number; limit: number } }>(
+    `/procurement/invoices${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function apiCreateProcurementInvoice(data: Partial<ProcurementInvoice>) {
+  return request<{ invoice: ProcurementInvoice }>('/procurement/invoices', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateProcurementInvoice(id: string, data: Partial<ProcurementInvoice>) {
+  return request<{ invoice: ProcurementInvoice }>(`/procurement/invoices/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteProcurementInvoice(id: string) {
+  return request(`/procurement/invoices/${id}`, { method: 'DELETE' });
+}
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 export type NotificationCategory = 'task' | 'target' | 'event' | 'system';

@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import {
   apiGetTransportSummary, apiListTrips, apiListFuelLogs, apiListMaintenanceRecords,
-  apiGetProcurementSummary, apiGetShipmentsSummary, apiGetSparePartsSummary,
+  apiGetProcurementSummary, apiGetShipmentsSummary,
   apiGetContractsSummary, apiGetDeliveriesSummary,
   apiGetInventorySummary, apiListSites,
   Trip, FuelLog, MaintenanceRecord, Site,
@@ -281,17 +281,14 @@ function ProcurementDashboard() {
   const [loading, setLoading] = useState(true);
   const [procSummary, setProcSummary] = useState<any>(null);
   const [shipSummary, setShipSummary] = useState<any>(null);
-  const [sparesSummary, setSparesSummary] = useState<any>(null);
 
   useEffect(() => {
     Promise.all([
       apiGetProcurementSummary(),
       apiGetShipmentsSummary(),
-      apiGetSparePartsSummary(),
-    ]).then(([pRes, sRes, spRes]) => {
+    ]).then(([pRes, sRes]) => {
       if (pRes.success) setProcSummary(pRes.data);
       if (sRes.success) setShipSummary(sRes.data.summary);
-      if (spRes.success) setSparesSummary(spRes.data);
       setLoading(false);
     });
   }, []);
@@ -300,7 +297,6 @@ function ProcurementDashboard() {
 
   const ps = procSummary?.summary ?? {};
   const ss = shipSummary ?? {};
-  const sp = sparesSummary?.summary ?? {};
 
   const poChartData = (procSummary?.poByStatus ?? []).map((d: any) => ({
     status: d._id.replace(/_/g, ' '),
@@ -316,22 +312,12 @@ function ProcurementDashboard() {
     { name: 'Overdue', value: ss.overdue ?? 0 },
   ].filter(d => d.value > 0);
 
-  const spareCategories = (sparesSummary?.summary?.categories ?? []).map((c: any) => ({
-    category: c._id || 'Unknown',
-    count: c.count,
-    value: Math.round(c.totalValue / 1000),
-  }));
-
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <KpiCard label="Active POs" value={ps.activePOs ?? 0} Icon={ShoppingCart} bg="bg-accent-glow" color="text-accent" />
         <KpiCard label="Draft POs" value={ps.draftPOs ?? 0} Icon={ShoppingCart} bg="bg-surface" color="text-t3" />
         <KpiCard label="Active Suppliers" value={ps.activeSuppliers ?? 0} Icon={Handshake} bg="bg-emerald-500/10" color="text-emerald-400" />
-        <KpiCard label="Spare Part Alerts" value={ps.sparePartAlerts ?? 0} Icon={Warning}
-          bg={(ps.sparePartAlerts ?? 0) > 0 ? 'bg-rose-500/10' : 'bg-emerald-500/10'}
-          color={(ps.sparePartAlerts ?? 0) > 0 ? 'text-rose-400' : 'text-emerald-400'}
-        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -370,48 +356,22 @@ function ProcurementDashboard() {
         </ChartCard>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartCard title="Spare Parts by Category">
-          {spareCategories.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={spareCategories} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-                <XAxis type="number" tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
-                <YAxis dataKey="category" type="category" tick={{ fill: 'var(--color-t3)', fontSize: 11 }} width={90} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="count" fill="#8b5cf6" radius={[0, 4, 4, 0]} name="Parts" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-sm text-t3 text-center py-12">No spare parts data available</p>
-          )}
-        </ChartCard>
-
-        <div className="bg-card rounded-xl border border-border p-5 flex flex-col gap-3">
-          <p className="text-sm font-semibold text-t1">Active PO Value</p>
-          <p className="text-4xl font-bold text-accent mt-2">
-            {(ps.activePoValue ?? 0) >= 1_000_000
-              ? `${((ps.activePoValue ?? 0) / 1_000_000).toFixed(2)}M`
-              : `${Math.round((ps.activePoValue ?? 0) / 1000)}K`}
-          </p>
-          <p className="text-xs text-t3">Across approved, sent &amp; partially received POs</p>
-          <div className="mt-auto pt-4 border-t border-border grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-xs text-t3">Shipments In Transit</p>
-              <p className="text-lg font-bold text-blue-400">{ss.inTransit ?? 0}</p>
-            </div>
-            <div>
-              <p className="text-xs text-t3">At Customs</p>
-              <p className="text-lg font-bold text-amber-500">{ss.atCustoms ?? 0}</p>
-            </div>
-            <div>
-              <p className="text-xs text-t3">Total Spare Parts</p>
-              <p className="text-lg font-bold text-t1">{sp.totalParts ?? 0}</p>
-            </div>
-            <div>
-              <p className="text-xs text-t3">Low Stock Items</p>
-              <p className={`text-lg font-bold ${(sp.lowStock ?? 0) > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{sp.lowStock ?? 0}</p>
-            </div>
+      <div className="bg-card rounded-xl border border-border p-5 flex flex-col gap-3">
+        <p className="text-sm font-semibold text-t1">Active PO Value</p>
+        <p className="text-4xl font-bold text-accent mt-2">
+          {(ps.activePoValue ?? 0) >= 1_000_000
+            ? `${((ps.activePoValue ?? 0) / 1_000_000).toFixed(2)}M`
+            : `${Math.round((ps.activePoValue ?? 0) / 1000)}K`}
+        </p>
+        <p className="text-xs text-t3">Across approved, sent &amp; partially received POs</p>
+        <div className="mt-auto pt-4 border-t border-border grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-xs text-t3">Shipments In Transit</p>
+            <p className="text-lg font-bold text-blue-400">{ss.inTransit ?? 0}</p>
+          </div>
+          <div>
+            <p className="text-xs text-t3">At Customs</p>
+            <p className="text-lg font-bold text-amber-500">{ss.atCustoms ?? 0}</p>
           </div>
         </div>
       </div>

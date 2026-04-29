@@ -41,6 +41,7 @@ import FleetPage from "./pages/transport/FleetPage";
 import TripsPage from "./pages/transport/TripsPage";
 import FuelPage from "./pages/transport/FuelPage";
 import MaintenancePage from "./pages/transport/MaintenancePage";
+import ProcurementInvoicesPage from "./pages/procurement/InvoicesPage";
 
 export const rootRoute = createRootRoute({
   component: RootLayout,
@@ -73,13 +74,14 @@ export const adminRoute = createRoute({
 
 // ── Shared Routes ──────────────────────────────────────────────────────────
 
-const ALL_DEPT_IDS = ['executive', 'finance', 'transport', 'operations', 'procurement', 'data_team'];
+const ALL_DEPT_IDS = ['executive', 'finance', 'transport', 'operations', 'procurement', 'sales', 'data_team'];
 const DEPT_ACCESS_SLUGS: Record<string, string[]> = {
   executive:   ['executive'],
   finance:     ['finance'],
   transport:   ['transport'],
   operations:  ['operations', 'inventory'],
   procurement: ['procurement'],
+  sales:       ['sales'],
   data_team:   ['data_entry'],
 };
 
@@ -177,6 +179,12 @@ const procurementReportsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/procurement/reports",
   component: ProcurementReportsPage,
+});
+
+const procurementInvoicesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/procurement/invoices",
+  component: ProcurementInvoicesPage,
 });
 
 // ── Explicit Transport Routes ───────────────────────────────────────────────
@@ -323,6 +331,7 @@ const routeTree = rootRoute.addChildren([
   sparePartsRoute,
   transportersRoute,
   procurementReportsRoute,
+  procurementInvoicesRoute,
   // Operations explicit pages
   contractsRoute,
   deliveriesRoute,
