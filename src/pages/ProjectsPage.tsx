@@ -127,11 +127,16 @@ export default function ProjectsPage() {
 
   async function handleDelete(id: string) {
     setSaving(true);
-    const res = await apiDeleteProject(id);
-    setSaving(false);
-    setConfirmDeleteId(null);
-    if (!res.success) return;
-    loadProjects();
+    try {
+      const res = await apiDeleteProject(id);
+      if (!res.success) return;
+      loadProjects();
+    } catch {
+      // network/parse error — button will re-enable
+    } finally {
+      setSaving(false);
+      setConfirmDeleteId(null);
+    }
   }
 
   const activeCount    = projects.filter(p => p.status === 'active').length;

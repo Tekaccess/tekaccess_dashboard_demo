@@ -136,10 +136,16 @@ export default function ClientsPage() {
   async function handleDelete() {
     if (!selected) return;
     setSaving(true); setError(null);
-    const res = await apiDeleteClient(selected._id);
-    setSaving(false);
-    if (!res.success) { setError((res as any).message || 'Delete failed.'); setConfirmDelete(false); return; }
-    setModalMode(null); setConfirmDelete(false); loadClients();
+    try {
+      const res = await apiDeleteClient(selected._id);
+      if (!res.success) { setError((res as any).message || 'Delete failed.'); setConfirmDelete(false); return; }
+      setModalMode(null); setConfirmDelete(false); loadClients();
+    } catch {
+      setError('Delete failed. Please try again.');
+      setConfirmDelete(false);
+    } finally {
+      setSaving(false);
+    }
   }
 
   const formContent = modalMode !== 'view' ? (
