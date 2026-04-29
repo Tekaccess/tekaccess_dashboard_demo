@@ -29,6 +29,7 @@ const EXPLICIT_ROUTES: Record<string, string> = {
   "operations/crushing-sites": "/inventory/crushing-sites",
   "operations/loading-sites": "/inventory/loading-sites",
   "finance/approvals": "/finance/approvals",
+  "executive/employees": "/admin",
 };
 
 // Maps each frontend department id to the backend dashboardAccess slugs that grant access.
@@ -145,30 +146,6 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
           defer
         >
         <div className="space-y-5">
-          {/* Admin Menu */}
-          {user?.role === "super_admin" && (
-            <div>
-              <p className="text-[10px] font-bold text-t3 uppercase tracking-widest mb-2 px-2">
-                Administration
-              </p>
-              <ul className="space-y-0.5">
-                <li>
-                  <button
-                    onClick={() => { navigate({ to: "/admin" }); if (onClose) onClose(); }}
-                    className={navItemClass(location.pathname === "/admin")}
-                  >
-                    <UserPlusIcon
-                      size={20}
-                      weight={location.pathname === "/admin" ? "fill" : "regular"}
-                      className={`mr-2.5 shrink-0 ${location.pathname === "/admin" ? "text-accent" : "text-t3"}`}
-                    />
-                    Add Accounts
-                  </button>
-                </li>
-              </ul>
-            </div>
-          )}
-
           {/* Shared Menu */}
           <div>
             <p className="text-[10px] font-bold text-t3 uppercase tracking-widest mb-2 px-2">
@@ -185,7 +162,9 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
                         ? location.pathname === "/calendar"
                         : item.name === "Task management"
                           ? location.pathname === "/tasks"
-                          : false;
+                          : item.name === "Projects"
+                            ? location.pathname === "/procurement/projects"
+                            : false;
 
                 return (
                   <li key={idx}>
@@ -195,6 +174,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
                         else if (item.name === "Reports") navigate({ to: "/reports" });
                         else if (item.name === "Calendar") navigate({ to: "/calendar" });
                         else if (item.name === "Task management") navigate({ to: "/tasks" });
+                        else if (item.name === "Projects") navigate({ to: "/procurement/projects" });
                         if (onClose) onClose();
                       }}
                       className={navItemClass(isActive)}

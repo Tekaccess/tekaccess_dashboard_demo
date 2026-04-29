@@ -49,6 +49,7 @@ export const sharedMenu = {
     { name: "Reports", icon: ClipboardTextIcon },
     { name: "Calendar", icon: CalendarDotsIcon },
     { name: "Task management", icon: CheckFatIcon },
+    { name: "Projects", icon: BriefcaseMetal },
   ],
 };
 
@@ -71,11 +72,7 @@ export const departmentsData = [
         title: "Company",
         items: [
           { name: "Company Settings", icon: Buildings },
-          {
-            name: "Employees",
-            icon: Users,
-            subItems: ["All Employees", "Add Employee", "Departments"],
-          },
+          { name: "Employees", icon: Users },
         ],
       },
     ],
@@ -208,11 +205,6 @@ export const departmentsData = [
             icon: Users,
             subItems: ["Client List", "Satisfaction Ratings"],
           },
-        ],
-      },
-      {
-        title: "Inventory",
-        items: [
           { name: "Products", icon: Package },
           { name: "Stock", icon: Cube },
           { name: "Movements", icon: ArrowsCounterClockwise },
@@ -235,11 +227,6 @@ export const departmentsData = [
           {
             name: "Purchase Orders",
             icon: ShoppingCart,
-            subItems: [],
-          },
-          {
-            name: "Projects",
-            icon: BriefcaseMetal,
             subItems: [],
           },
           {
