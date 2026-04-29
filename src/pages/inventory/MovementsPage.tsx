@@ -196,9 +196,7 @@ const MOV_COLS: ColDef[] = [
   { key: "product", label: "Product", defaultVisible: true },
   { key: "warehouse", label: "Warehouse", defaultVisible: true },
   { key: "qty", label: "Net / Qty", defaultVisible: true },
-  { key: "balance", label: "Before → After", defaultVisible: true },
   { key: "supplier", label: "Supplier / Truck", defaultVisible: true },
-  { key: "costs", label: "Processing Costs", defaultVisible: true },
   { key: "source", label: "Source", defaultVisible: true },
   { key: "posted", label: "Posted", defaultVisible: true },
 ];
@@ -211,6 +209,8 @@ export default function MovementsPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [trucks, setTrucks] = useState<TruckType[]>([]);
+  // Map of movement_id → docs[] so the Source column can render a thumbnail
+  // of the first attached image without a per-row fetch.
   const [movementDocs, setMovementDocs] = useState<Record<string, InventoryDoc[]>>({});
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -244,6 +244,8 @@ export default function MovementsPage() {
     if (movRes.success) {
       setMovements(movRes.data.movements);
       setTotal(movRes.data.pagination.total);
+      // Pull docs for the loaded movement IDs so the Source column can
+      // thumbnail the first attached image without N round-trips.
       const ids = movRes.data.movements.map(m => m._id);
       if (ids.length > 0) {
         apiListInventoryDocs({ movement_ids: ids.join(','), limit: '500' }).then(dr => {
@@ -843,6 +845,57 @@ export default function MovementsPage() {
         )}
       </section>
 
+      {/* ── Source Document (image upload) ── */}
+      <section className="space-y-3">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
+          <Receipt size={11} weight="duotone" /> Source Document
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">Document Type</label>
+            <select
+              className={inp}
+              value={draft.sourceDocType}
+              onChange={(e) => upd({ sourceDocType: e.target.value as NewMovementDraft['sourceDocType'] })}
+            >
+              <option value="Weighbridge">Weighbridge</option>
+              <option value="Receipt">Receipt</option>
+              <option value="Invoice">Invoice</option>
+              <option value="Waybill">Waybill</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              className={`${inp} file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-accent/10 file:text-accent file:text-xs file:font-semibold cursor-pointer`}
+              onChange={(e) => upd({ sourceImage: e.target.files?.[0] || null })}
+            />
+          </div>
+        </div>
+        {draft.sourceImage && (
+          <div className="flex items-center gap-3 p-2 bg-surface/50 border border-border rounded-lg">
+            <img
+              src={URL.createObjectURL(draft.sourceImage)}
+              alt="preview"
+              className="w-16 h-16 rounded object-cover border border-border"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-t1 truncate font-medium">{draft.sourceImage.name}</p>
+              <p className="text-[10px] text-t3">{(draft.sourceImage.size / 1024).toFixed(1)} KB</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => upd({ sourceImage: null })}
+              className="text-t3 hover:text-rose-400 text-xs"
+            >
+              Remove
+            </button>
+          </div>
+        )}
+      </section>
+
       {/* ── Weighbridge & Quantity ── */}
       <section className="space-y-3">
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
@@ -1140,19 +1193,9 @@ export default function MovementsPage() {
                         Net / Qty
                       </th>
                     )}
-                    {colVis.has("balance") && (
-                      <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                        Before → After
-                      </th>
-                    )}
                     {colVis.has("supplier") && (
                       <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
                         Supplier / Truck
-                      </th>
-                    )}
-                    {colVis.has("costs") && (
-                      <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                        Processing Costs
                       </th>
                     )}
                     {colVis.has("source") && (
@@ -1175,10 +1218,6 @@ export default function MovementsPage() {
                       dot: "bg-t3",
                       Icon: ArrowsCounterClockwise,
                     };
-                    const totalProcessing =
-                      (m.crusherCost ?? 0) +
-                      (m.samplingCost ?? 0) +
-                      (m.otherProcessingCost ?? 0);
                     return (
                       <tr
                         key={m._id}
@@ -1238,13 +1277,6 @@ export default function MovementsPage() {
                             )}
                           </td>
                         )}
-                        {colVis.has("balance") && (
-                          <td className="px-4 py-3.5 text-right text-xs text-t3 whitespace-nowrap">
-                            {m.qtyBefore != null && m.qtyAfter != null
-                              ? `${m.qtyBefore.toLocaleString()} → ${m.qtyAfter.toLocaleString()}`
-                              : "—"}
-                          </td>
-                        )}
                         {colVis.has("supplier") && (
                           <td className="px-4 py-3.5">
                             {m.supplierName && (
@@ -1259,38 +1291,6 @@ export default function MovementsPage() {
                               </p>
                             )}
                             {!m.supplierName && !m.truckPlate && (
-                              <span className="text-t3 text-xs">—</span>
-                            )}
-                          </td>
-                        )}
-                        {colVis.has("costs") && (
-                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                            {totalProcessing > 0 ? (
-                              <div>
-                                <span className="text-amber-500 font-semibold text-sm">
-                                  {totalProcessing.toLocaleString()}
-                                </span>
-                                <div className="text-[10px] text-t3 space-y-0.5 mt-0.5 text-left">
-                                  {(m.crusherCost ?? 0) > 0 && (
-                                    <p>
-                                      Crusher: {m.crusherCost?.toLocaleString()}
-                                    </p>
-                                  )}
-                                  {(m.samplingCost ?? 0) > 0 && (
-                                    <p>
-                                      Sampling:{" "}
-                                      {m.samplingCost?.toLocaleString()}
-                                    </p>
-                                  )}
-                                  {(m.otherProcessingCost ?? 0) > 0 && (
-                                    <p>
-                                      {m.otherProcessingDescription || "Other"}:{" "}
-                                      {m.otherProcessingCost?.toLocaleString()}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            ) : (
                               <span className="text-t3 text-xs">—</span>
                             )}
                           </td>

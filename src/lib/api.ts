@@ -968,8 +968,6 @@ export type StockMovement = {
   warehouseId: string;
   warehouseName: string;
   qty: number;
-  qtyBefore: number;
-  qtyAfter: number;
   unitCost: number;
   totalCost: number;
   sourceType: string;
@@ -978,7 +976,8 @@ export type StockMovement = {
   notes: string | null;
   delay_reason: string | null;
   postedBy: { _id: string; fullName: string } | null;
-  postedAt: string;
+  movementDate: string;
+  createdAt?: string;
   grossWeight: number | null;
   tareWeight: number | null;
   deductionWeight: number;
