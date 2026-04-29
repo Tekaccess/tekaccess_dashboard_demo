@@ -294,7 +294,7 @@ export default function ProjectsPage() {
                   <tr className="border-b border-border bg-surface/30">
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">ID</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Name</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider">Qty (t)</th>
+                    <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider">Quantity (Tonnes)</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Timeline</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Status</th>
                     <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider">Actions</th>
