@@ -1443,6 +1443,18 @@ export async function apiCreateMaintenanceRecord(data: Partial<MaintenanceRecord
 export async function apiUpdateMaintenanceRecord(id: string, data: Partial<MaintenanceRecord>) {
   return request<{ record: MaintenanceRecord }>(`/transport/maintenance/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
+export async function apiDeleteTruck(id: string) {
+  return request(`/transport/trucks/${id}`, { method: 'DELETE' });
+}
+export async function apiDeleteTrip(id: string) {
+  return request(`/transport/trips/${id}`, { method: 'DELETE' });
+}
+export async function apiDeleteFuelLog(id: string) {
+  return request(`/transport/fuel-logs/${id}`, { method: 'DELETE' });
+}
+export async function apiDeleteMaintenanceRecord(id: string) {
+  return request(`/transport/maintenance/${id}`, { method: 'DELETE' });
+}
 
 // ─── Task Management ────────────────────────────────────────────────────────
 

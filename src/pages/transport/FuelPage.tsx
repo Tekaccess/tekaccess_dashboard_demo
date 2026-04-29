@@ -2,13 +2,13 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, DownloadSimple, ListDashes, ChartBar, TrendUp,
-  Eye, PencilSimple, Spinner, Warning, CheckCircle, X,
+  Eye, PencilSimple, Spinner, Warning, CheckCircle, X, Trash,
 } from '@phosphor-icons/react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Cell,
 } from 'recharts';
-import { apiListFuelLogs, apiCreateFuelLog, apiUpdateFuelLog, FuelLog } from '../../lib/api';
+import { apiListFuelLogs, apiCreateFuelLog, apiUpdateFuelLog, apiDeleteFuelLog, FuelLog } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
 import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
@@ -67,6 +67,8 @@ export default function FuelPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [logs, setLogs] = useState<FuelLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState<FuelLog | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { visible: colVis, toggle: colToggle } = useColumnVisibility('fuel-logs', FUEL_COLS);
 
   const loadLogs = useCallback(async () => {
@@ -129,6 +131,15 @@ export default function FuelPage() {
       if (prev.mode === 'edit') return { ...prev, draft: { ...(prev.draft || emptyDraft()), ...updates } };
       return prev;
     });
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    await apiDeleteFuelLog(confirmDelete._id);
+    setDeleting(false);
+    setConfirmDelete(null);
+    loadLogs();
   }
 
   function handleNew() { setSaveError(null); setModal({ mode: 'new', draft: emptyDraft() }); }
@@ -528,6 +539,7 @@ export default function FuelPage() {
                         <div className="flex items-center justify-end gap-1">
                           <button onClick={e => { e.stopPropagation(); setModal({ mode: 'view', log }); }} className="p-1.5 text-t3 hover:text-accent hover:bg-accent-glow rounded-lg transition-colors"><Eye size={14} weight="duotone" /></button>
                           <button onClick={e => { e.stopPropagation(); handleEdit(log); }} className="p-1.5 text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"><PencilSimple size={14} weight="duotone" /></button>
+                          <button onClick={e => { e.stopPropagation(); setConfirmDelete(log); }} className="p-1.5 text-t3 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"><Trash size={14} weight="duotone" /></button>
                         </div>
                       </td>
                     )}
@@ -573,6 +585,31 @@ export default function FuelPage() {
           </div>
         )}
       </div>
+
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !deleting && setConfirmDelete(null)} />
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-xs mx-4 text-center">
+            <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash size={20} weight="duotone" className="text-rose-500" />
+            </div>
+            <h2 className="text-base font-bold text-t1 mb-1">Delete Fuel Log?</h2>
+            <p className="text-xs text-t3 mb-5">
+              Log <span className="font-semibold text-t2">{confirmDelete.logRef}</span> will be permanently removed.
+            </p>
+            <div className="flex gap-2">
+              <button disabled={deleting} onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-2.5 border border-border text-t1 hover:bg-surface rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
+                Cancel
+              </button>
+              <button disabled={deleting} onClick={handleDelete}
+                className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 disabled:opacity-75 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                {deleting ? <><Spinner size={14} className="animate-spin" /> Deleting…</> : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ModernModal
         isOpen={!!modal}
