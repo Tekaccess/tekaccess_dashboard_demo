@@ -604,6 +604,7 @@ export type Project = {
   currency: string;
   startDate: string | null;
   endDate: string | null;
+  quantityTonnes: number | null;
   managerName: string | null;
   notes: string | null;
 };
