@@ -36,6 +36,7 @@ import StockHistoryPage from "./pages/inventory/StockHistoryPage";
 import DocumentsPage from "./pages/inventory/DocumentsPage";
 import ApprovalsPage from "./pages/finance/ApprovalsPage";
 import ProcurementReportsPage from "./pages/ProcurementReportsPage";
+import TransportersPage from "./pages/TransportersPage";
 import FleetPage from "./pages/transport/FleetPage";
 import TripsPage from "./pages/transport/TripsPage";
 import FuelPage from "./pages/transport/FuelPage";
@@ -164,6 +165,12 @@ const sparePartsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/procurement/spare-parts",
   component: SparePartsPage,
+});
+
+const transportersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/procurement/transporters",
+  component: TransportersPage,
 });
 
 const procurementReportsRoute = createRoute({
@@ -314,6 +321,7 @@ const routeTree = rootRoute.addChildren([
   suppliersRoute,
   shipmentsRoute,
   sparePartsRoute,
+  transportersRoute,
   procurementReportsRoute,
   // Operations explicit pages
   contractsRoute,

@@ -1566,6 +1566,65 @@ export async function apiBulkDeleteMonthlyTargets(ids: string[]) {
   });
 }
 
+// ─── Transporters ────────────────────────────────────────────────────────────
+
+export type Transporter = {
+  _id: string;
+  transporterCode: string;
+  name: string;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  address: string | null;
+  country: string;
+  currency: string;
+  notes: string | null;
+  status: 'active' | 'inactive' | 'blacklisted';
+  trucksCommitted: number;
+  trucksDelivered: number;
+  ratePerTruck: number;
+  invoiceStatus: 'not_invoiced' | 'invoiced' | 'paid';
+  invoicedAt: string | null;
+  invoiceRef: string | null;
+  invoiceAmount: number | null;
+  createdAt: string;
+};
+
+export async function apiGetTransportersSummary() {
+  return request<{ summary: { totalTransporters: number; totalTrucksCommitted: number; totalTrucksDelivered: number; readyToInvoice: number; totalInvoiced: number } }>(
+    '/procurement/transporters/summary'
+  );
+}
+
+export async function apiListTransporters(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ transporters: Transporter[] }>(`/procurement/transporters${qs ? `?${qs}` : ''}`);
+}
+
+export async function apiCreateTransporter(data: Partial<Transporter>) {
+  return request<{ transporter: Transporter }>('/procurement/transporters', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateTransporter(id: string, data: Partial<Transporter>) {
+  return request<{ transporter: Transporter }>(`/procurement/transporters/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteTransporter(id: string) {
+  return request(`/procurement/transporters/${id}`, { method: 'DELETE' });
+}
+
+export async function apiIssueTransporterInvoice(id: string) {
+  return request<{ transporter: Transporter }>(`/procurement/transporters/${id}/invoice`, {
+    method: 'POST',
+  });
+}
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 export type NotificationCategory = 'task' | 'target' | 'event' | 'system';

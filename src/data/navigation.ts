@@ -240,6 +240,11 @@ export const departmentsData = [
             subItems: [],
           },
           {
+            name: "Transporters",
+            icon: Truck,
+            subItems: [],
+          },
+          {
             name: "Reports",
             icon: ChartPie,
             subItems: [],
