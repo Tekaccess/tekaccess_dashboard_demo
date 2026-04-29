@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Hammer, Buildings, ArrowRight, Spinner, Plus, Info,
-  PencilSimple, Trash,
+  PencilSimple, Trash, CurrencyCircleDollar, CheckCircle,
 } from '@phosphor-icons/react';
 import {
   apiListWarehouses, apiCreateWarehouse, apiUpdateWarehouse, apiDeleteWarehouse,
@@ -13,7 +13,26 @@ import { TableSkeleton } from '../../components/ui/Skeleton';
 
 const CAPACITY_UNITS = ['tons', 'cubic_metres', 'pallets', 'litres', 'units'];
 
+type PaymentTerms = 'we_pay' | 'they_pay' | 'they_have_crusher';
 type ModalMode = 'new' | 'edit' | null;
+
+const PAYMENT_LABELS: Record<PaymentTerms, string> = {
+  we_pay:            'We Pay for Crushing',
+  they_pay:          'They Pay for Crushing',
+  they_have_crusher: 'They Have Crusher',
+};
+
+const PAYMENT_STYLES: Record<PaymentTerms, string> = {
+  we_pay:            'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  they_pay:          'bg-violet-500/10 text-violet-400 border-violet-500/20',
+  they_have_crusher: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+};
+
+const PAYMENT_ICONS: Record<PaymentTerms, React.ReactNode> = {
+  we_pay:            <Hammer size={11} weight="duotone" />,
+  they_pay:          <CurrencyCircleDollar size={11} weight="duotone" />,
+  they_have_crusher: <CheckCircle size={11} weight="duotone" />,
+};
 
 interface DraftSite {
   warehouseCode: string;
@@ -25,6 +44,7 @@ interface DraftSite {
   totalCapacity: number;
   managerName: string;
   managerContact: string;
+  crusherPaymentTerms: PaymentTerms;
 }
 
 function emptyDraft(): DraftSite {
@@ -33,6 +53,7 @@ function emptyDraft(): DraftSite {
     address: '', region: '', country: 'Rwanda',
     capacityUnit: 'tons', totalCapacity: 0,
     managerName: '', managerContact: '',
+    crusherPaymentTerms: 'we_pay',
   };
 }
 
@@ -79,6 +100,7 @@ export default function CrushingSitesPage() {
       totalCapacity: w.totalCapacity,
       managerName: w.managerName || '',
       managerContact: w.managerContact || '',
+      crusherPaymentTerms: (w.crusherPaymentTerms as PaymentTerms) || 'we_pay',
     });
     setSelected(w);
     setError(null);
@@ -92,7 +114,6 @@ export default function CrushingSitesPage() {
     }
     setSaving(true);
     setError(null);
-    // On create, drop warehouseCode so the backend auto-assigns CS-###.
     const { warehouseCode, ...rest } = draft;
     const payload = modalMode === 'new'
       ? { ...rest, totalCapacity: Number(draft.totalCapacity), siteType: 'crushing_site' as const }
@@ -115,6 +136,8 @@ export default function CrushingSitesPage() {
     setModalMode(null);
     load();
   }
+
+  const paymentTerms = (draft.crusherPaymentTerms || 'we_pay') as PaymentTerms;
 
   const formContent = (
     <div className="space-y-5">
@@ -156,6 +179,36 @@ export default function CrushingSitesPage() {
               </select>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Crusher Payment Terms */}
+      <div>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Crusher Payment Terms</p>
+        <div className="space-y-2">
+          {(['we_pay', 'they_pay', 'they_have_crusher'] as PaymentTerms[]).map(term => (
+            <label
+              key={term}
+              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                draft.crusherPaymentTerms === term
+                  ? `${PAYMENT_STYLES[term]} border-opacity-60`
+                  : 'border-border hover:bg-surface'
+              }`}
+            >
+              <input
+                type="radio"
+                name="crusherPaymentTerms"
+                value={term}
+                checked={draft.crusherPaymentTerms === term}
+                onChange={() => updateDraft({ crusherPaymentTerms: term })}
+                className="accent-accent"
+              />
+              <div className="flex items-center gap-2 text-sm font-medium">
+                {PAYMENT_ICONS[term]}
+                {PAYMENT_LABELS[term]}
+              </div>
+            </label>
+          ))}
         </div>
       </div>
 
@@ -227,6 +280,14 @@ export default function CrushingSitesPage() {
       </div>
 
       <div className="space-y-1">
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Crusher Payment Terms</p>
+        <div className={`border rounded-xl p-4 flex items-center gap-2 text-sm font-semibold ${PAYMENT_STYLES[paymentTerms]}`}>
+          {PAYMENT_ICONS[paymentTerms]}
+          {PAYMENT_LABELS[paymentTerms]}
+        </div>
+      </div>
+
+      <div className="space-y-1">
         <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Capacity</p>
         <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
           <div className="flex justify-between text-sm">
@@ -269,10 +330,9 @@ export default function CrushingSitesPage() {
             <div className="flex-1 space-y-3">
               <p className="text-sm font-bold text-t1">How Crushing Sites work</p>
               <p className="text-xs text-t2 leading-relaxed">
-                Some suppliers deliver material that is <span className="font-semibold">already crushed</span>; others
-                deliver <span className="font-semibold">raw / uncrushed</span> stock. Crushed material can go straight into a
-                regular warehouse. Raw material lands at a Crushing Site first, gets processed on-site, and is then
-                transferred into a warehouse for sale.
+                Raw / uncrushed material from suppliers lands at a Crushing Site, gets processed on-site,
+                then transfers to a warehouse. Each site records its <span className="font-semibold">Crusher Payment Terms</span>{' '}
+                to track who bears the crushing cost.
               </p>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card border border-border text-t1 font-medium">
@@ -280,23 +340,29 @@ export default function CrushingSitesPage() {
                 </span>
                 <ArrowRight size={12} className="text-t3" />
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 font-medium">
-                  <Hammer size={12} weight="duotone" /> Crushing Site (uncrushed)
+                  <Hammer size={12} weight="duotone" /> Crushing Site
                 </span>
                 <ArrowRight size={12} className="text-t3" />
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-medium">
                   <Buildings size={12} weight="duotone" /> Warehouse (processed)
                 </span>
               </div>
-              <ul className="text-[11px] text-t3 leading-relaxed space-y-1 pl-4 list-disc">
-                <li>Inbound from a supplier with <span className="font-semibold">no crusher</span> → post the movement against a Crushing Site.</li>
-                <li>Inbound from a supplier <span className="font-semibold">with a crusher</span> → post directly to a regular warehouse.</li>
-                <li>Once material is processed at the site → use <span className="font-semibold">Transfer</span> in Stock Movements to move it to a warehouse.</li>
-              </ul>
+              <div className="flex flex-wrap gap-2 text-[11px]">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border font-medium ${PAYMENT_STYLES.we_pay}`}>
+                  <Hammer size={11} weight="duotone" /> We Pay for Crushing
+                </span>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border font-medium ${PAYMENT_STYLES.they_pay}`}>
+                  <CurrencyCircleDollar size={11} weight="duotone" /> They Pay for Crushing
+                </span>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border font-medium ${PAYMENT_STYLES.they_have_crusher}`}>
+                  <CheckCircle size={11} weight="duotone" /> They Have Crusher
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Sites grid */}
+        {/* Sites table */}
         <div className="bg-card rounded-xl border border-border">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <p className="text-sm font-semibold text-t1">{sites.length} Crushing Site{sites.length !== 1 ? 's' : ''}</p>
@@ -322,6 +388,7 @@ export default function CrushingSitesPage() {
                   <tr className="border-b border-border bg-surface">
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Code</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Crusher Payment Terms</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider">Region</th>
                     <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider">Capacity</th>
                     <th className="px-4 py-3 text-right text-xs font-bold text-t3 uppercase tracking-wider">Used</th>
@@ -329,9 +396,10 @@ export default function CrushingSitesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {loading && <TableSkeleton rows={5} columns={6} />}
+                  {loading && <TableSkeleton rows={5} columns={7} />}
                   {!loading && sites.map(s => {
                     const used = warehouseUsedPct(s);
+                    const terms = (s.crusherPaymentTerms || 'we_pay') as PaymentTerms;
                     return (
                       <tr
                         key={s._id}
@@ -340,6 +408,12 @@ export default function CrushingSitesPage() {
                       >
                         <td className="px-4 py-3.5 font-mono text-accent font-semibold">{s.warehouseCode}</td>
                         <td className="px-4 py-3.5 text-t1 font-medium">{s.name}</td>
+                        <td className="px-4 py-3.5">
+                          <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${PAYMENT_STYLES[terms]}`}>
+                            {PAYMENT_ICONS[terms]}
+                            {PAYMENT_LABELS[terms]}
+                          </span>
+                        </td>
                         <td className="px-4 py-3.5 text-t2">{s.region || '—'}</td>
                         <td className="px-4 py-3.5 text-right text-t2">
                           {s.totalCapacity.toLocaleString()} {s.capacityUnit}
