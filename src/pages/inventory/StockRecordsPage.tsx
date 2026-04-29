@@ -4,13 +4,13 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   MagnifyingGlass, Eye, PencilSimple, Trash, Spinner,
   CheckCircle, Timer, Warning, CurrencyCircleDollar, Cube,
-  Package, CalendarDots, Columns, Receipt,
+  Package, CalendarDots, Columns, Receipt, Hammer, ArrowRight, X, MapPinPlus,
 } from '@phosphor-icons/react';
 import {
   apiListStockRecords, apiUpdateStockRecord,
   apiDeleteStockRecord, apiGetStockRecordsSummary,
   apiListProducts, apiListWarehouses,
-  StockRecord, Product, Warehouse,
+  StockRecord, Product, Warehouse, RouteStop,
 } from '../../lib/api';
 import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSelect';
 import DocumentSidePanel from '../../components/DocumentSidePanel';
@@ -28,6 +28,7 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
 const ALL_COLS = [
   { key: 'product',       label: 'Product' },
   { key: 'warehouse',     label: 'Warehouse' },
+  { key: 'route',         label: 'Route' },
   { key: 'on_hand',       label: 'On Hand' },
   { key: 'demand',        label: 'Demand' },
   { key: 'stock_deficit', label: 'Stock Deficit' },
@@ -149,6 +150,10 @@ export default function StockRecordsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  // Route-stop editor state — opened when the user clicks "Add Stop" on a row.
+  const [routeEditing, setRouteEditing] = useState<StockRecord | null>(null);
+  const [routePickWhId, setRoutePickWhId] = useState<string>('');
+  const [routeSaving, setRouteSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -197,6 +202,44 @@ export default function StockRecordsPage() {
     await apiDeleteStockRecord(id);
     setDeleteConfirm(null);
     setModalMode(null);
+    load();
+  }
+
+  // Crushing sites — what the user can pick as a stop. Pulled from the same
+  // warehouses list, filtered to siteType === 'crushing_site'.
+  const crushingSiteOptions = useMemo<SearchSelectOption[]>(() =>
+    warehouses
+      .filter(w => w.siteType === 'crushing_site')
+      .map(w => ({ value: w._id, label: w.name, sublabel: w.warehouseCode })),
+  [warehouses]);
+
+  function openRouteEditor(r: StockRecord) {
+    setRouteEditing(r);
+    setRoutePickWhId(r.routeStops?.[0]?.warehouseId || '');
+  }
+
+  async function saveRoute() {
+    if (!routeEditing) return;
+    setRouteSaving(true);
+    const wh = warehouses.find(w => w._id === routePickWhId);
+    const stops: RouteStop[] = wh
+      ? [{
+          warehouseId: wh._id,
+          warehouseName: wh.name,
+          warehouseCode: wh.warehouseCode,
+          sequence: 1,
+        }]
+      : [];
+    const res = await apiUpdateStockRecord(routeEditing._id, { routeStops: stops });
+    setRouteSaving(false);
+    if (!res.success) return;
+    setRouteEditing(null);
+    setRoutePickWhId('');
+    load();
+  }
+
+  async function clearRoute(r: StockRecord) {
+    await apiUpdateStockRecord(r._id, { routeStops: [] });
     load();
   }
 
@@ -521,6 +564,7 @@ export default function StockRecordsPage() {
                 <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Item Code</th>
                 {visibleCols.product       && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Product</th>}
                 {visibleCols.warehouse     && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Warehouse</th>}
+                {visibleCols.route         && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Route</th>}
                 {visibleCols.on_hand       && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">On Hand</th>}
                 {visibleCols.demand        && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Demand</th>}
                 {visibleCols.stock_deficit && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Stock Deficit</th>}
@@ -550,6 +594,46 @@ export default function StockRecordsPage() {
                     </td>
                   )}
                   {visibleCols.warehouse && <td className="px-4 py-3 text-sm text-t2 whitespace-nowrap">{r.warehouse_name}</td>}
+                  {visibleCols.route && (
+                    <td className="px-4 py-3 whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                      {r.routeStops && r.routeStops.length > 0 ? (
+                        <div className="flex items-center gap-1.5">
+                          {r.routeStops.map(stop => (
+                            <span
+                              key={stop.warehouseId}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 border border-amber-500/30 text-amber-500"
+                            >
+                              <Hammer size={10} weight="duotone" />
+                              {stop.warehouseName}
+                            </span>
+                          ))}
+                          <ArrowRight size={10} className="text-t3" />
+                          <span className="text-[11px] text-t2 truncate max-w-[140px]">{r.warehouse_name}</span>
+                          <button
+                            onClick={() => openRouteEditor(r)}
+                            className="ml-1 p-1 text-t3 hover:text-accent rounded transition-colors"
+                            title="Edit route"
+                          >
+                            <PencilSimple size={11} weight="duotone" />
+                          </button>
+                          <button
+                            onClick={() => clearRoute(r)}
+                            className="p-1 text-t3 hover:text-rose-400 rounded transition-colors"
+                            title="Remove stop"
+                          >
+                            <X size={11} weight="bold" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => openRouteEditor(r)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium border border-dashed border-border text-t3 hover:border-accent hover:text-accent transition-colors"
+                        >
+                          <MapPinPlus size={11} weight="duotone" /> Add Stop
+                        </button>
+                      )}
+                    </td>
+                  )}
                   {visibleCols.on_hand && <td className="px-4 py-3 text-sm font-medium text-t1 whitespace-nowrap">{r.on_hand.toLocaleString()}</td>}
                   {visibleCols.demand && <td className="px-4 py-3 text-sm text-t2 whitespace-nowrap">{r.demand.toLocaleString()}</td>}
                   {visibleCols.stock_deficit && (
@@ -623,6 +707,76 @@ export default function StockRecordsPage() {
         formContent={formContent}
         previewContent={previewContent}
       />
+
+      {/* Route-stop editor */}
+      {routeEditing && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setRouteEditing(null)}>
+          <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3 p-5 border-b border-border">
+              <div>
+                <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Add Stop</p>
+                <p className="text-sm font-bold text-t1 mt-1">{routeEditing.product_name}</p>
+                <p className="text-xs text-t3">{routeEditing.item_code} · final: {routeEditing.warehouse_name}</p>
+              </div>
+              <button onClick={() => setRouteEditing(null)} className="p-1 text-t3 hover:text-t1 rounded transition-colors">
+                <X size={16} weight="bold" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 leading-relaxed">
+                <Hammer size={14} weight="duotone" className="text-amber-500 mt-0.5 shrink-0" />
+                <div>
+                  Pick a <span className="font-bold">crushing site</span> to route this material through before it reaches the final warehouse. Inbound will land there first; a transfer with the second weighbridge moves it onward.
+                </div>
+              </div>
+              <SearchSelect
+                label="Crushing Site"
+                options={crushingSiteOptions}
+                value={routePickWhId || null}
+                onChange={(v) => setRoutePickWhId(v ?? '')}
+                placeholder={crushingSiteOptions.length === 0 ? 'No crushing sites yet — create one first' : 'Search crushing site...'}
+              />
+              {routePickWhId && (
+                <div className="flex items-center gap-2 text-xs text-t2 px-1">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 font-medium">
+                    <Hammer size={10} weight="duotone" />
+                    {warehouses.find(w => w._id === routePickWhId)?.name}
+                  </span>
+                  <ArrowRight size={11} className="text-t3" />
+                  <span className="text-t1 font-medium">{routeEditing.warehouse_name}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-2 p-4 border-t border-border">
+              {routeEditing.routeStops?.length > 0 ? (
+                <button
+                  onClick={() => { setRoutePickWhId(''); }}
+                  className="text-xs text-rose-400 hover:underline"
+                >
+                  Clear stop
+                </button>
+              ) : <span />}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setRouteEditing(null)}
+                  className="px-4 py-2 text-xs border border-border rounded-lg text-t2 hover:bg-surface transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveRoute}
+                  disabled={routeSaving}
+                  className="px-4 py-2 text-xs font-bold bg-accent text-white rounded-lg hover:bg-accent-h transition-colors disabled:opacity-60 inline-flex items-center gap-1.5"
+                >
+                  {routeSaving && <Spinner size={11} className="animate-spin" />}
+                  Save Route
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

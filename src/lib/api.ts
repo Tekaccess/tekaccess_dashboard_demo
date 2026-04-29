@@ -1041,8 +1041,46 @@ export async function apiCreateMovement(data: {
   return request<{ movement: StockMovement }>('/inventory/movements', { method: 'POST', body: JSON.stringify(data) });
 }
 
+export async function apiGetMovementById(id: string) {
+  return request<{ movement: StockMovement }>(`/inventory/movements/${id}`);
+}
+
 export async function apiDeleteMovement(id: string) {
-  return request<{ message: string }>(`/inventory/movements/${id}`, { method: 'DELETE' });
+  return request<{ message: string; deleted: number }>(`/inventory/movements/${id}`, { method: 'DELETE' });
+}
+
+// Metadata-only edit. Structural fields (qty, warehouseId, movementType, etc.)
+// are immutable on the backend — for those, delete + recreate.
+export async function apiUpdateMovement(id: string, data: Partial<{
+  notes: string | null;
+  remark: string | null;
+  reason: string | null;
+  delay_reason: string | null;
+  supplierName: string | null;
+  supplierTin: string | null;
+  supplierVrn: string | null;
+  supplierPhone: string | null;
+  truckPlate: string | null;
+  driverName: string | null;
+  transportMethod: string | null;
+  pickupCode: string | null;
+  deliveryTime: string | null;
+  grossWeight: number | null;
+  tareWeight: number | null;
+  deductionWeight: number | null;
+  netWeight: number | null;
+  crusherCost: number | null;
+  samplingCost: number | null;
+  otherProcessingCost: number | null;
+  otherProcessingDescription: string | null;
+  linkedPoRef: string | null;
+  itemCode: string | null;
+  itemName: string | null;
+}>) {
+  return request<{ movement: StockMovement }>(`/inventory/movements/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
 }
 
 export async function apiCreateTransfer(data: {
@@ -1091,6 +1129,13 @@ export async function apiDeleteProduct(id: string) {
 
 // ─── Stock Records ────────────────────────────────────────────────────────────
 
+export type RouteStop = {
+  warehouseId: string;
+  warehouseName: string;
+  warehouseCode: string;
+  sequence: number;
+};
+
 export type StockRecord = {
   _id: string;
   item_code: string;
@@ -1111,6 +1156,9 @@ export type StockRecord = {
   supporting_doc: string | null;
   source_po_id: string | null;
   source_po_ref: string | null;
+  // Optional intermediate warehouses (e.g. crushing site) the material
+  // passes through before reaching warehouse_id. Empty = direct delivery.
+  routeStops: RouteStop[];
 };
 
 export async function apiListStockRecords(params: Record<string, string> = {}) {
