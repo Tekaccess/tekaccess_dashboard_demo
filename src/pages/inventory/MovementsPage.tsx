@@ -503,7 +503,7 @@ export default function MovementsPage() {
   const destWhOptions = useMemo<SearchSelectOption[]>(
     () =>
       warehouses
-        // Transfers always end in a Standard Warehouse — material is processed
+        // Transfers always end in a Mine Warehouse — material is processed
         // out of the Crushing Site, never moved into another one.
         .filter((w) => w.siteType !== "crushing_site")
         .filter((w) => w._id !== (selectedStock as any)?.warehouseId)

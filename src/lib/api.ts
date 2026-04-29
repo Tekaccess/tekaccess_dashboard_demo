@@ -912,7 +912,7 @@ export type Warehouse = {
   _id: string;
   warehouseCode: string;
   name: string;
-  siteType?: 'standard' | 'crushing_site';
+  siteType?: 'standard' | 'crushing_site' | 'loading_site';
   address: string | null;
   region: string | null;
   country: string;

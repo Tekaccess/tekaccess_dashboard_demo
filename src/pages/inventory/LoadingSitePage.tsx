@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
-  Plus, MagnifyingGlass, Warehouse as WarehouseIcon, MapPin,
+  Plus, MagnifyingGlass, MapPin,
   PencilSimple, Eye, CheckCircle, Warning, Spinner, Gauge, Trash,
-  ArrowDown, ArrowUp, Truck as TruckIcon, ArrowsLeftRight,
+  Truck as TruckIcon,
 } from '@phosphor-icons/react';
 import {
   apiListWarehouses, apiCreateWarehouse, apiUpdateWarehouse, apiDeleteWarehouse,
@@ -19,32 +19,25 @@ import {
 } from '../../components/ui/table';
 import { TableSkeleton, KpiCardsSkeleton } from '../../components/ui/Skeleton';
 
-const SITE_LABELS: Record<string, string> = {
-  standard: 'Mine Warehouse',
-  crushing_site: 'Crushing Site',
-};
-
-const SITE_STYLES: Record<string, string> = {
-  standard:      'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  crushing_site: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-};
-
 const CAPACITY_UNITS = ['tons', 'cubic_metres', 'pallets', 'litres', 'units'];
 
 type ModalMode = 'new' | 'edit' | 'view' | null;
 
-interface DraftWarehouse {
-  warehouseCode: string; name: string;
-  siteType: 'standard' | 'crushing_site';
-  address: string; region: string; country: string;
-  capacityUnit: string; totalCapacity: number;
-  managerName: string; managerContact: string;
+interface DraftSite {
+  warehouseCode: string;
+  name: string;
+  address: string;
+  region: string;
+  country: string;
+  capacityUnit: string;
+  totalCapacity: number;
+  managerName: string;
+  managerContact: string;
 }
 
-function emptyDraft(): DraftWarehouse {
+function emptyDraft(): DraftSite {
   return {
     warehouseCode: '', name: '',
-    siteType: 'standard',
     address: '', region: '', country: 'Rwanda',
     capacityUnit: 'tons', totalCapacity: 0,
     managerName: '', managerContact: '',
@@ -53,67 +46,63 @@ function emptyDraft(): DraftWarehouse {
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
 
-const WH_COLS: ColDef[] = [
+const LS_COLS: ColDef[] = [
   { key: 'ref',     label: 'Ref',     defaultVisible: true },
   { key: 'name',    label: 'Name',    defaultVisible: true },
-  { key: 'role',    label: 'Role',    defaultVisible: true },
   { key: 'usage',   label: 'Usage',   defaultVisible: true },
   { key: 'manager', label: 'Manager', defaultVisible: true },
   { key: 'actions', label: 'Actions', defaultVisible: true },
 ];
 
-export default function WarehousesPage() {
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+export default function LoadingSitePage() {
+  const [sites, setSites] = useState<Warehouse[]>([]);
   const [summary, setSummary] = useState({ totalItems: 0, totalValue: 0, warehouseCount: 0, lowStockRecords: 0 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Warehouse | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
-  const [draft, setDraft] = useState<DraftWarehouse>(emptyDraft());
+  const [draft, setDraft] = useState<DraftSite>(emptyDraft());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [warehouseMovements, setWarehouseMovements] = useState<StockMovement[]>([]);
+  const [siteMovements, setSiteMovements] = useState<StockMovement[]>([]);
   const [movementsLoading, setMovementsLoading] = useState(false);
-  const { visible: colVis, toggle: colToggle } = useColumnVisibility('warehouses', WH_COLS);
+  const { visible: colVis, toggle: colToggle } = useColumnVisibility('loading-sites', LS_COLS);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const params: Record<string, string> = {};
+    const params: Record<string, string> = { siteType: 'loading_site' };
     if (search) params.search = search;
-    const [whRes, summaryRes] = await Promise.all([
+    const [sitesRes, summaryRes] = await Promise.all([
       apiListWarehouses(params),
       apiGetInventorySummary(),
     ]);
-    if (whRes.success) setWarehouses(whRes.data.warehouses);
+    if (sitesRes.success) setSites(sitesRes.data.warehouses);
     if (summaryRes.success) setSummary(summaryRes.data.summary);
     setLoading(false);
   }, [search]);
 
   useEffect(() => { load(); }, [load]);
 
-  // Keep `selected` in sync with the freshly-loaded warehouses so the modal
-  // shows up-to-date currentQty after data reloads.
   useEffect(() => {
     if (!selected) return;
-    const fresh = warehouses.find(w => w._id === selected._id);
+    const fresh = sites.find(s => s._id === selected._id);
     if (fresh && fresh !== selected) setSelected(fresh);
-  }, [warehouses]);
+  }, [sites]);
 
-  // Load truck activity for the selected warehouse when viewing it.
   useEffect(() => {
     if (modalMode !== 'view' || !selected) {
-      setWarehouseMovements([]);
+      setSiteMovements([]);
       return;
     }
     setMovementsLoading(true);
     apiListMovements({ warehouseId: selected._id, limit: '50' }).then(r => {
-      if (r.success) setWarehouseMovements(r.data.movements);
+      if (r.success) setSiteMovements(r.data.movements);
       setMovementsLoading(false);
     });
   }, [modalMode, selected?._id]);
 
-  function updateDraft(patch: Partial<DraftWarehouse>) {
+  function updateDraft(patch: Partial<DraftSite>) {
     setDraft(d => ({ ...d, ...patch }));
   }
 
@@ -122,7 +111,6 @@ export default function WarehousesPage() {
   function openEdit(w: Warehouse) {
     setDraft({
       warehouseCode: w.warehouseCode, name: w.name,
-      siteType: w.siteType || 'standard',
       address: w.address || '', region: w.region || '', country: w.country,
       capacityUnit: w.capacityUnit, totalCapacity: w.totalCapacity,
       managerName: w.managerName || '', managerContact: w.managerContact || '',
@@ -140,13 +128,12 @@ export default function WarehousesPage() {
   }
 
   async function handleSave() {
-    if (!draft.name) { setError('Warehouse name is required.'); return; }
+    if (!draft.name) { setError('Site name is required.'); return; }
     setSaving(true); setError(null);
-    // On create, drop warehouseCode so the backend auto-assigns it.
     const { warehouseCode, ...rest } = draft;
     const payload = (modalMode === 'new'
-      ? { ...rest, totalCapacity: Number(draft.totalCapacity) }
-      : { ...draft, totalCapacity: Number(draft.totalCapacity) }
+      ? { ...rest, totalCapacity: Number(draft.totalCapacity), siteType: 'loading_site' as const }
+      : { ...draft, totalCapacity: Number(draft.totalCapacity), siteType: 'loading_site' as const }
     ) as Parameters<typeof apiCreateWarehouse>[0];
     const res = modalMode === 'new'
       ? await apiCreateWarehouse(payload)
@@ -161,7 +148,7 @@ export default function WarehousesPage() {
   const modalSummary = (
     <div className="space-y-6">
       <div className="space-y-1">
-        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Warehouse Identity</p>
+        <p className="text-[10px] font-black text-t3 uppercase tracking-widest">Site Identity</p>
         <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-t3">Code</span>
@@ -169,7 +156,9 @@ export default function WarehousesPage() {
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-t3">Role</span>
-            <span className="text-t1 font-medium">{SITE_LABELS[draft.siteType]}</span>
+            <span className="inline-flex items-center gap-1.5 text-sky-400 font-medium">
+              <MapPin size={12} weight="duotone" /> Loading Site
+            </span>
           </div>
         </div>
       </div>
@@ -182,29 +171,27 @@ export default function WarehousesPage() {
             <span className="text-t1 font-bold">{draft.totalCapacity || '0'} {draft.capacityUnit}</span>
           </div>
           <div className="h-1.5 bg-surface rounded-full overflow-hidden">
-             <div className="h-full bg-accent w-1/4 rounded-full" />
+            <div className="h-full bg-accent w-1/4 rounded-full" />
           </div>
-          <p className="text-[10px] text-t3 italic text-center">New warehouse initialization...</p>
+          <p className="text-[10px] text-t3 italic text-center">Loading site initialising...</p>
         </div>
       </div>
     </div>
   );
 
-  // Right-side summary panel — identity / reference info only.
-  // Operational data (capacity meter + truck activity) lives on the left.
   const viewModalSummary = selected ? (
     <div className="space-y-4">
-      <p className="text-sm font-bold text-t1">Warehouse Overview</p>
+      <p className="text-sm font-bold text-t1">Loading Site Overview</p>
       <div className="bg-card border border-border rounded-xl p-5 space-y-4 text-sm">
         <p className="font-semibold text-t1 text-base">{selected.name}</p>
         <div className="space-y-2.5 text-t2">
           <div>
-            <span className="text-t3">Warehouse ID: </span>
+            <span className="text-t3">Site ID: </span>
             <span className="font-mono text-t1">{selected.warehouseCode}</span>
           </div>
           <div>
             <span className="text-t3">Role: </span>
-            <span className="text-t1 font-medium">{SITE_LABELS[selected.siteType || 'standard']}</span>
+            <span className="text-sky-400 font-medium">Loading Site</span>
           </div>
           <div>
             <span className="text-t3">Country: </span>
@@ -244,46 +231,37 @@ export default function WarehousesPage() {
       {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-2">{error}</p>}
 
       <div>
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Warehouse Details</p>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Site Details</p>
         <div className="space-y-3">
           {modalMode === 'edit' ? (
             <div>
-              <label className="block text-xs text-t3 mb-1.5">Warehouse Code</label>
+              <label className="block text-xs text-t3 mb-1.5">Site Code</label>
               <input className={inp} value={draft.warehouseCode} disabled />
             </div>
           ) : (
             <p className="text-[11px] text-t3 italic px-1">
-              Warehouse code is auto-assigned on save (WH-### for mine warehouses, CS-### for crushing sites).
+              Site code is auto-assigned on save (LS-001, LS-002, ...).
             </p>
           )}
           <div>
             <label className="block text-xs text-t3 mb-1.5">Name *</label>
             <input className={inp}
-              value={draft.name} onChange={e => updateDraft({ name: e.target.value })}
-              placeholder="e.g. Kigali Main Warehouse" />
-          </div>
-          <div>
-            <label className="block text-xs text-t3 mb-1.5">Site Role *</label>
-            <select className={inp}
-              value={draft.siteType}
-              onChange={e => updateDraft({ siteType: e.target.value as 'standard' | 'crushing_site' })}>
-              <option value="standard">Mine Warehouse — holds processed / sellable stock</option>
-              <option value="crushing_site">Crushing Site — holds raw / uncrushed material to be processed</option>
-            </select>
-            <p className="text-[10px] text-t3 mt-1 leading-relaxed">
-              Crushing Sites receive uncrushed material from suppliers. Once processed, transfer the stock to a Mine Warehouse.
-            </p>
+              value={draft.name}
+              onChange={e => updateDraft({ name: e.target.value })}
+              placeholder="e.g. Rusizi Loading Site" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-t3 mb-1.5">Total Capacity</label>
               <input type="number" min={0} className={inp}
-                value={draft.totalCapacity} onChange={e => updateDraft({ totalCapacity: Number(e.target.value) })} />
+                value={draft.totalCapacity}
+                onChange={e => updateDraft({ totalCapacity: Number(e.target.value) })} />
             </div>
             <div>
               <label className="block text-xs text-t3 mb-1.5">Capacity Unit</label>
               <select className={inp}
-                value={draft.capacityUnit} onChange={e => updateDraft({ capacityUnit: e.target.value })}>
+                value={draft.capacityUnit}
+                onChange={e => updateDraft({ capacityUnit: e.target.value })}>
                 {CAPACITY_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
               </select>
             </div>
@@ -297,18 +275,24 @@ export default function WarehousesPage() {
           <div>
             <label className="block text-xs text-t3 mb-1.5">Address</label>
             <input className={inp}
-              value={draft.address} onChange={e => updateDraft({ address: e.target.value })} placeholder="Street / area" />
+              value={draft.address}
+              onChange={e => updateDraft({ address: e.target.value })}
+              placeholder="Street / area" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-t3 mb-1.5">Region / City</label>
               <input className={inp}
-                value={draft.region} onChange={e => updateDraft({ region: e.target.value })} placeholder="Kigali" />
+                value={draft.region}
+                onChange={e => updateDraft({ region: e.target.value })}
+                placeholder="Rusizi" />
             </div>
             <div>
               <label className="block text-xs text-t3 mb-1.5">Country</label>
               <input className={inp}
-                value={draft.country} onChange={e => updateDraft({ country: e.target.value })} placeholder="Rwanda" />
+                value={draft.country}
+                onChange={e => updateDraft({ country: e.target.value })}
+                placeholder="Rwanda" />
             </div>
           </div>
         </div>
@@ -320,41 +304,32 @@ export default function WarehousesPage() {
           <div>
             <label className="block text-xs text-t3 mb-1.5">Manager Name</label>
             <input className={inp}
-              value={draft.managerName} onChange={e => updateDraft({ managerName: e.target.value })} />
+              value={draft.managerName}
+              onChange={e => updateDraft({ managerName: e.target.value })} />
           </div>
           <div>
             <label className="block text-xs text-t3 mb-1.5">Manager Contact</label>
             <input className={inp}
-              value={draft.managerContact} onChange={e => updateDraft({ managerContact: e.target.value })} />
+              value={draft.managerContact}
+              onChange={e => updateDraft({ managerContact: e.target.value })} />
           </div>
         </div>
       </div>
-
-      <button onClick={handleSave} disabled={saving}
-        className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
-        {saving && <Spinner className="animate-spin" size={14} />}
-        {modalMode === 'new' ? 'Create Warehouse' : 'Save Changes'}
-      </button>
     </div>
   ) : null;
 
   const viewContent = modalMode === 'view' && selected ? (() => {
     const TOTAL_BARS = 50;
     const filledBars = Math.round((Math.min(selectedUsedPct, 100) / 100) * TOTAL_BARS);
-    const barColor = selectedUsedPct > 80
-      ? 'bg-rose-500'
-      : selectedUsedPct > 60
-      ? 'bg-amber-500'
-      : 'bg-emerald-500';
+    const barColor = selectedUsedPct > 80 ? 'bg-rose-500' : selectedUsedPct > 60 ? 'bg-amber-500' : 'bg-emerald-500';
     return (
       <div className="space-y-8">
-        {/* Identity header */}
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-2">
             <p className="text-xs text-t3">{selected.warehouseCode}</p>
             <h3 className="text-2xl font-bold text-t1">{selected.name}</h3>
-            <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-0.5 font-medium ${SITE_STYLES[selected.siteType || 'standard']}`}>
-              {SITE_LABELS[selected.siteType || 'standard']}
+            <span className="inline-flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-0.5 font-medium bg-sky-500/10 text-sky-400 border-sky-500/20">
+              <MapPin size={10} weight="duotone" /> Loading Site
             </span>
           </div>
           <span className={`text-xs font-medium px-2.5 py-1 rounded-full border shrink-0 ${selected.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-surface text-t3 border-border'}`}>
@@ -362,7 +337,6 @@ export default function WarehousesPage() {
           </span>
         </div>
 
-        {/* Overview — 100-bar capacity meter */}
         <div>
           <p className="text-sm font-bold text-t1 mb-4">Overview</p>
           <div className="flex items-center gap-3">
@@ -388,7 +362,6 @@ export default function WarehousesPage() {
           )}
         </div>
 
-        {/* Truck Activity — table layout */}
         <div className="border-t border-border pt-6">
           <div className="flex items-center gap-1.5 mb-4">
             <TruckIcon size={14} weight="duotone" className="text-t3" />
@@ -402,7 +375,7 @@ export default function WarehousesPage() {
               <div className="flex justify-center py-10">
                 <Spinner size={18} className="animate-spin text-accent" />
               </div>
-            ) : warehouseMovements.length === 0 ? (
+            ) : siteMovements.length === 0 ? (
               <p className="text-xs text-t3 italic py-8 text-center">No movements recorded yet.</p>
             ) : (
               <div className="max-h-80 overflow-y-auto">
@@ -417,7 +390,7 @@ export default function WarehousesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {warehouseMovements.map(m => {
+                    {siteMovements.map(m => {
                       const isInbound = m.movementType === 'INBOUND' || m.movementType === 'TRANSFER_IN' || m.movementType === 'RETURN';
                       const isOutbound = m.movementType === 'OUTBOUND' || m.movementType === 'TRANSFER_OUT';
                       const qtyTone = isInbound ? 'text-emerald-500' : isOutbound ? 'text-rose-500' : 'text-t2';
@@ -463,7 +436,7 @@ export default function WarehousesPage() {
   })() : null;
 
   const kpiCards = [
-    { label: 'Total Warehouses', value: summary.warehouseCount, Icon: WarehouseIcon, bg: 'bg-blue-500/10', color: 'text-blue-400' },
+    { label: 'Total Loading Sites', value: sites.length, Icon: MapPin, bg: 'bg-sky-500/10', color: 'text-sky-400' },
     { label: 'Stock Items', value: summary.totalItems, Icon: CheckCircle, bg: 'bg-emerald-500/10', color: 'text-emerald-400' },
     { label: 'Total Value', value: `${(summary.totalValue / 1_000_000).toFixed(1)}M`, Icon: Gauge, bg: 'bg-accent-glow', color: 'text-accent' },
     { label: 'Low Stock Alerts', value: summary.lowStockRecords, Icon: Warning, bg: 'bg-rose-500/10', color: 'text-rose-400' },
@@ -472,60 +445,63 @@ export default function WarehousesPage() {
   return (
     <>
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-t1">Warehouses</h1>
-            <p className="text-sm text-t3 mt-1">Manage storage locations and capacity</p>
+            <h1 className="text-2xl font-bold text-t1 flex items-center gap-2">
+              <MapPin size={26} weight="duotone" className="text-sky-400" />
+              Loading Sites
+            </h1>
+            <p className="text-sm text-t3 mt-1">Manage loading sites and capacity under the crushing site</p>
           </div>
           <button onClick={openNew}
             className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-h transition-colors">
-            <Plus size={16} /> New Warehouse
+            <Plus size={16} /> New Loading Site
           </button>
         </div>
 
-        {/* KPI Cards */}
         {loading ? <KpiCardsSkeleton count={4} /> : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {kpiCards.map(({ label, value, Icon, bg, color }) => (
-            <div key={label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
-              <div className={`p-2.5 rounded-xl ${bg} shrink-0`}>
-                <Icon size={18} weight="duotone" className={color} />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {kpiCards.map(({ label, value, Icon, bg, color }) => (
+              <div key={label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
+                <div className={`p-2.5 rounded-xl ${bg} shrink-0`}>
+                  <Icon size={18} weight="duotone" className={color} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-t3">{label}</p>
+                  <p className="text-xl font-bold text-t1 truncate">{value}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs text-t3">{label}</p>
-                <p className="text-xl font-bold text-t1 truncate">{value}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
         )}
 
-        {/* Search + Filter */}
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative w-full sm:w-72">
               <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-t3 pointer-events-none" />
               <Input
                 type="text"
-                placeholder="Search warehouses..."
+                placeholder="Search loading sites..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
               />
             </div>
             <div className="ml-auto">
-              <ColumnSelector cols={WH_COLS} visible={colVis} onToggle={colToggle} />
+              <ColumnSelector cols={LS_COLS} visible={colVis} onToggle={colToggle} />
             </div>
           </div>
         </div>
 
-        {/* Warehouses Table */}
         <div className="bg-card rounded-xl border border-border overflow-hidden">
-          {!loading && warehouses.length === 0 ? (
+          {!loading && sites.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-t3">
-              <WarehouseIcon size={40} className="mb-2 opacity-40" />
-              <p>No warehouses found.</p>
+              <MapPin size={40} className="mb-2 opacity-40" />
+              <p>No loading sites found.</p>
+              <button onClick={openNew}
+                className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-h transition-colors">
+                <Plus size={12} /> Create Loading Site
+              </button>
             </div>
           ) : (
             <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'never' } }}>
@@ -534,7 +510,6 @@ export default function WarehousesPage() {
                   <TableRow>
                     {colVis.has('ref')     && <TableHead>Ref</TableHead>}
                     {colVis.has('name')    && <TableHead>Name</TableHead>}
-                    {colVis.has('role')    && <TableHead>Role</TableHead>}
                     {colVis.has('usage')   && <TableHead>Usage</TableHead>}
                     {colVis.has('manager') && <TableHead>Manager</TableHead>}
                     {colVis.has('actions') && <TableHead className="text-right">Actions</TableHead>}
@@ -542,37 +517,26 @@ export default function WarehousesPage() {
                 </TableHeader>
                 <TableBody>
                   {loading && (
-                    <TableSkeleton
-                      rows={6}
-                      columns={WH_COLS.filter(c => colVis.has(c.key)).length}
-                    />
+                    <TableSkeleton rows={6} columns={LS_COLS.filter(c => colVis.has(c.key)).length} />
                   )}
-                  {!loading && warehouses.map(w => {
+                  {!loading && sites.map(w => {
                     const pct = warehouseUsedPct(w);
                     return (
-                      <TableRow
-                        key={w._id}
-                        onClick={() => openView(w)}
-                        className="cursor-pointer"
-                      >
+                      <TableRow key={w._id} onClick={() => openView(w)} className="cursor-pointer">
                         {colVis.has('ref') && (
                           <TableCell className="py-4 font-mono text-xs text-accent">{w.warehouseCode}</TableCell>
                         )}
                         {colVis.has('name') && (
                           <TableCell className="py-4 font-medium text-t1">{w.name}</TableCell>
                         )}
-                        {colVis.has('role') && (
-                          <TableCell className="py-4">
-                            <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${SITE_STYLES[w.siteType || 'standard']}`}>
-                              {SITE_LABELS[w.siteType || 'standard']}
-                            </span>
-                          </TableCell>
-                        )}
                         {colVis.has('usage') && (
                           <TableCell className="py-4">
                             <div className="flex items-center gap-2">
                               <div className="w-16 h-1.5 bg-surface rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full ${pct > 80 ? 'bg-rose-500' : pct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                                <div
+                                  className={`h-full rounded-full ${pct > 80 ? 'bg-rose-500' : pct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                  style={{ width: `${Math.min(pct, 100)}%` }}
+                                />
                               </div>
                               <span className="text-[11px] font-bold text-t2">{pct.toFixed(0)}%</span>
                             </div>
@@ -613,7 +577,11 @@ export default function WarehousesPage() {
       <ModernModal
         isOpen={modalMode !== null}
         onClose={() => setModalMode(null)}
-        title={modalMode === 'new' ? 'Initialize Warehouse' : modalMode === 'edit' ? 'Update Warehouse' : (selected?.name ?? '').toUpperCase()}
+        title={
+          modalMode === 'new' ? 'New Loading Site'
+          : modalMode === 'edit' ? `Edit · ${selected?.name ?? ''}`
+          : (selected?.name ?? '').toUpperCase()
+        }
         summaryContent={modalMode === 'view' ? viewModalSummary : modalSummary}
         actions={
           modalMode === 'view' && selected ? (
@@ -645,7 +613,7 @@ export default function WarehousesPage() {
                 onClick={() => openEdit(selected)}
                 className="flex items-center gap-1.5 px-5 py-2.5 text-sm bg-t1 text-card rounded-xl font-semibold hover:opacity-90 transition-opacity"
               >
-                <PencilSimple size={14} /> Edit Warehouse Details
+                <PencilSimple size={14} /> Edit Site Details
               </button>
             </div>
           ) : modalMode !== 'view' ? (
@@ -655,7 +623,7 @@ export default function WarehousesPage() {
               className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {saving && <Spinner size={14} className="animate-spin" />}
-              {modalMode === 'new' ? 'Create Warehouse' : 'Save Changes'}
+              {modalMode === 'new' ? 'Create Loading Site' : 'Save Changes'}
             </button>
           ) : undefined
         }

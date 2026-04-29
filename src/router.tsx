@@ -30,6 +30,7 @@ import ProductsPage from "./pages/inventory/ProductsPage";
 import StockRecordsPage from "./pages/inventory/StockRecordsPage";
 import WarehousesPage from "./pages/inventory/WarehousesPage";
 import CrushingSitesPage from "./pages/inventory/CrushingSitesPage";
+import LoadingSitePage from "./pages/inventory/LoadingSitePage";
 import MovementsPage from "./pages/inventory/MovementsPage";
 import StockHistoryPage from "./pages/inventory/StockHistoryPage";
 import DocumentsPage from "./pages/inventory/DocumentsPage";
@@ -254,6 +255,12 @@ const crushingSitesRoute = createRoute({
   component: CrushingSitesPage,
 });
 
+const loadingSiteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/loading-sites",
+  component: LoadingSitePage,
+});
+
 const movementsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/inventory/movements",
@@ -321,6 +328,7 @@ const routeTree = rootRoute.addChildren([
   stockRecordsRoute,
   warehousesRoute,
   crushingSitesRoute,
+  loadingSiteRoute,
   movementsRoute,
   stockHistoryRoute,
   documentsRoute,

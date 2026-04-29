@@ -222,6 +222,7 @@ export const departmentsData = [
           { name: "Documents", icon: ClipboardText },
           { name: "Warehouses", icon: Buildings },
           { name: "Crushing Sites", icon: Buildings },
+          { name: "Loading Sites", icon: MapPin },
         ],
       },
     ],
