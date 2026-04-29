@@ -193,7 +193,7 @@ const inpReadonly =
 const MOV_COLS: ColDef[] = [
   { key: "plate", label: "Plate No.", defaultVisible: true },
   { key: "type", label: "Type", defaultVisible: true },
-  { key: "item", label: "Item", defaultVisible: true },
+  { key: "product", label: "Product", defaultVisible: true },
   { key: "warehouse", label: "Warehouse", defaultVisible: true },
   { key: "qty", label: "Net / Qty", defaultVisible: true },
   { key: "supplier", label: "Supplier / Truck", defaultVisible: true },
@@ -222,6 +222,7 @@ export default function MovementsPage() {
   const [draft, setDraft] = useState<NewMovementDraft>(emptyDraft());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const { visible: colVis, toggle: colToggle } = useColumnVisibility(
     "movements",
     MOV_COLS,
@@ -399,6 +400,7 @@ export default function MovementsPage() {
 
     const commonMovementFields = {
       warehouseId: draft.warehouseId || selectedStock?.warehouseId || '',
+      stockItemId: draft.stockItemId || undefined,
       productId: draft.productId || undefined,
       qty,
       unitCost: draft.unitCost || undefined,
@@ -706,6 +708,20 @@ export default function MovementsPage() {
             placeholder="—"
           />
         </div>
+        {(() => {
+          const sup = suppliers.find((s) => s._id === draft.supplierId);
+          if (!sup || sup.hasCrusher !== false) return null;
+          return (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs">
+              <Hammer size={14} weight="duotone" className="text-amber-500 mt-0.5 shrink-0" />
+              <div className="text-amber-200 leading-relaxed">
+                <span className="font-bold">{sup.name}</span> delivers <span className="font-bold">uncrushed</span> material.
+                Pick a <span className="font-bold">Crushing Site</span> as the destination below. Once it's processed, use
+                <span className="font-bold"> Transfer</span> to move it to a regular warehouse.
+              </div>
+            </div>
+          );
+        })()}
       </section>
 
       {/* ── Warehouse & Product ── */}
@@ -723,17 +739,17 @@ export default function MovementsPage() {
         />
 
         <SearchSelect
-          label="Product"
-          options={productOptions}
-          value={draft.productId || null}
-          onChange={(v, opt) => {
-            const prod = products.find((p) => p._id === v);
+          label="Item"
+          options={stockOptions}
+          value={draft.stockItemId || null}
+          onChange={(v) => {
+            const si = stockItems.find((s) => s._id === v);
             upd({
-              productId: v ?? "",
-              unitCost: prod?.cost_per_unit ?? draft.unitCost,
+              stockItemId: v ?? "",
+              warehouseId: draft.warehouseId || si?.warehouseId || "",
             });
           }}
-          placeholder="Search product..."
+          placeholder="Search item..."
         />
 
         {draft.linkedPoId &&
@@ -758,14 +774,74 @@ export default function MovementsPage() {
           })()}
 
         {draft.mode === "transfer" && (
-          <SearchSelect
-            label="Destination Warehouse *"
-            options={destWhOptions}
-            value={draft.destinationWarehouseId || null}
-            onChange={(v) => upd({ destinationWarehouseId: v ?? "" })}
-            placeholder="Select destination..."
-            clearable={false}
-          />
+          <>
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs">
+              <Hammer size={14} weight="duotone" className="text-emerald-400 mt-0.5 shrink-0" />
+              <div className="text-emerald-200 leading-relaxed">
+                Use <span className="font-bold">Transfer</span> to move material from a <span className="font-bold">Crushing Site</span> to a regular warehouse once it has been processed,
+                or to rebalance stock between any two warehouses.
+              </div>
+            </div>
+            <SearchSelect
+              label="Destination Warehouse *"
+              options={destWhOptions}
+              value={draft.destinationWarehouseId || null}
+              onChange={(v) => upd({ destinationWarehouseId: v ?? "" })}
+              placeholder="Select destination..."
+              clearable={false}
+            />
+          </>
+        )}
+      </section>
+
+      {/* ── Source Document (image upload) ── */}
+      <section className="space-y-3">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest flex items-center gap-1.5">
+          <Receipt size={11} weight="duotone" /> Source Document
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">Document Type</label>
+            <select
+              className={inp}
+              value={draft.sourceDocType}
+              onChange={(e) => upd({ sourceDocType: e.target.value as NewMovementDraft['sourceDocType'] })}
+            >
+              <option value="Weighbridge">Weighbridge</option>
+              <option value="Receipt">Receipt</option>
+              <option value="Invoice">Invoice</option>
+              <option value="Waybill">Waybill</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] text-t3 mb-1">Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              className={`${inp} file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-accent/10 file:text-accent file:text-xs file:font-semibold cursor-pointer`}
+              onChange={(e) => upd({ sourceImage: e.target.files?.[0] || null })}
+            />
+          </div>
+        </div>
+        {draft.sourceImage && (
+          <div className="flex items-center gap-3 p-2 bg-surface/50 border border-border rounded-lg">
+            <img
+              src={URL.createObjectURL(draft.sourceImage)}
+              alt="preview"
+              className="w-16 h-16 rounded object-cover border border-border"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-t1 truncate font-medium">{draft.sourceImage.name}</p>
+              <p className="text-[10px] text-t3">{(draft.sourceImage.size / 1024).toFixed(1)} KB</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => upd({ sourceImage: null })}
+              className="text-t3 hover:text-rose-400 text-xs"
+            >
+              Remove
+            </button>
+          </div>
         )}
       </section>
 
@@ -1061,7 +1137,7 @@ export default function MovementsPage() {
               />
               <input
                 className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors"
-                placeholder="Search ref, item, source..."
+                placeholder="Search ref, product, source..."
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
@@ -1102,9 +1178,9 @@ export default function MovementsPage() {
                         Type
                       </th>
                     )}
-                    {colVis.has("item") && (
+                    {colVis.has("product") && (
                       <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                        Item
+                        Product
                       </th>
                     )}
                     {colVis.has("warehouse") && (
@@ -1170,7 +1246,7 @@ export default function MovementsPage() {
                             </span>
                           </td>
                         )}
-                        {colVis.has("item") && (
+                        {colVis.has("product") && (
                           <td className="px-4 py-3.5">
                             <p className="text-t1 font-medium">{m.itemName}</p>
                             <p className="text-xs text-t3">{m.itemCode}</p>
@@ -1226,20 +1302,31 @@ export default function MovementsPage() {
                               const firstImg = docs.find(d => d.image_path);
                               if (firstImg) {
                                 return (
-                                  <a
-                                    href={firstImg.image_path}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    onClick={e => e.stopPropagation()}
-                                    title={`${docs.length} doc${docs.length > 1 ? 's' : ''} attached — click to open`}
-                                    className="inline-block"
+                                  <button
+                                    onClick={e => { e.stopPropagation(); setPreviewImageUrl(firstImg.image_path); }}
+                                    title={`${docs.length} doc${docs.length > 1 ? 's' : ''} attached — click to preview`}
+                                    className="inline-block cursor-pointer"
                                   >
                                     <img
                                       src={firstImg.image_path}
                                       alt={firstImg.doc_type || 'source'}
                                       className="w-12 h-12 rounded-md object-cover border border-border hover:border-accent transition-colors"
+                                      onError={e => {
+                                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                      }}
                                     />
-                                  </a>
+                                  </button>
+                                );
+                              }
+                              if (m.linkedPoRef || m.sourceRef) {
+                                return (
+                                  <span className="text-t2 text-xs">
+                                    {m.linkedPoRef ? (
+                                      <span className="text-accent">{m.linkedPoRef}</span>
+                                    ) : (
+                                      m.sourceRef
+                                    )}
+                                  </span>
                                 );
                               }
                               return (
@@ -1318,6 +1405,19 @@ export default function MovementsPage() {
           formContent={formContent}
           previewContent={null}
         />
+      )}
+
+      {previewImageUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center cursor-zoom-out"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <img
+            src={previewImageUrl}
+            alt="Source document"
+            className="max-w-[90vw] max-h-[90vh] object-contain"
+          />
+        </div>
       )}
     </>
   );

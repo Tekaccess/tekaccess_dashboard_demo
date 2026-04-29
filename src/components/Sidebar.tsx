@@ -25,6 +25,7 @@ const EXPLICIT_ROUTES: Record<string, string> = {
   "inventory/warehouses": "/inventory/warehouses",
   "inventory/movements": "/inventory/movements",
   "inventory/stock-history": "/inventory/stock-history",
+  "inventory/crushing-sites": "/inventory/crushing-sites",
   "finance/approvals": "/finance/approvals",
 };
 

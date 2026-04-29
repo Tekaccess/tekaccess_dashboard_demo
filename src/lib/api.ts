@@ -911,6 +911,7 @@ export type Warehouse = {
   warehouseCode: string;
   name: string;
   warehouseType: 'commercial' | 'workshop_store' | 'fuel_tank' | 'transit' | 'bonded';
+  siteType?: 'standard' | 'crushing_site';
   address: string | null;
   region: string | null;
   country: string;
@@ -1007,6 +1008,7 @@ export async function apiListMovements(params: Record<string, string> = {}) {
 export async function apiCreateMovement(data: {
   movementType: string;
   warehouseId?: string;
+  stockItemId?: string;
   productId?: string;
   qty: number;
   unitCost?: number;
