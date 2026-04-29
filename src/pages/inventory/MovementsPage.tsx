@@ -629,14 +629,6 @@ export default function MovementsPage() {
                     {po.procurementType.replace("_", " ")}
                   </span>
                 </div>
-                {po.expectedDeliveryDate && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-t3">Expected</span>
-                    <span className="text-t1">
-                      {new Date(po.expectedDeliveryDate).toLocaleDateString()}
-                    </span>
-                  </div>
-                )}
                 <div className="flex items-center justify-between">
                   <span className="text-t3">Ordered Qty</span>
                   <span className="text-t1 font-medium">

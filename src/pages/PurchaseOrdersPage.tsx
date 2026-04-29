@@ -136,7 +136,6 @@ const PO_COLS: ColDef[] = [
   { key: "currency", label: "Currency", defaultVisible: false },
   { key: "total", label: "Total", defaultVisible: true },
   { key: "status", label: "Status", defaultVisible: true },
-  { key: "expected", label: "Expected", defaultVisible: true },
   { key: "actions", label: "Actions", defaultVisible: true },
 ];
 
@@ -190,7 +189,6 @@ interface DraftPO {
   contractTitle: string;
   currency: string;
   orderDeadline: Date | null;
-  expectedDeliveryDate: Date | null;
   deliverToClientId: string;
   deliverToClientName: string;
   procurementType: string;
@@ -218,7 +216,6 @@ function emptyDraft(): DraftPO {
     contractTitle: "",
     currency: "RWF",
     orderDeadline: null,
-    expectedDeliveryDate: null,
     deliverToClientId: "",
     deliverToClientName: "",
     procurementType: "general",
@@ -528,9 +525,6 @@ export default function PurchaseOrdersPage() {
       contractTitle: order.contractTitle || "",
       currency: order.currency,
       orderDeadline: order.orderDeadline ? new Date(order.orderDeadline) : null,
-      expectedDeliveryDate: order.expectedDeliveryDate
-        ? new Date(order.expectedDeliveryDate)
-        : null,
       deliverToClientId: order.deliverToClientId || "",
       deliverToClientName: order.deliverToClientName || "",
       procurementType: order.procurementType,
@@ -602,9 +596,6 @@ export default function PurchaseOrdersPage() {
       destinationWarehouseName: draft.destinationWarehouseName || null,
       orderDeadline: draft.orderDeadline
         ? draft.orderDeadline.toISOString()
-        : null,
-      expectedDeliveryDate: draft.expectedDeliveryDate
-        ? draft.expectedDeliveryDate.toISOString()
         : null,
       notes: draft.notes || null,
       lineItems: draft.lineItems.map((item, idx) => {
@@ -719,6 +710,48 @@ export default function PurchaseOrdersPage() {
           />
         </div>
 
+        {/* Destination Warehouse — shown right under Supplier so the user can
+            confirm or change where the goods will land before filling out the
+            rest of the order. */}
+        <div className="space-y-2">
+          {(() => {
+            const sup = suppliers.find((s) => s._id === draft.supplierId);
+            if (!sup || sup.hasCrusher !== false) return null;
+            return (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs">
+                <span className="text-amber-500 mt-0.5">🔨</span>
+                <div className="text-amber-200 leading-relaxed">
+                  <span className="font-bold">{sup.name}</span> delivers
+                  <span className="font-bold"> uncrushed</span> material —
+                  defaulted to a <span className="font-bold">Crushing Site</span>.
+                  Pick any warehouse below if needed.
+                </div>
+              </div>
+            );
+          })()}
+          <SearchSelect
+            label={
+              draft.procurementType === "trading"
+                ? "Destination Warehouse *"
+                : "Destination Warehouse"
+            }
+            options={warehouseOptions}
+            value={draft.destinationWarehouseId || null}
+            onChange={(val, opt) =>
+              updateDraft({
+                destinationWarehouseId: val || "",
+                destinationWarehouseName: opt?.label?.replace(/^🔨\s*/, "") || "",
+              })
+            }
+            placeholder={
+              draft.supplierId
+                ? "Select destination warehouse..."
+                : "Pick a supplier first to auto-fill"
+            }
+            clearable={draft.procurementType !== "trading"}
+          />
+        </div>
+
         <div>
           <label className="block text-[10px] text-t3 mb-1">
             Supplier Reference (auto-filled)
@@ -772,39 +805,6 @@ export default function PurchaseOrdersPage() {
             clearable={false}
           />
         </div>
-
-        {draft.procurementType === "trading" && (
-          <div className="space-y-2">
-            {(() => {
-              const sup = suppliers.find((s) => s._id === draft.supplierId);
-              if (!sup || sup.hasCrusher !== false) return null;
-              return (
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs">
-                  <span className="text-amber-500 mt-0.5">🔨</span>
-                  <div className="text-amber-200 leading-relaxed">
-                    <span className="font-bold">{sup.name}</span> delivers
-                    <span className="font-bold"> uncrushed</span> material —
-                    defaulted to a <span className="font-bold">Crushing Site</span>.
-                    You can pick any warehouse below if needed.
-                  </div>
-                </div>
-              );
-            })()}
-            <SearchSelect
-              label="Destination Warehouse *"
-              options={warehouseOptions}
-              value={draft.destinationWarehouseId || null}
-              onChange={(val, opt) =>
-                updateDraft({
-                  destinationWarehouseId: val || "",
-                  destinationWarehouseName: opt?.label?.replace(/^🔨\s*/, "") || "",
-                })
-              }
-              placeholder="Select destination warehouse..."
-              clearable={false}
-            />
-          </div>
-        )}
 
         <div className="grid grid-cols-2 gap-3">
           <DatePicker
@@ -1080,12 +1080,6 @@ export default function PurchaseOrdersPage() {
               ? new Date(previewOrder.orderDeadline).toLocaleDateString()
               : "—",
           ],
-          [
-            "Expected Arrival",
-            previewOrder.expectedDeliveryDate
-              ? new Date(previewOrder.expectedDeliveryDate).toLocaleDateString()
-              : "—",
-          ],
           ["Status", STATUS_LABEL[previewOrder.status] || previewOrder.status],
         ].map(([label, val]) => (
           <div key={label} className="flex justify-between text-sm">
@@ -1182,7 +1176,6 @@ export default function PurchaseOrdersPage() {
           deliverToClientName: draft.deliverToClientName,
           currency: draft.currency,
           orderDeadline: draft.orderDeadline,
-          expectedDeliveryDate: draft.expectedDeliveryDate,
           lineItems: draft.lineItems.map((item, idx) => {
             const { lineSubtotal, taxAmount, lineTotal } =
               computeLineItem(item);
@@ -1281,18 +1274,6 @@ export default function PurchaseOrdersPage() {
             {(orderForPreview as any).orderDeadline
               ? new Date(
                   (orderForPreview as any).orderDeadline,
-                ).toLocaleDateString()
-              : "—"}
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-[10px] font-black text-gray-400 uppercase mb-1">
-            Expected Arrival
-          </p>
-          <p className="text-sm font-bold text-gray-800">
-            {(orderForPreview as any).expectedDeliveryDate
-              ? new Date(
-                  (orderForPreview as any).expectedDeliveryDate,
                 ).toLocaleDateString()
               : "—"}
           </p>
@@ -1647,11 +1628,6 @@ export default function PurchaseOrdersPage() {
                       Status
                     </th>
                   )}
-                  {colVis.has("expected") && (
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                      Expected
-                    </th>
-                  )}
                   {colVis.has("actions") && (
                     <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
                       Actions
@@ -1748,15 +1724,6 @@ export default function PurchaseOrdersPage() {
                             />
                             {STATUS_LABEL[order.status] || order.status}
                           </span>
-                        </td>
-                      )}
-                      {colVis.has("expected") && (
-                        <td className="px-4 py-3.5 text-sm text-t2 whitespace-nowrap">
-                          {order.expectedDeliveryDate
-                            ? new Date(
-                                order.expectedDeliveryDate,
-                              ).toLocaleDateString()
-                            : "—"}
                         </td>
                       )}
                       {colVis.has("actions") && (
