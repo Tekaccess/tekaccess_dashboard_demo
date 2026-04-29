@@ -12,20 +12,22 @@ import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSele
 import DocumentSidePanel from '../../components/DocumentSidePanel';
 import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
-const DOC_TYPES: InventoryDoc['doc_type'][] = ['Invoice', 'Receipt', 'Waybill', 'Weighbridge'];
+const DOC_TYPES: InventoryDoc['doc_type'][] = ['Invoice', 'Receipt', 'Waybill', 'Weighbridge', 'Site Photo'];
 
 const DOC_STYLES: Record<string, string> = {
   Invoice:     'bg-blue-500/10 text-blue-400 border-blue-500/20',
   Receipt:     'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
   Waybill:     'bg-purple-500/10 text-purple-400 border-purple-500/20',
   Weighbridge: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  'Site Photo': 'bg-teal-500/10 text-teal-400 border-teal-500/20',
 };
 
 const DOC_ICONS: Record<string, React.ReactNode> = {
-  Invoice:     <Invoice size={12} />,
-  Receipt:     <Receipt size={12} />,
-  Waybill:     <Truck size={12} />,
-  Weighbridge: <Scales size={12} />,
+  Invoice:      <Invoice size={12} />,
+  Receipt:      <Receipt size={12} />,
+  Waybill:      <Truck size={12} />,
+  Weighbridge:  <Scales size={12} />,
+  'Site Photo': <Eye size={12} />,
 };
 
 type ModalMode = 'new' | null;
@@ -45,7 +47,7 @@ const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm
 const DOC_COLS: ColDef[] = [
   { key: 'type',     label: 'Type',         defaultVisible: true },
   { key: 'movement', label: 'Movement Ref', defaultVisible: true },
-  { key: 'path',     label: 'File Path',    defaultVisible: true },
+  { key: 'path',     label: 'Image',        defaultVisible: true },
   { key: 'uploaded', label: 'Uploaded',     defaultVisible: true },
   { key: 'actions',  label: 'Actions',      defaultVisible: true },
 ];
@@ -73,7 +75,7 @@ export default function DocumentsPage() {
       apiListInventoryDocs(params),
       apiListMovements({ limit: '200' }),
     ]);
-    if (docRes.success) setDocs(docRes.data.docs ?? []);
+    if (docRes.success) setDocs(docRes.data.documents ?? []);
     if (movRes.success) setMovements(movRes.data.movements);
     setLoading(false);
   }, [search, typeFilter]);
@@ -113,6 +115,7 @@ export default function DocumentsPage() {
   const receiptCount     = docs.filter(d => d.doc_type === 'Receipt').length;
   const waybillCount     = docs.filter(d => d.doc_type === 'Waybill').length;
   const weighbridgeCount = docs.filter(d => d.doc_type === 'Weighbridge').length;
+  const sitePhotoCount   = docs.filter(d => d.doc_type === 'Site Photo').length;
 
   const formContent = (
     <div className="space-y-5 pb-10">
@@ -183,13 +186,14 @@ export default function DocumentsPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {[
           { label: 'Total Docs',   value: docs.length,      Icon: FileText, color: 'text-accent',       bg: 'bg-accent-glow' },
           { label: 'Invoices',     value: invoiceCount,     Icon: Invoice,  color: 'text-blue-400',     bg: 'bg-blue-500/10' },
           { label: 'Receipts',     value: receiptCount,     Icon: Receipt,  color: 'text-emerald-500',  bg: 'bg-emerald-500/10' },
           { label: 'Waybills',     value: waybillCount,     Icon: Truck,    color: 'text-purple-400',   bg: 'bg-purple-500/10' },
           { label: 'Weighbridges', value: weighbridgeCount, Icon: Scales,   color: 'text-amber-400',    bg: 'bg-amber-500/10' },
+          { label: 'Site Photos',  value: sitePhotoCount,   Icon: Eye,      color: 'text-teal-400',     bg: 'bg-teal-500/10' },
         ].map(c => (
           <div key={c.label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
             <div className={`p-2.5 rounded-xl ${c.bg}`}><c.Icon size={18} weight="duotone" className={c.color} /></div>
@@ -220,7 +224,7 @@ export default function DocumentsPage() {
               <tr>
                 {colVis.has('type') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Type</th>}
                 {colVis.has('movement') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Movement Ref</th>}
-                {colVis.has('path') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">File Path</th>}
+                {colVis.has('path') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Image</th>}
                 {colVis.has('uploaded') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Uploaded</th>}
                 {colVis.has('actions') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap"></th>}
               </tr>
@@ -247,9 +251,23 @@ export default function DocumentsPage() {
                   )}
                   {colVis.has('movement') && <td className="px-4 py-3 font-mono text-xs text-accent">{doc.movement_ref || doc.movement_id}</td>}
                   {colVis.has('path') && (
-                    <td className="px-4 py-3 text-sm text-t2 max-w-[220px] truncate" title={doc.image_path}>
-                      <a href={doc.image_path} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-accent transition-colors" onClick={e => e.stopPropagation()}>
-                        <Eye size={12} /> {doc.image_path.split('/').pop() || doc.image_path}
+                    <td className="px-4 py-3">
+                      <a href={doc.image_path} target="_blank" rel="noreferrer" className="inline-block" onClick={e => e.stopPropagation()} title="Open full image">
+                        <img
+                          src={doc.image_path}
+                          alt={doc.doc_type || 'document'}
+                          className="w-14 h-14 rounded-lg object-cover border border-border hover:border-accent transition-colors"
+                          onError={(e) => {
+                            const img = e.currentTarget as HTMLImageElement;
+                            img.style.display = 'none';
+                            const fallback = img.nextElementSibling as HTMLElement | null;
+                            if (fallback) fallback.style.display = 'flex';
+                          }}
+                        />
+                        <span className="hidden items-center gap-1 text-xs text-t2 hover:text-accent transition-colors max-w-[180px] truncate">
+                          <Eye size={12} className="flex-shrink-0" />
+                          {doc.image_path.split('/').pop() || doc.image_path}
+                        </span>
                       </a>
                     </td>
                   )}
