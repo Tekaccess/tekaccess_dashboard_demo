@@ -187,7 +187,9 @@ export default function StockRecordsPage() {
   const selectedProduct = useMemo(() => products.find(p => p._id === draft.product_id), [products, draft.product_id]);
 
   const computedStockDeficit = Math.max(0, draft.demand - draft.on_hand);
-  const computedTotalValue = draft.demand * (selectedProduct?.cost_per_unit ?? 0);
+  // Unit cost is captured on the stock record itself (sourced from the PO line)
+  // since different suppliers price the same product differently.
+  const computedTotalValue = draft.demand * (selected?.cost_per_unit ?? 0);
   const computedCashDeficit = Math.max(0, computedTotalValue - draft.paid_amount);
 
   function openEdit(r: StockRecord) {

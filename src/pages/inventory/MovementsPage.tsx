@@ -450,7 +450,6 @@ export default function MovementsPage() {
       products.map((p) => ({
         value: p._id,
         label: p.name,
-        meta: `${p.cost_per_unit.toLocaleString()} ${p.currency}`,
       })),
     [products],
   );
@@ -1187,11 +1186,9 @@ export default function MovementsPage() {
             value={draft.productId || null}
             disabled={!!editingMovementId}
             onChange={(v) => {
-              const p = products.find((x) => x._id === v);
               upd({
                 productId: v ?? "",
                 stockItemId: "",
-                unitCost: p?.cost_per_unit ?? draft.unitCost,
               });
             }}
             placeholder="Search product..."

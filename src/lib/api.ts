@@ -1160,7 +1160,6 @@ export async function apiGetInventorySummary() {
 export type Product = {
   _id: string;
   name: string;
-  cost_per_unit: number;
   currency: string;
 };
 

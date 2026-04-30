@@ -19,19 +19,17 @@ type ModalMode = 'new' | 'edit' | 'view' | null;
 
 interface DraftProduct {
   name: string;
-  cost_per_unit: number;
   currency: string;
 }
 
 function emptyDraft(): DraftProduct {
-  return { name: '', cost_per_unit: 0, currency: 'RWF' };
+  return { name: '', currency: 'RWF' };
 }
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors';
 
 const PROD_COLS: ColDef[] = [
   { key: 'name',     label: 'Name',      defaultVisible: true },
-  { key: 'cost',     label: 'Unit Cost', defaultVisible: true },
   { key: 'currency', label: 'Currency',  defaultVisible: true },
   { key: 'actions',  label: 'Actions',   defaultVisible: true },
 ];
@@ -63,7 +61,7 @@ export default function ProductsPage() {
 
   function openNew() { setDraft(emptyDraft()); setSelected(null); setError(null); setModalMode('new'); }
   function openEdit(p: Product) {
-    setDraft({ name: p.name, cost_per_unit: p.cost_per_unit, currency: p.currency });
+    setDraft({ name: p.name, currency: p.currency });
     setSelected(p); setError(null); setModalMode('edit');
   }
   function openView(p: Product) { setSelected(p); setModalMode('view'); }
@@ -77,7 +75,6 @@ export default function ProductsPage() {
 
   async function handleSave() {
     if (!draft.name.trim()) { setError('Product name is required.'); return; }
-    if (draft.cost_per_unit <= 0) { setError('Unit cost must be greater than 0.'); return; }
     setSaving(true); setError(null);
     const res = modalMode === 'edit' && selected
       ? await apiUpdateProduct(selected._id, draft)
@@ -93,7 +90,6 @@ export default function ProductsPage() {
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Product Details</p>
         {([
           ['Name', selected.name],
-          ['Unit Cost', `${selected.cost_per_unit.toLocaleString()} ${selected.currency}`],
           ['Currency', selected.currency],
         ] as [string, string][]).map(([l, v]) => (
           <div key={l} className="flex justify-between text-sm">
@@ -124,17 +120,11 @@ export default function ProductsPage() {
           <label className="block text-[10px] text-t3 mb-1">Name *</label>
           <input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="e.g. Portland Cement" className={inp} />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-[10px] text-t3 mb-1">Unit Cost *</label>
-            <input type="number" min="0" step="0.01" value={draft.cost_per_unit} onChange={e => setDraft(d => ({ ...d, cost_per_unit: Number(e.target.value) }))} className={inp} />
-          </div>
-          <div>
-            <label className="block text-[10px] text-t3 mb-1">Currency</label>
-            <select value={draft.currency} onChange={e => setDraft(d => ({ ...d, currency: e.target.value }))} className={inp}>
-              {CURRENCIES.map(c => <option key={c}>{c}</option>)}
-            </select>
-          </div>
+        <div>
+          <label className="block text-[10px] text-t3 mb-1">Currency</label>
+          <select value={draft.currency} onChange={e => setDraft(d => ({ ...d, currency: e.target.value }))} className={inp}>
+            {CURRENCIES.map(c => <option key={c}>{c}</option>)}
+          </select>
         </div>
       </section>
       {error && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-500">{error}</div>}
@@ -158,7 +148,7 @@ export default function ProductsPage() {
         <h2 className="text-xl font-bold text-[#4285f4]">{selected.name}</h2>
       </div>
       <div className="grid grid-cols-2 gap-4 border-y border-gray-100 py-5 text-[12px]">
-        {([['Unit Cost', `${selected.cost_per_unit.toLocaleString()} ${selected.currency}`], ['Currency', selected.currency]] as [string, string][]).map(([l, v]) => (
+        {([['Currency', selected.currency]] as [string, string][]).map(([l, v]) => (
           <div key={l}>
             <p className="text-[10px] font-black text-gray-400 uppercase mb-0.5">{l}</p>
             <p className="font-bold text-gray-800">{v}</p>
@@ -215,7 +205,6 @@ export default function ProductsPage() {
             <thead className="bg-surface">
               <tr>
                 {colVis.has('name') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Name</th>}
-                {colVis.has('cost') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Unit Cost</th>}
                 {colVis.has('currency') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">Currency</th>}
                 {colVis.has('actions') && <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap"></th>}
               </tr>
@@ -234,7 +223,6 @@ export default function ProductsPage() {
               ) : products.map(p => (
                 <tr key={p._id} className="hover:bg-surface cursor-pointer transition-colors" onClick={() => openView(p)}>
                   {colVis.has('name') && <td className="px-4 py-3 text-sm font-medium text-t1">{p.name}</td>}
-                  {colVis.has('cost') && <td className="px-4 py-3 text-sm font-bold text-t1">{p.cost_per_unit.toLocaleString()}</td>}
                   {colVis.has('currency') && <td className="px-4 py-3 text-sm text-t3">{p.currency}</td>}
                   {colVis.has('actions') && (
                     <td className="px-4 py-3">

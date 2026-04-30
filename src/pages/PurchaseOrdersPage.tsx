@@ -132,9 +132,9 @@ const TAB_STATUS_MAP: Record<ActiveTab, string[] | null> = {
 const CHART_COLORS = ["#4285f4", "#93bbfa", "#bfd0fc", "#d5e4ff", "#e8f0ff"];
 
 const UNIT_OPTIONS: SearchSelectOption[] = [
-  { value: "grams", label: "Grams (g)" },
-  { value: "kg", label: "Kilograms (kg)" },
   { value: "tons", label: "Tons (t)" },
+  { value: "kg", label: "Kilograms (kg)" },
+  { value: "grams", label: "Grams (g)" },
   { value: "litres", label: "Litres (L)" },
   { value: "ml", label: "Millilitres (ml)" },
   { value: "units", label: "Units" },
@@ -168,7 +168,7 @@ function emptyLineItem(): DraftLineItem {
     description: "",
     analyticProjectId: null,
     analyticProjectName: null,
-    unit: "kg",
+    unit: "tons",
     orderedQty: 1,
     unitPrice: 0,
     taxRateId: null,
@@ -491,7 +491,6 @@ export default function PurchaseOrdersPage() {
       products.map((p) => ({
         value: p._id,
         label: p.name,
-        meta: `${p.cost_per_unit.toLocaleString()} ${p.currency}`,
       })),
     [products],
   );
@@ -678,17 +677,15 @@ export default function PurchaseOrdersPage() {
 
   async function handleSave() {
     if (!draft) return;
-    const isTransporter = draft.recipientType === "transporter";
     if (!draft.supplierId) {
       setSaveError(
-        isTransporter
+        draft.recipientType === "transporter"
           ? "Please select a transporter."
           : "Please select a supplier.",
       );
       return;
     }
     if (
-      !isTransporter &&
       draft.procurementType === "trading" &&
       !draft.destinationWarehouseId
     ) {
@@ -696,7 +693,6 @@ export default function PurchaseOrdersPage() {
       return;
     }
     if (
-      !isTransporter &&
       draft.procurementType === "trading" &&
       draft.lineItems.some((i) => !i.productId)
     ) {
@@ -705,17 +701,8 @@ export default function PurchaseOrdersPage() {
       );
       return;
     }
-    // Transporter POs describe transport tasks — no product catalogue,
-    // just description + qty + unit price (rates change frequently).
-    if (!isTransporter && draft.lineItems.some((i) => !i.productId)) {
+    if (draft.lineItems.some((i) => !i.productId)) {
       setSaveError("All line items must have a product selected.");
-      return;
-    }
-    if (
-      isTransporter &&
-      draft.lineItems.some((i) => !i.description.trim())
-    ) {
-      setSaveError("Each transport line needs a description.");
       return;
     }
     if (draft.lineItems.some((i) => i.orderedQty <= 0)) {
@@ -920,11 +907,10 @@ export default function PurchaseOrdersPage() {
           )}
         </div>
 
-        {/* Destination Warehouse — only relevant for goods (supplier) POs.
-            Transporter POs describe a service, not goods landing in a warehouse. */}
-        {draft.recipientType === "supplier" && (
-          <div className="space-y-2">
-            {(() => {
+        {/* Destination Warehouse — same for supplier and transporter POs. */}
+        <div className="space-y-2">
+          {draft.recipientType === "supplier" &&
+            (() => {
               const sup = suppliers.find((s) => s._id === draft.supplierId);
               if (!sup || sup.hasCrusher !== false) return null;
               return (
@@ -940,30 +926,31 @@ export default function PurchaseOrdersPage() {
                 </div>
               );
             })()}
-            <SearchSelect
-              label={
-                draft.procurementType === "trading"
-                  ? "Destination Warehouse *"
-                  : "Destination Warehouse"
-              }
-              options={warehouseOptions}
-              value={draft.destinationWarehouseId || null}
-              onChange={(val, opt) =>
-                updateDraft({
-                  destinationWarehouseId: val || "",
-                  destinationWarehouseName:
-                    opt?.label?.replace(/^🔨\s*/, "") || "",
-                })
-              }
-              placeholder={
-                draft.supplierId
-                  ? "Select destination warehouse..."
+          <SearchSelect
+            label={
+              draft.procurementType === "trading"
+                ? "Destination Warehouse *"
+                : "Destination Warehouse"
+            }
+            options={warehouseOptions}
+            value={draft.destinationWarehouseId || null}
+            onChange={(val, opt) =>
+              updateDraft({
+                destinationWarehouseId: val || "",
+                destinationWarehouseName:
+                  opt?.label?.replace(/^🔨\s*/, "") || "",
+              })
+            }
+            placeholder={
+              draft.supplierId
+                ? "Select destination warehouse..."
+                : draft.recipientType === "transporter"
+                  ? "Pick a transporter first to auto-fill"
                   : "Pick a supplier first to auto-fill"
-              }
-              clearable={draft.procurementType !== "trading"}
-            />
-          </div>
-        )}
+            }
+            clearable={draft.procurementType !== "trading"}
+          />
+        </div>
 
         <div>
           <label className="block text-[10px] text-t3 mb-1">
@@ -1057,15 +1044,14 @@ export default function PurchaseOrdersPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-[11px] font-black text-t3 uppercase tracking-widest">
-            {draft.recipientType === "transporter" ? "Transport Tasks" : "Products"}
+            Products
           </p>
           <button
             type="button"
             onClick={addLineItem}
             className="flex items-center gap-1 text-[11px] font-bold text-accent hover:underline"
           >
-            <Plus size={11} weight="bold" />{" "}
-            {draft.recipientType === "transporter" ? "Add Task" : "Add Product"}
+            <Plus size={11} weight="bold" /> Add Product
           </button>
         </div>
 
@@ -1078,8 +1064,7 @@ export default function PurchaseOrdersPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold text-t3 uppercase">
-                  {draft.recipientType === "transporter" ? "Task" : "Item"} #
-                  {idx + 1}
+                  Item #{idx + 1}
                 </span>
                 {draft.lineItems.length > 1 && (
                   <button
@@ -1092,38 +1077,20 @@ export default function PurchaseOrdersPage() {
                 )}
               </div>
 
-              {draft.recipientType === "transporter" ? (
-                <div>
-                  <label className="block text-[10px] text-t3 mb-1">
-                    Description *
-                  </label>
-                  <Input
-                    value={item.description}
-                    onChange={(e) =>
-                      updateLineItem(item._key, { description: e.target.value })
-                    }
-                    placeholder="e.g. Kigali → Mombasa, 30t cement"
-                  />
-                </div>
-              ) : (
-                <SearchSelect
-                  label="Product *"
-                  options={productOptions}
-                  value={item.productId || null}
-                  onChange={(val, opt) => {
-                    const prod = products.find((p) => p._id === val);
-                    updateLineItem(item._key, {
-                      productId: val || null,
-                      productName: opt?.label || null,
-                      description: opt?.label || item.description,
-                      unitPrice: prod?.cost_per_unit ?? item.unitPrice,
-                      unit: "kg",
-                    });
-                  }}
-                  placeholder="Select product..."
-                  clearable={false}
-                />
-              )}
+              <SearchSelect
+                label="Product *"
+                options={productOptions}
+                value={item.productId || null}
+                onChange={(val, opt) => {
+                  updateLineItem(item._key, {
+                    productId: val || null,
+                    productName: opt?.label || null,
+                    description: opt?.label || item.description,
+                  });
+                }}
+                placeholder="Select product..."
+                clearable={false}
+              />
 
               <SearchSelect
                 options={projectOptions}
@@ -1158,7 +1125,7 @@ export default function PurchaseOrdersPage() {
                   options={UNIT_OPTIONS}
                   value={item.unit}
                   onChange={(val) =>
-                    updateLineItem(item._key, { unit: val || "kg" })
+                    updateLineItem(item._key, { unit: val || "tons" })
                   }
                   placeholder="Unit..."
                   clearable={false}
