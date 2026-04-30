@@ -144,7 +144,6 @@ const UNIT_OPTIONS: SearchSelectOption[] = [
 const PO_COLS: ColDef[] = [
   { key: "poRef", label: "PO Ref", defaultVisible: true },
   { key: "supplier", label: "Supplier", defaultVisible: true },
-  { key: "deliverTo", label: "Deliver To", defaultVisible: true },
   { key: "contract", label: "Contract", defaultVisible: false },
   { key: "currency", label: "Currency", defaultVisible: false },
   { key: "total", label: "Total", defaultVisible: true },
@@ -510,23 +509,15 @@ export default function PurchaseOrdersPage() {
     [warehouses],
   );
 
-  // Pick the right default destination for a supplier:
-  //   - hasCrusher === false (uncrushed) → first crushing site
-  //   - otherwise → supplier's stored mineWarehouseId, or first standard
-  // Always returns the chosen warehouse object so we can grab its name too.
+  // Default destination = the crushing site saved on the supplier's profile.
+  // Falls back to the first crushing-site warehouse if the supplier has no
+  // saved crushing site, then to null if there are no crushing sites at all.
   function resolveDefaultDestination(supplier: Supplier | undefined) {
     if (!supplier) return null;
     const ws = warehouses;
-    if (supplier.hasCrusher === false) {
-      const crushing = ws.find((w) => w._id === supplier.crushingWarehouseId);
-      if (crushing) return crushing;
-      return ws.find((w) => w.siteType === "crushing_site") || null;
-    }
-    return (
-      ws.find((w) => w._id === supplier.mineWarehouseId)
-      || ws.find((w) => w.siteType !== "crushing_site")
-      || null
-    );
+    const saved = ws.find((w) => w._id === supplier.crushingWarehouseId);
+    if (saved) return saved;
+    return ws.find((w) => w.siteType === "crushing_site") || null;
   }
 
   // Filter orders
@@ -693,6 +684,13 @@ export default function PurchaseOrdersPage() {
       return;
     }
     if (
+      draft.recipientType === "transporter" &&
+      !draft.deliverToClientId
+    ) {
+      setSaveError("Please select the client this transport is for.");
+      return;
+    }
+    if (
       draft.procurementType === "trading" &&
       draft.lineItems.some((i) => !i.productId)
     ) {
@@ -721,8 +719,14 @@ export default function PurchaseOrdersPage() {
       contractId: draft.contractId || null,
       contractRef: draft.contractRef || null,
       contractTitle: draft.contractTitle || null,
-      deliverToClientId: draft.deliverToClientId || null,
-      deliverToClientName: draft.deliverToClientName || null,
+      deliverToClientId:
+        draft.recipientType === "transporter"
+          ? draft.deliverToClientId || null
+          : null,
+      deliverToClientName:
+        draft.recipientType === "transporter"
+          ? draft.deliverToClientName || null
+          : null,
       currency: draft.currency,
       procurementType: draft.procurementType,
       destinationWarehouseId: draft.destinationWarehouseId || null,
@@ -912,16 +916,20 @@ export default function PurchaseOrdersPage() {
           {draft.recipientType === "supplier" &&
             (() => {
               const sup = suppliers.find((s) => s._id === draft.supplierId);
-              if (!sup || sup.hasCrusher !== false) return null;
+              if (!sup) return null;
+              const savedCrush = warehouses.find(
+                (w) => w._id === sup.crushingWarehouseId,
+              );
+              if (!savedCrush) return null;
               return (
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs">
                   <span className="text-amber-500 mt-0.5">🔨</span>
                   <div className="text-amber-200 leading-relaxed">
-                    <span className="font-bold">{sup.name}</span> delivers
-                    <span className="font-bold"> uncrushed</span> material —
-                    defaulted to a{" "}
-                    <span className="font-bold">Crushing Site</span>. Pick any
-                    warehouse below if needed.
+                    Defaulted to{" "}
+                    <span className="font-bold">{savedCrush.name}</span> — the
+                    crushing site saved on{" "}
+                    <span className="font-bold">{sup.name}</span>'s profile.
+                    Override below if needed.
                   </div>
                 </div>
               );
@@ -949,19 +957,6 @@ export default function PurchaseOrdersPage() {
                   : "Pick a supplier first to auto-fill"
             }
             clearable={draft.procurementType !== "trading"}
-          />
-        </div>
-
-        <div>
-          <label className="block text-[10px] text-t3 mb-1">
-            {draft.recipientType === "transporter"
-              ? "Transporter Reference (auto-filled)"
-              : "Supplier Reference (auto-filled)"}
-          </label>
-          <Input
-            value={draft.vendorReference}
-            onChange={(e) => updateDraft({ vendorReference: e.target.value })}
-            placeholder="Reference number"
           />
         </div>
 
@@ -1015,29 +1010,31 @@ export default function PurchaseOrdersPage() {
           />
         </div>
 
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-[10px] text-t3">Deliver To (Client)</label>
-            <button
-              type="button"
-              onClick={() => setShowAddClient(true)}
-              className="flex items-center gap-1 text-[10px] font-bold text-accent hover:underline"
-            >
-              <UserPlus size={11} weight="bold" /> New Client
-            </button>
+        {draft.recipientType === "transporter" && (
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[10px] text-t3">Deliver To (Client) *</label>
+              <button
+                type="button"
+                onClick={() => setShowAddClient(true)}
+                className="flex items-center gap-1 text-[10px] font-bold text-accent hover:underline"
+              >
+                <UserPlus size={11} weight="bold" /> New Client
+              </button>
+            </div>
+            <SearchSelect
+              options={clientOptions}
+              value={draft.deliverToClientId || null}
+              onChange={(val, opt) => {
+                updateDraft({
+                  deliverToClientId: val || "",
+                  deliverToClientName: opt?.label || "",
+                });
+              }}
+              placeholder="Search client..."
+            />
           </div>
-          <SearchSelect
-            options={clientOptions}
-            value={draft.deliverToClientId || null}
-            onChange={(val, opt) => {
-              updateDraft({
-                deliverToClientId: val || "",
-                deliverToClientName: opt?.label || "",
-              });
-            }}
-            placeholder="Search client..."
-          />
-        </div>
+        )}
       </section>
 
       {/* Line Items */}
@@ -1279,7 +1276,9 @@ export default function PurchaseOrdersPage() {
           ["Vendor Ref", previewOrder.vendorReference || "—"],
           ["Contract", previewOrder.contractRef || "—"],
           ["Currency", previewOrder.currency],
-          ["Deliver To", previewOrder.deliverToClientName || "—"],
+          ...(previewOrder.recipientType === "transporter"
+            ? [["Deliver To", previewOrder.deliverToClientName || "—"]]
+            : []),
           ...(previewOrder.destinationWarehouseName
             ? [["Destination Warehouse", previewOrder.destinationWarehouseName]]
             : []),
@@ -1579,15 +1578,23 @@ export default function PurchaseOrdersPage() {
         Built on trust. Delivered with Excellence
       </p>
 
-      <div className="flex justify-between items-start mb-8">
-        <div className="text-[12px]">
-          <p className="font-bold text-gray-800 uppercase tracking-tighter mb-1">
-            Bill To / Deliver To
-          </p>
-          <p className="text-gray-600">
-            {(orderForPreview as any).deliverToClientName || "N/A"}
-          </p>
-        </div>
+      <div
+        className={`flex ${
+          (orderForPreview as any).recipientType === "transporter"
+            ? "justify-between"
+            : "justify-end"
+        } items-start mb-8`}
+      >
+        {(orderForPreview as any).recipientType === "transporter" && (
+          <div className="text-[12px]">
+            <p className="font-bold text-gray-800 uppercase tracking-tighter mb-1">
+              Bill To / Deliver To
+            </p>
+            <p className="text-gray-600">
+              {(orderForPreview as any).deliverToClientName || "N/A"}
+            </p>
+          </div>
+        )}
         <div className="text-right text-[12px]">
           <p className="text-[10px] text-gray-400 uppercase font-black mb-1">
             {(orderForPreview as any).recipientType === "transporter"
@@ -1951,7 +1958,6 @@ export default function PurchaseOrdersPage() {
                 <TableRow>
                   {colVis.has("poRef") && <TableHead>PO Ref</TableHead>}
                   {colVis.has("supplier") && <TableHead>Supplier</TableHead>}
-                  {colVis.has("deliverTo") && <TableHead>Deliver To</TableHead>}
                   {colVis.has("contract") && <TableHead>Contract</TableHead>}
                   {colVis.has("currency") && <TableHead>Currency</TableHead>}
                   {colVis.has("total") && <TableHead>Total</TableHead>}
@@ -2013,11 +2019,6 @@ export default function PurchaseOrdersPage() {
                       {colVis.has("supplier") && (
                         <TableCell className="font-medium text-t1 max-w-[150px] truncate">
                           {order.supplierName}
-                        </TableCell>
-                      )}
-                      {colVis.has("deliverTo") && (
-                        <TableCell className="text-t2 max-w-[130px] truncate">
-                          {order.deliverToClientName || "—"}
                         </TableCell>
                       )}
                       {colVis.has("contract") && (
