@@ -319,6 +319,7 @@ export type PurchaseOrder = {
   _id: string;
   poRef: string;
   procurementType: string;
+  recipientType?: 'supplier' | 'transporter';
   supplierId: string | { _id: string; supplierCode: string; name: string };
   supplierName: string;
   vendorReference: string | null;

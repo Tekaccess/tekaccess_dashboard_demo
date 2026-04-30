@@ -58,6 +58,9 @@ import {
   apiDeletePurchaseOrder,
   apiListProducts,
   apiListWarehouses,
+  apiListTransporters,
+  apiListProcurementInvoices,
+  apiCreateProcurementInvoice,
   Supplier,
   Contract,
   Currency,
@@ -67,6 +70,8 @@ import {
   POLineItem,
   Product,
   Warehouse,
+  Transporter,
+  ProcurementInvoice,
 } from "../lib/api";
 import { Input } from "../components/ui/input";
 import {
@@ -189,6 +194,7 @@ interface DraftLineItem {
 }
 
 interface DraftPO {
+  recipientType: "supplier" | "transporter";
   supplierId: string;
   supplierName: string;
   vendorReference: string;
@@ -216,6 +222,7 @@ interface DraftPO {
 
 function emptyDraft(): DraftPO {
   return {
+    recipientType: "supplier",
     supplierId: "",
     supplierName: "",
     vendorReference: "",
@@ -283,6 +290,21 @@ export default function PurchaseOrdersPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [transporters, setTransporters] = useState<Transporter[]>([]);
+
+  // Bill linked to the currently-viewed PO
+  const [billForOrder, setBillForOrder] = useState<ProcurementInvoice | null>(null);
+  const [billLoading, setBillLoading] = useState(false);
+  const [showBillForm, setShowBillForm] = useState(false);
+  const [billDraft, setBillDraft] = useState({
+    invoiceRef: "",
+    amount: 0,
+    invoiceDate: new Date().toISOString().slice(0, 10),
+    dueDate: "",
+    notes: "",
+  });
+  const [billSaving, setBillSaving] = useState(false);
+  const [billError, setBillError] = useState<string | null>(null);
 
   // Load reference data
   useEffect(() => {
@@ -302,6 +324,9 @@ export default function PurchaseOrdersPage() {
       apiListWarehouses().then(
         (r) => r.success && setWarehouses(r.data.warehouses),
       ),
+      apiListTransporters().then(
+        (r) => r.success && setTransporters(r.data.transporters),
+      ),
     ]);
   }, []);
 
@@ -317,6 +342,85 @@ export default function PurchaseOrdersPage() {
     loadOrders();
   }, [loadOrders]);
 
+  // ─── Bill (linked invoice) for the currently-viewed PO ─────────────────────
+  const viewedOrder =
+    modal && modal.mode !== "new"
+      ? ((modal as any).order as PurchaseOrder | undefined)
+      : undefined;
+
+  useEffect(() => {
+    if (!viewedOrder) {
+      setBillForOrder(null);
+      setShowBillForm(false);
+      setBillError(null);
+      return;
+    }
+    let cancelled = false;
+    setBillLoading(true);
+    apiListProcurementInvoices({ linkedPoId: viewedOrder._id, limit: "1" })
+      .then((r) => {
+        if (cancelled) return;
+        const inv = r.success ? r.data.invoices[0] || null : null;
+        setBillForOrder(inv);
+        setShowBillForm(false);
+        setBillDraft({
+          invoiceRef: "",
+          amount: viewedOrder.totalValueWithTax,
+          invoiceDate: new Date().toISOString().slice(0, 10),
+          dueDate: "",
+          notes: "",
+        });
+      })
+      .finally(() => {
+        if (!cancelled) setBillLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [viewedOrder?._id]);
+
+  async function handleCreateBill() {
+    if (!viewedOrder) return;
+    if (!billDraft.invoiceRef.trim()) {
+      setBillError("Bill number is required.");
+      return;
+    }
+    if (!billDraft.amount || billDraft.amount <= 0) {
+      setBillError("Bill amount must be greater than 0.");
+      return;
+    }
+    setBillSaving(true);
+    setBillError(null);
+    const supplierIdStr =
+      typeof viewedOrder.supplierId === "string"
+        ? viewedOrder.supplierId
+        : viewedOrder.supplierId._id;
+    const res = await apiCreateProcurementInvoice({
+      invoiceRef: billDraft.invoiceRef.trim(),
+      counterpartyType:
+        viewedOrder.recipientType === "transporter" ? "transporter" : "supplier",
+      counterpartyId: supplierIdStr,
+      counterpartyName: viewedOrder.supplierName,
+      linkedPoId: viewedOrder._id,
+      linkedPoRef: viewedOrder.poRef,
+      amount: Number(billDraft.amount),
+      currency: viewedOrder.currency,
+      taxAmount: 0,
+      totalAmount: Number(billDraft.amount),
+      invoiceDate: billDraft.invoiceDate,
+      dueDate: billDraft.dueDate || null,
+      notes: billDraft.notes || null,
+      status: "received",
+    });
+    setBillSaving(false);
+    if (!res.success) {
+      setBillError(res.message || "Failed to record bill.");
+      return;
+    }
+    setBillForOrder(res.data.invoice);
+    setShowBillForm(false);
+  }
+
   // Option lists for dropdowns
   const supplierOptions = useMemo<SearchSelectOption[]>(
     () =>
@@ -327,6 +431,19 @@ export default function PurchaseOrdersPage() {
         meta: s.country,
       })),
     [suppliers],
+  );
+
+  const transporterOptions = useMemo<SearchSelectOption[]>(
+    () =>
+      transporters
+        .filter((t) => t.status === "active")
+        .map((t) => ({
+          value: t._id,
+          label: t.name,
+          sublabel: t.transporterCode,
+          meta: t.country,
+        })),
+    [transporters],
   );
 
   const contractOptions = useMemo<SearchSelectOption[]>(
@@ -522,6 +639,7 @@ export default function PurchaseOrdersPage() {
   function handleEdit(order: PurchaseOrder) {
     setSaveError(null);
     const d: DraftPO = {
+      recipientType: order.recipientType || "supplier",
       supplierId:
         typeof order.supplierId === "string"
           ? order.supplierId
@@ -560,15 +678,25 @@ export default function PurchaseOrdersPage() {
 
   async function handleSave() {
     if (!draft) return;
+    const isTransporter = draft.recipientType === "transporter";
     if (!draft.supplierId) {
-      setSaveError("Please select a supplier.");
+      setSaveError(
+        isTransporter
+          ? "Please select a transporter."
+          : "Please select a supplier.",
+      );
       return;
     }
-    if (draft.procurementType === "trading" && !draft.destinationWarehouseId) {
+    if (
+      !isTransporter &&
+      draft.procurementType === "trading" &&
+      !draft.destinationWarehouseId
+    ) {
       setSaveError("A destination warehouse is required for trading POs.");
       return;
     }
     if (
+      !isTransporter &&
       draft.procurementType === "trading" &&
       draft.lineItems.some((i) => !i.productId)
     ) {
@@ -577,8 +705,17 @@ export default function PurchaseOrdersPage() {
       );
       return;
     }
-    if (draft.lineItems.some((i) => !i.productId)) {
+    // Transporter POs describe transport tasks — no product catalogue,
+    // just description + qty + unit price (rates change frequently).
+    if (!isTransporter && draft.lineItems.some((i) => !i.productId)) {
       setSaveError("All line items must have a product selected.");
+      return;
+    }
+    if (
+      isTransporter &&
+      draft.lineItems.some((i) => !i.description.trim())
+    ) {
+      setSaveError("Each transport line needs a description.");
       return;
     }
     if (draft.lineItems.some((i) => i.orderedQty <= 0)) {
@@ -590,6 +727,7 @@ export default function PurchaseOrdersPage() {
     setSaveError(null);
 
     const payload = {
+      recipientType: draft.recipientType,
       supplierId: draft.supplierId,
       supplierName: draft.supplierName,
       vendorReference: draft.vendorReference || null,
@@ -673,101 +811,170 @@ export default function PurchaseOrdersPage() {
 
   const manualForm = draft && (
     <div className="space-y-7">
-      {/* General Info */}
-      <section className="space-y-4">
+      {/* Recipient Type Toggle */}
+      <section className="space-y-2">
         <p className="text-[11px] font-black text-t3 uppercase tracking-widest">
-          Supplier Information
+          PO For
         </p>
-
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-[10px] text-t3">Supplier *</label>
+        <div className="grid grid-cols-2 gap-2 p-1 bg-surface rounded-xl border border-border">
+          {(["supplier", "transporter"] as const).map((type) => (
             <button
+              key={type}
               type="button"
-              onClick={() => setShowAddSupplier(true)}
-              className="flex items-center gap-1 text-[10px] font-bold text-accent hover:underline"
-            >
-              <UserPlus size={11} weight="bold" /> New Supplier
-            </button>
-          </div>
-          <SearchSelect
-            options={supplierOptions}
-            value={draft.supplierId || null}
-            onChange={(val, opt) => {
-              if (!val || !opt) {
+              onClick={() =>
                 updateDraft({
+                  recipientType: type,
                   supplierId: "",
                   supplierName: "",
                   vendorReference: "",
                   destinationWarehouseId: "",
                   destinationWarehouseName: "",
-                });
-                return;
+                })
               }
-              const supplier = suppliers.find((s) => s._id === val);
-              const dest = resolveDefaultDestination(supplier);
-              updateDraft({
-                supplierId: val,
-                supplierName: opt.label,
-                vendorReference: supplier?.supplierCode || "",
-                destinationWarehouseId: dest?._id || "",
-                destinationWarehouseName: dest?.name || "",
-              });
-            }}
-            placeholder="Search supplier..."
-          />
+              className={`py-2 rounded-lg text-xs font-bold capitalize transition-colors ${
+                draft.recipientType === type
+                  ? "bg-accent text-white shadow-sm"
+                  : "text-t2 hover:text-t1"
+              }`}
+            >
+              {type === "supplier" ? "Supplier (goods)" : "Transporter (service)"}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* General Info */}
+      <section className="space-y-4">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">
+          {draft.recipientType === "transporter"
+            ? "Transporter Information"
+            : "Supplier Information"}
+        </p>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-[10px] text-t3">
+              {draft.recipientType === "transporter"
+                ? "Transporter *"
+                : "Supplier *"}
+            </label>
+            {draft.recipientType === "supplier" && (
+              <button
+                type="button"
+                onClick={() => setShowAddSupplier(true)}
+                className="flex items-center gap-1 text-[10px] font-bold text-accent hover:underline"
+              >
+                <UserPlus size={11} weight="bold" /> New Supplier
+              </button>
+            )}
+          </div>
+          {draft.recipientType === "supplier" ? (
+            <SearchSelect
+              options={supplierOptions}
+              value={draft.supplierId || null}
+              onChange={(val, opt) => {
+                if (!val || !opt) {
+                  updateDraft({
+                    supplierId: "",
+                    supplierName: "",
+                    vendorReference: "",
+                    destinationWarehouseId: "",
+                    destinationWarehouseName: "",
+                  });
+                  return;
+                }
+                const supplier = suppliers.find((s) => s._id === val);
+                const dest = resolveDefaultDestination(supplier);
+                updateDraft({
+                  supplierId: val,
+                  supplierName: opt.label,
+                  vendorReference: supplier?.supplierCode || "",
+                  destinationWarehouseId: dest?._id || "",
+                  destinationWarehouseName: dest?.name || "",
+                });
+              }}
+              placeholder="Search supplier..."
+            />
+          ) : (
+            <SearchSelect
+              options={transporterOptions}
+              value={draft.supplierId || null}
+              onChange={(val, opt) => {
+                if (!val || !opt) {
+                  updateDraft({
+                    supplierId: "",
+                    supplierName: "",
+                    vendorReference: "",
+                  });
+                  return;
+                }
+                const t = transporters.find((x) => x._id === val);
+                updateDraft({
+                  supplierId: val,
+                  supplierName: opt.label,
+                  vendorReference: t?.transporterCode || "",
+                });
+              }}
+              placeholder="Search transporter..."
+            />
+          )}
         </div>
 
-        {/* Destination Warehouse — shown right under Supplier so the user can
-            confirm or change where the goods will land before filling out the
-            rest of the order. */}
-        <div className="space-y-2">
-          {(() => {
-            const sup = suppliers.find((s) => s._id === draft.supplierId);
-            if (!sup || sup.hasCrusher !== false) return null;
-            return (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs">
-                <span className="text-amber-500 mt-0.5">🔨</span>
-                <div className="text-amber-200 leading-relaxed">
-                  <span className="font-bold">{sup.name}</span> delivers
-                  <span className="font-bold"> uncrushed</span> material —
-                  defaulted to a <span className="font-bold">Crushing Site</span>.
-                  Pick any warehouse below if needed.
+        {/* Destination Warehouse — only relevant for goods (supplier) POs.
+            Transporter POs describe a service, not goods landing in a warehouse. */}
+        {draft.recipientType === "supplier" && (
+          <div className="space-y-2">
+            {(() => {
+              const sup = suppliers.find((s) => s._id === draft.supplierId);
+              if (!sup || sup.hasCrusher !== false) return null;
+              return (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs">
+                  <span className="text-amber-500 mt-0.5">🔨</span>
+                  <div className="text-amber-200 leading-relaxed">
+                    <span className="font-bold">{sup.name}</span> delivers
+                    <span className="font-bold"> uncrushed</span> material —
+                    defaulted to a{" "}
+                    <span className="font-bold">Crushing Site</span>. Pick any
+                    warehouse below if needed.
+                  </div>
                 </div>
-              </div>
-            );
-          })()}
-          <SearchSelect
-            label={
-              draft.procurementType === "trading"
-                ? "Destination Warehouse *"
-                : "Destination Warehouse"
-            }
-            options={warehouseOptions}
-            value={draft.destinationWarehouseId || null}
-            onChange={(val, opt) =>
-              updateDraft({
-                destinationWarehouseId: val || "",
-                destinationWarehouseName: opt?.label?.replace(/^🔨\s*/, "") || "",
-              })
-            }
-            placeholder={
-              draft.supplierId
-                ? "Select destination warehouse..."
-                : "Pick a supplier first to auto-fill"
-            }
-            clearable={draft.procurementType !== "trading"}
-          />
-        </div>
+              );
+            })()}
+            <SearchSelect
+              label={
+                draft.procurementType === "trading"
+                  ? "Destination Warehouse *"
+                  : "Destination Warehouse"
+              }
+              options={warehouseOptions}
+              value={draft.destinationWarehouseId || null}
+              onChange={(val, opt) =>
+                updateDraft({
+                  destinationWarehouseId: val || "",
+                  destinationWarehouseName:
+                    opt?.label?.replace(/^🔨\s*/, "") || "",
+                })
+              }
+              placeholder={
+                draft.supplierId
+                  ? "Select destination warehouse..."
+                  : "Pick a supplier first to auto-fill"
+              }
+              clearable={draft.procurementType !== "trading"}
+            />
+          </div>
+        )}
 
         <div>
           <label className="block text-[10px] text-t3 mb-1">
-            Supplier Reference (auto-filled)
+            {draft.recipientType === "transporter"
+              ? "Transporter Reference (auto-filled)"
+              : "Supplier Reference (auto-filled)"}
           </label>
           <Input
             value={draft.vendorReference}
             onChange={(e) => updateDraft({ vendorReference: e.target.value })}
-            placeholder="Supplier reference number"
+            placeholder="Reference number"
           />
         </div>
 
@@ -850,14 +1057,15 @@ export default function PurchaseOrdersPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-[11px] font-black text-t3 uppercase tracking-widest">
-            Products
+            {draft.recipientType === "transporter" ? "Transport Tasks" : "Products"}
           </p>
           <button
             type="button"
             onClick={addLineItem}
             className="flex items-center gap-1 text-[11px] font-bold text-accent hover:underline"
           >
-            <Plus size={11} weight="bold" /> Add Product
+            <Plus size={11} weight="bold" />{" "}
+            {draft.recipientType === "transporter" ? "Add Task" : "Add Product"}
           </button>
         </div>
 
@@ -870,7 +1078,8 @@ export default function PurchaseOrdersPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold text-t3 uppercase">
-                  Item #{idx + 1}
+                  {draft.recipientType === "transporter" ? "Task" : "Item"} #
+                  {idx + 1}
                 </span>
                 {draft.lineItems.length > 1 && (
                   <button
@@ -883,23 +1092,38 @@ export default function PurchaseOrdersPage() {
                 )}
               </div>
 
-              <SearchSelect
-                label="Product *"
-                options={productOptions}
-                value={item.productId || null}
-                onChange={(val, opt) => {
-                  const prod = products.find((p) => p._id === val);
-                  updateLineItem(item._key, {
-                    productId: val || null,
-                    productName: opt?.label || null,
-                    description: opt?.label || item.description,
-                    unitPrice: prod?.cost_per_unit ?? item.unitPrice,
-                    unit: "kg",
-                  });
-                }}
-                placeholder="Select product..."
-                clearable={false}
-              />
+              {draft.recipientType === "transporter" ? (
+                <div>
+                  <label className="block text-[10px] text-t3 mb-1">
+                    Description *
+                  </label>
+                  <Input
+                    value={item.description}
+                    onChange={(e) =>
+                      updateLineItem(item._key, { description: e.target.value })
+                    }
+                    placeholder="e.g. Kigali → Mombasa, 30t cement"
+                  />
+                </div>
+              ) : (
+                <SearchSelect
+                  label="Product *"
+                  options={productOptions}
+                  value={item.productId || null}
+                  onChange={(val, opt) => {
+                    const prod = products.find((p) => p._id === val);
+                    updateLineItem(item._key, {
+                      productId: val || null,
+                      productName: opt?.label || null,
+                      description: opt?.label || item.description,
+                      unitPrice: prod?.cost_per_unit ?? item.unitPrice,
+                      unit: "kg",
+                    });
+                  }}
+                  placeholder="Select product..."
+                  clearable={false}
+                />
+              )}
 
               <SearchSelect
                 options={projectOptions}
@@ -945,6 +1169,9 @@ export default function PurchaseOrdersPage() {
                 <div>
                   <label className="block text-[10px] text-t3 mb-1">
                     Unit Price *
+                    <span className="ml-1 font-normal text-t3/70">
+                      (override per order)
+                    </span>
                   </label>
                   <Input
                     type="number"
@@ -1070,7 +1297,18 @@ export default function PurchaseOrdersPage() {
         </p>
         {[
           ["PO Reference", previewOrder.poRef],
-          ["Supplier", previewOrder.supplierName],
+          [
+            "PO Type",
+            previewOrder.recipientType === "transporter"
+              ? "Transporter (service)"
+              : "Supplier (goods)",
+          ],
+          [
+            previewOrder.recipientType === "transporter"
+              ? "Transporter"
+              : "Supplier",
+            previewOrder.supplierName,
+          ],
           ["Vendor Ref", previewOrder.vendorReference || "—"],
           ["Contract", previewOrder.contractRef || "—"],
           ["Currency", previewOrder.currency],
@@ -1157,6 +1395,154 @@ export default function PurchaseOrdersPage() {
         </div>
       )}
 
+      {/* Bill — every PO carries one for finance */}
+      <section className="space-y-2">
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">
+          Bill
+        </p>
+        {billLoading ? (
+          <div className="flex items-center gap-2 p-3 text-xs text-t3">
+            <Spinner size={13} className="animate-spin" /> Loading bill…
+          </div>
+        ) : billForOrder ? (
+          <div className="p-3 bg-surface rounded-xl border border-border space-y-1.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-t3">Bill #</span>
+              <span className="font-semibold text-t1">
+                {billForOrder.invoiceRef}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-t3">Amount</span>
+              <span className="font-semibold text-t1">
+                {billForOrder.totalAmount.toLocaleString()}{" "}
+                {billForOrder.currency}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-t3">Bill Date</span>
+              <span className="font-medium text-t1">
+                {new Date(billForOrder.invoiceDate).toLocaleDateString()}
+              </span>
+            </div>
+            {billForOrder.dueDate && (
+              <div className="flex justify-between">
+                <span className="text-t3">Due</span>
+                <span className="font-medium text-t1">
+                  {new Date(billForOrder.dueDate).toLocaleDateString()}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-t3">Status</span>
+              <span className="font-semibold text-accent capitalize">
+                {billForOrder.status}
+              </span>
+            </div>
+          </div>
+        ) : showBillForm ? (
+          <div className="p-3 bg-surface rounded-xl border border-border space-y-2.5">
+            <div>
+              <label className="block text-[10px] text-t3 mb-1">Bill # *</label>
+              <Input
+                value={billDraft.invoiceRef}
+                onChange={(e) =>
+                  setBillDraft((d) => ({ ...d, invoiceRef: e.target.value }))
+                }
+                placeholder="Supplier's bill / invoice number"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] text-t3 mb-1">
+                  Amount * ({previewOrder.currency})
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={billDraft.amount}
+                  onChange={(e) =>
+                    setBillDraft((d) => ({
+                      ...d,
+                      amount: Number(e.target.value),
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-t3 mb-1">
+                  Bill Date *
+                </label>
+                <Input
+                  type="date"
+                  value={billDraft.invoiceDate}
+                  onChange={(e) =>
+                    setBillDraft((d) => ({ ...d, invoiceDate: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] text-t3 mb-1">Due Date</label>
+              <Input
+                type="date"
+                value={billDraft.dueDate}
+                onChange={(e) =>
+                  setBillDraft((d) => ({ ...d, dueDate: e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-t3 mb-1">Notes</label>
+              <textarea
+                value={billDraft.notes}
+                onChange={(e) =>
+                  setBillDraft((d) => ({ ...d, notes: e.target.value }))
+                }
+                rows={2}
+                className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors resize-none"
+                placeholder="Optional"
+              />
+            </div>
+            {billError && (
+              <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-500">
+                {billError}
+              </div>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBillForm(false);
+                  setBillError(null);
+                }}
+                className="flex-1 py-2 border border-border text-t2 hover:bg-card rounded-lg text-xs font-bold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateBill}
+                disabled={billSaving}
+                className="flex-1 py-2 bg-accent text-white rounded-lg text-xs font-bold hover:bg-accent-h transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {billSaving && <Spinner size={12} className="animate-spin" />}
+                Save Bill
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowBillForm(true)}
+            className="w-full py-2.5 border border-dashed border-border text-t2 hover:text-t1 hover:border-accent rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2"
+          >
+            <FileText size={13} weight="duotone" /> Attach Bill
+          </button>
+        )}
+      </section>
+
       <button
         type="button"
         onClick={() => handleEdit(previewOrder)}
@@ -1174,6 +1560,7 @@ export default function PurchaseOrdersPage() {
     (draft
       ? {
           poRef: "— DRAFT —",
+          recipientType: draft.recipientType,
           supplierName: draft.supplierName || "Not selected",
           vendorReference: draft.vendorReference,
           contractRef: draft.contractRef,
@@ -1236,7 +1623,9 @@ export default function PurchaseOrdersPage() {
         </div>
         <div className="text-right text-[12px]">
           <p className="text-[10px] text-gray-400 uppercase font-black mb-1">
-            Supplier
+            {(orderForPreview as any).recipientType === "transporter"
+              ? "Transporter"
+              : "Supplier"}
           </p>
           <p className="text-lg uppercase tracking-tight font-bold">
             {(orderForPreview as any).supplierName}

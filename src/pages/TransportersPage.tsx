@@ -479,60 +479,6 @@ export default function TransportersPage() {
                     </div>
                   </div>
 
-                  <div className="border-t border-border pt-4">
-                    <p className="text-xs font-black text-t3 uppercase tracking-widest mb-3">Truck Commitment</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-t3 mb-2">Committed <span className="text-rose-500">*</span></label>
-                        <input type="number" min={1} value={draft.trucksCommitted}
-                          onChange={e => set('trucksCommitted', e.target.value)} className={inp} />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-t3 mb-2">Delivered</label>
-                        <input type="number" min={0} value={draft.trucksDelivered}
-                          onChange={e => set('trucksDelivered', e.target.value)} className={inp} />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-t3 mb-2">Rate / Truck ({draft.currency})</label>
-                        <input type="number" min={0} value={draft.ratePerTruck}
-                          onChange={e => set('ratePerTruck', e.target.value)} className={inp} />
-                      </div>
-                    </div>
-
-                    {/* Progress preview */}
-                    {Number(draft.trucksCommitted) > 0 && (
-                      <div className="mt-3 p-3 bg-surface rounded-lg border border-border">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs text-t3">Delivery progress</span>
-                          <span className="text-xs font-bold text-t1">
-                            {draft.trucksDelivered}/{draft.trucksCommitted} trucks
-                          </span>
-                        </div>
-                        <div className="h-2 bg-surface-hover rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              Number(draft.trucksDelivered) >= Number(draft.trucksCommitted)
-                                ? 'bg-emerald-500' : 'bg-accent'
-                            }`}
-                            style={{ width: `${Math.min(100, (Number(draft.trucksDelivered) / Number(draft.trucksCommitted)) * 100)}%` }}
-                          />
-                        </div>
-                        {Number(draft.trucksDelivered) >= Number(draft.trucksCommitted) && (
-                          <p className="text-xs text-emerald-600 font-semibold mt-1.5 flex items-center gap-1">
-                            <CheckCircle size={12} weight="fill" /> Commitment fulfilled — eligible for invoicing
-                          </p>
-                        )}
-                        {Number(draft.ratePerTruck) > 0 && (
-                          <p className="text-xs text-t3 mt-1">
-                            Invoice amount: <span className="font-semibold text-t1">
-                              {fmtCurrency(Number(draft.ratePerTruck) * Number(draft.trucksCommitted), draft.currency)}
-                            </span>
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
                   <div className='mt-2'>
                     <label className="block text-xs font-semibold text-t3 mb-2">Notes</label>
                     <textarea value={draft.notes} onChange={e => set('notes', e.target.value)}
