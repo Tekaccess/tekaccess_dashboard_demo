@@ -207,7 +207,7 @@ export const departmentsData = [
             icon: Users,
             subItems: ["Client List", "Satisfaction Ratings"],
           },
-          { name: "Products", icon: Package },
+          // { name: "Products", icon: Package },
           { name: "Stock", icon: Cube },
           { name: "Movements", icon: ArrowsCounterClockwise },
           { name: "Documents", icon: ClipboardText },
