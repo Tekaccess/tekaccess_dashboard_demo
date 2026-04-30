@@ -43,6 +43,14 @@ import FuelPage from "./pages/transport/FuelPage";
 import MaintenancePage from "./pages/transport/MaintenancePage";
 import ProcurementInvoicesPage from "./pages/procurement/InvoicesPage";
 import ProcurementContractsPage from "./pages/procurement/ContractsPage";
+import HrPerformancePage from "./pages/hr/PerformancePage";
+import HrOrgChartPage from "./pages/hr/OrgChartPage";
+import HrDocumentsPage from "./pages/hr/DocumentsPage";
+import HrAnnouncementsPage from "./pages/hr/AnnouncementsPage";
+import HrTimeOffPage from "./pages/hr/TimeOffPage";
+import HrAttendancePage from "./pages/hr/AttendancePage";
+import HrPayrollPage from "./pages/hr/PayrollPage";
+import EmployeesPage from "./pages/EmployeesPage";
 
 export const rootRoute = createRootRoute({
   component: RootLayout,
@@ -75,7 +83,7 @@ export const adminRoute = createRoute({
 
 // ── Shared Routes ──────────────────────────────────────────────────────────
 
-const ALL_DEPT_IDS = ['executive', 'finance', 'transport', 'operations', 'procurement', 'sales', 'data_team'];
+const ALL_DEPT_IDS = ['executive', 'finance', 'transport', 'operations', 'procurement', 'sales', 'admin_hr', 'data_team'];
 const DEPT_ACCESS_SLUGS: Record<string, string[]> = {
   executive:   ['executive'],
   finance:     ['finance'],
@@ -83,6 +91,7 @@ const DEPT_ACCESS_SLUGS: Record<string, string[]> = {
   operations:  ['operations', 'inventory'],
   procurement: ['procurement'],
   sales:       ['sales'],
+  admin_hr:    ['admin', 'hr', 'admin_hr'],
   data_team:   ['data_entry'],
 };
 
@@ -300,6 +309,53 @@ const documentsRoute = createRoute({
   component: DocumentsPage,
 });
 
+// ── Admin & HR explicit routes ──────────────────────────────────────────────
+const employeesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/employees",
+  component: EmployeesPage,
+});
+const taskManagementRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/task-management",
+  component: TaskManagement,
+});
+const hrPerformanceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/performance",
+  component: HrPerformancePage,
+});
+const hrOrgChartRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/org-chart",
+  component: HrOrgChartPage,
+});
+const hrDocumentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/documents",
+  component: HrDocumentsPage,
+});
+const hrAnnouncementsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/announcements",
+  component: HrAnnouncementsPage,
+});
+const hrTimeOffRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/time-off",
+  component: HrTimeOffPage,
+});
+const hrAttendanceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/attendance",
+  component: HrAttendancePage,
+});
+const hrPayrollRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/payroll",
+  component: HrPayrollPage,
+});
+
 // ── Route Tree ──────────────────────────────────────────────────────────────
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -356,6 +412,16 @@ const routeTree = rootRoute.addChildren([
   movementsRoute,
   stockHistoryRoute,
   documentsRoute,
+  // Admin & HR explicit pages
+  employeesRoute,
+  taskManagementRoute,
+  hrPerformanceRoute,
+  hrOrgChartRoute,
+  hrDocumentsRoute,
+  hrAnnouncementsRoute,
+  hrTimeOffRoute,
+  hrAttendanceRoute,
+  hrPayrollRoute,
 ]);
 
 export const router = createRouter({ routeTree });

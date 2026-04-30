@@ -270,6 +270,61 @@ export const departmentsData = [
     sections: [],
   },
   {
+    id: "admin_hr",
+    name: "Admin & HR",
+    role: "HR Manager",
+    sections: [
+      {
+        title: "People",
+        items: [
+          { name: "Employees", icon: Users, path: "/employees" },
+          { name: "Org Chart", icon: BriefcaseMetal, path: "/hr/org-chart" },
+          { name: "Performance", icon: ChartPie, path: "/hr/performance" },
+        ],
+      },
+      {
+        title: "Time & Attendance",
+        items: [
+          { name: "Attendance", icon: CheckFatIcon, path: "/hr/attendance" },
+          { name: "Time Off", icon: CalendarDotsIcon, path: "/hr/time-off" },
+        ],
+      },
+      {
+        title: "Payroll",
+        items: [
+          { name: "Payroll", icon: CurrencyCircleDollar, path: "/hr/payroll" },
+        ],
+      },
+      {
+        title: "Work",
+        items: [
+          { name: "Tasks", icon: CheckFatIcon, path: "/task-management" },
+          { name: "Meetings", icon: CalendarDotsIcon, path: "/calendar" },
+          { name: "Calendar", icon: CalendarDotsIcon, path: "/calendar" },
+        ],
+      },
+      {
+        title: "Communication",
+        items: [
+          { name: "Announcements", icon: ChatTextIcon, path: "/hr/announcements" },
+        ],
+      },
+      {
+        title: "Files",
+        items: [
+          { name: "HR Documents", icon: FileText, path: "/hr/documents" },
+        ],
+      },
+      {
+        title: "Admin",
+        items: [
+          { name: "Roles & Access", icon: ShieldWarningIcon, path: "/admin" },
+          { name: "Company Settings", icon: Buildings, path: "/admin" },
+        ],
+      },
+    ],
+  },
+  {
     id: "data_team",
     name: "Data Entry",
     role: "Data Engineer",

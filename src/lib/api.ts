@@ -921,6 +921,59 @@ export async function apiDeleteEmployee(id: string) {
   return request(`/hr/${id}`, { method: 'DELETE' });
 }
 
+// HR Documents
+export type HrDocumentCategory = 'contract' | 'id_document' | 'certification' | 'policy' | 'performance_review' | 'payslip' | 'other';
+
+export interface HrDocument {
+  _id: string;
+  title: string;
+  category: HrDocumentCategory;
+  employeeId: string | null;
+  employeeName: string | null;
+  expiresAt: string | null;
+  fileUrl: string;
+  fileName: string | null;
+  fileType: string | null;
+  uploadedByName: string | null;
+  notes: string;
+  createdAt: string;
+}
+
+export async function apiListHrDocuments(params: { category?: string; employeeId?: string; search?: string } = {}) {
+  const qs = new URLSearchParams(params as any).toString();
+  return request<{ documents: HrDocument[] }>(`/hr/documents${qs ? `?${qs}` : ''}`);
+}
+
+export async function apiCreateHrDocument(input: {
+  title: string;
+  category?: HrDocumentCategory;
+  employeeId?: string;
+  expiresAt?: string;
+  notes?: string;
+  file: File;
+}) {
+  const fd = new FormData();
+  fd.append('title', input.title);
+  if (input.category) fd.append('category', input.category);
+  if (input.employeeId) fd.append('employeeId', input.employeeId);
+  if (input.expiresAt) fd.append('expiresAt', input.expiresAt);
+  if (input.notes) fd.append('notes', input.notes);
+  fd.append('file', input.file);
+  return request<{ document: HrDocument }>('/hr/documents', { method: 'POST', body: fd });
+}
+
+export async function apiDeleteHrDocument(id: string) {
+  return request<{ message: string }>(`/hr/documents/${id}`, { method: 'DELETE' });
+}
+
+// Announcements (fan-out to all users' notifications)
+export async function apiCreateAnnouncement(data: { title: string; message?: string; link?: string }) {
+  return request<{ recipients: number; title: string }>('/hr/announcements', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // Deliveries
 export async function apiGetDeliveriesSummary() {
   return request<{ summary: { pendingConfirmation: number; confirmed: number; disputed: number; tonsToday: number; tonsThisMonth: number } }>(

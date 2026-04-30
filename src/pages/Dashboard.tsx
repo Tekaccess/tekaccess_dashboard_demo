@@ -5,6 +5,7 @@ import {
   FileText, Checks, Package, Buildings, ArrowUp, ArrowDown,
   Spinner, ChartBar, ArrowsClockwise, Hourglass,
   BriefcaseMetal, Clock, Receipt, ArrowRight,
+  CheckSquare, CalendarBlank, ShieldCheck, UserCircle, Users,
 } from '@phosphor-icons/react';
 import { useNavigate } from '@tanstack/react-router';
 import {
@@ -16,7 +17,8 @@ import {
   apiGetProcurementSummary, apiGetTransportersSummary,
   apiGetContractsSummary, apiGetDeliveriesSummary,
   apiGetInventorySummary, apiListSites, apiListProjects,
-  Trip, FuelLog, MaintenanceRecord, Site, Project,
+  apiListEmployees, apiListTasks,
+  Trip, FuelLog, MaintenanceRecord, Site, Project, Employee, TaskRecord,
 } from '../lib/api';
 
 interface DashboardProps {
@@ -794,6 +796,153 @@ function InventoryDashboard() {
   );
 }
 
+// ─── Admin & HR Dashboard ──────────────────────────────────────────────────────
+
+function AdminHrDashboard() {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [tasks, setTasks] = useState<TaskRecord[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      apiListEmployees(),
+      apiListTasks(),
+    ]).then(([eRes, tRes]) => {
+      if (eRes.success) setEmployees(eRes.data.employees);
+      if (tRes.success) setTasks(tRes.data.tasks);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <SectionSpinner />;
+
+  const activeEmployees = employees.filter(e => e.status === 'active');
+  const onLeave = employees.filter(e => e.status === 'on-leave');
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const openTasks = tasks.filter(t => t.status === 'not-started' || t.status === 'in-progress');
+  const inProgress = tasks.filter(t => t.status === 'in-progress');
+  const overdue = openTasks.filter(t => t.dueDate && new Date(t.dueDate) < today);
+  const unassigned = openTasks.filter(t => !t.assignee);
+
+  return (
+    <div className="space-y-6">
+      {/* Headcount card */}
+      <div className="bg-card rounded-xl border border-border p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-accent-glow shrink-0">
+              <UserCircle size={18} weight="duotone" className="text-accent" />
+            </div>
+            <div>
+              <p className="text-xs text-t3">Active Employees</p>
+              <p className="text-2xl font-bold text-t1 leading-tight">{activeEmployees.length}</p>
+              {onLeave.length > 0 && (
+                <p className="text-xs text-amber-500 mt-0.5">{onLeave.length} on leave</p>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate({ to: '/employees' })}
+            className="text-xs font-semibold text-accent hover:underline inline-flex items-center gap-1"
+          >
+            View directory <ArrowRight size={12} weight="bold" />
+          </button>
+        </div>
+      </div>
+
+      {/* Action Required */}
+      <div>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Action Required</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <ActionCard
+            label="Overdue Tasks"
+            count={overdue.length}
+            sub="Past due date"
+            Icon={Clock}
+            tone="rose"
+            onClick={() => navigate({ to: '/task-management' })}
+          />
+          <ActionCard
+            label="Unassigned Tasks"
+            count={unassigned.length}
+            sub="Need an owner"
+            Icon={CheckSquare}
+            tone="amber"
+            onClick={() => navigate({ to: '/task-management' })}
+          />
+          <ActionCard
+            label="In Progress"
+            count={inProgress.length}
+            sub="Active work"
+            Icon={ArrowsClockwise}
+            tone="blue"
+            onClick={() => navigate({ to: '/task-management' })}
+          />
+          <ActionCard
+            label="Open Tasks"
+            count={openTasks.length}
+            sub="Not yet completed"
+            Icon={CheckSquare}
+            tone="emerald"
+            onClick={() => navigate({ to: '/task-management' })}
+          />
+        </div>
+      </div>
+
+      {/* Quick Links */}
+      <div>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Quick Access</p>
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <button
+            type="button"
+            onClick={() => navigate({ to: '/calendar' })}
+            className="bg-card rounded-xl border border-border p-4 text-left hover:ring-2 hover:ring-accent/30 transition-all flex items-center gap-3"
+          >
+            <div className="p-2.5 rounded-xl bg-blue-500/10 shrink-0">
+              <CalendarBlank size={18} weight="duotone" className="text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-t1">Calendar</p>
+              <p className="text-xs text-t3">Time off & schedule</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate({ to: '/admin' })}
+            className="bg-card rounded-xl border border-border p-4 text-left hover:ring-2 hover:ring-accent/30 transition-all flex items-center gap-3"
+          >
+            <div className="p-2.5 rounded-xl bg-purple-500/10 shrink-0">
+              <ShieldCheck size={18} weight="duotone" className="text-purple-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-t1">Roles & Access</p>
+              <p className="text-xs text-t3">User permissions</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate({ to: '/employees' })}
+            className="bg-card rounded-xl border border-border p-4 text-left hover:ring-2 hover:ring-accent/30 transition-all flex items-center gap-3"
+          >
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 shrink-0">
+              <Users size={18} weight="duotone" className="text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-t1">Employees</p>
+              <p className="text-xs text-t3">Directory & profiles</p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Dashboard ────────────────────────────────────────────────────────────
 
 const DEPT_LABELS: Record<string, string> = {
@@ -801,6 +950,7 @@ const DEPT_LABELS: Record<string, string> = {
   procurement: 'Procurement',
   operations: 'Operations',
   inventory: 'Inventory',
+  admin_hr: 'Admin & HR',
 };
 
 export default function Dashboard({ currentDepartmentId }: DashboardProps) {
@@ -812,6 +962,7 @@ export default function Dashboard({ currentDepartmentId }: DashboardProps) {
       case 'procurement':  return <ProcurementDashboard />;
       case 'operations':   return <OperationsDashboard />;
       case 'inventory':    return <InventoryDashboard />;
+      case 'admin_hr':     return <AdminHrDashboard />;
       default:
         return (
           <div className="bg-card rounded-xl border border-border p-10 flex flex-col items-center justify-center gap-3 text-center">
