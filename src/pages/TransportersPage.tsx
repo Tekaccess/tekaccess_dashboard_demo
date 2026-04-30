@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import {
   Plus, MagnifyingGlass, Truck, PencilSimple, Eye,
-  Spinner, Phone, Envelope, Trash, Invoice, CheckCircle,
+  Spinner, Phone, Envelope, Trash, Invoice,
   Warning, X, CaretLeft, CaretRight,
 } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -26,6 +26,8 @@ interface DraftTransporter {
   trucksCommitted: number;
   trucksDelivered: number;
   ratePerTruck: number;
+  tonnage: number;
+  ratePerTon: number;
   notes: string;
   status: 'active' | 'inactive' | 'blacklisted';
 }
@@ -36,21 +38,10 @@ function emptyDraft(): DraftTransporter {
     contactName: '', contactEmail: '', contactPhone: '',
     address: '', country: 'Rwanda', currency: 'USD',
     trucksCommitted: 1, trucksDelivered: 0, ratePerTruck: 0,
+    tonnage: 0, ratePerTon: 0,
     notes: '', status: 'active',
   };
 }
-
-const STATUS_STYLES: Record<string, string> = {
-  active:      'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
-  inactive:    'bg-surface text-t3 border-border',
-  blacklisted: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
-};
-
-const INV_STYLES: Record<string, string> = {
-  not_invoiced: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
-  invoiced:     'bg-blue-500/10 text-blue-600 border-blue-500/20',
-  paid:         'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
-};
 
 const INV_LABELS: Record<string, string> = {
   not_invoiced: 'Not Invoiced',
@@ -69,11 +60,9 @@ const COLS: ColDef[] = [
   { key: 'code',    label: 'Code',        defaultVisible: true },
   { key: 'name',    label: 'Name',        defaultVisible: true },
   { key: 'contact', label: 'Contact',     defaultVisible: true },
-  { key: 'trucks',  label: 'Trucks',      defaultVisible: true },
-  { key: 'rate',    label: 'Rate/Truck',  defaultVisible: true },
+  { key: 'tonnage', label: 'Tonnage',     defaultVisible: true },
+  { key: 'rate',    label: 'Rate/Ton',    defaultVisible: true },
   { key: 'amount',  label: 'Inv. Amount', defaultVisible: true },
-  { key: 'status',  label: 'Status',      defaultVisible: true },
-  { key: 'invoice', label: 'Invoice',     defaultVisible: true },
   { key: 'actions', label: 'Actions',     defaultVisible: true },
 ];
 
@@ -151,6 +140,8 @@ export default function TransportersPage() {
       trucksCommitted: t.trucksCommitted,
       trucksDelivered: t.trucksDelivered,
       ratePerTruck: t.ratePerTruck,
+      tonnage: t.tonnage ?? 0,
+      ratePerTon: t.ratePerTon ?? 0,
       notes: t.notes ?? '',
       status: t.status,
     });
@@ -190,6 +181,8 @@ export default function TransportersPage() {
       trucksCommitted: Number(draft.trucksCommitted),
       trucksDelivered: Number(draft.trucksDelivered),
       ratePerTruck: Number(draft.ratePerTruck),
+      tonnage: Number(draft.tonnage),
+      ratePerTon: Number(draft.ratePerTon),
     };
 
     const res = modalMode === 'new'
@@ -288,28 +281,27 @@ export default function TransportersPage() {
                 {colVis.has('code')    && <th className="px-4 py-3 text-left font-semibold text-t3 uppercase tracking-wider">Code</th>}
                 {colVis.has('name')    && <th className="px-4 py-3 text-left font-semibold text-t3 uppercase tracking-wider">Name</th>}
                 {colVis.has('contact') && <th className="px-4 py-3 text-left font-semibold text-t3 uppercase tracking-wider">Contact</th>}
-                {colVis.has('trucks')  && <th className="px-4 py-3 text-left font-semibold text-t3 uppercase tracking-wider">Trucks</th>}
-                {colVis.has('rate')    && <th className="px-4 py-3 text-left font-semibold text-t3 uppercase tracking-wider">Rate/Truck</th>}
+                {colVis.has('tonnage') && <th className="px-4 py-3 text-left font-semibold text-t3 uppercase tracking-wider">Tonnage</th>}
+                {colVis.has('rate')    && <th className="px-4 py-3 text-left font-semibold text-t3 uppercase tracking-wider">Rate/Ton</th>}
                 {colVis.has('amount')  && <th className="px-4 py-3 text-left font-semibold text-t3 uppercase tracking-wider">Inv. Amount</th>}
-                {colVis.has('status')  && <th className="px-4 py-3 text-left font-semibold text-t3 uppercase tracking-wider">Status</th>}
-                {colVis.has('invoice') && <th className="px-4 py-3 text-left font-semibold text-t3 uppercase tracking-wider">Invoice</th>}
                 {colVis.has('actions') && <th className="px-4 py-3 text-right font-semibold text-t3 uppercase tracking-wider">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={9} className="py-12 text-center">
+                <tr><td colSpan={7} className="py-12 text-center">
                   <Spinner size={20} weight="bold" className="animate-spin text-accent mx-auto" />
                 </td></tr>
               )}
               {!loading && paginated.length === 0 && (
-                <tr><td colSpan={9} className="py-12 text-center text-t3 italic">No transporters found.</td></tr>
+                <tr><td colSpan={7} className="py-12 text-center text-t3 italic">No transporters found.</td></tr>
               )}
               {!loading && paginated.map(t => {
-                const pct = Math.min(100, t.trucksCommitted > 0 ? (t.trucksDelivered / t.trucksCommitted) * 100 : 0);
-                const fulfilled = t.trucksDelivered >= t.trucksCommitted;
-                const canInvoice = t.invoiceStatus === 'not_invoiced';
-                const invoiceAmt = t.invoiceAmount ?? (t.ratePerTruck * t.trucksCommitted);
+                const tonnage = t.tonnage ?? 0;
+                const ratePerTon = t.ratePerTon ?? 0;
+                const invoiceAmt =
+                  t.invoiceAmount ??
+                  (tonnage > 0 ? tonnage * ratePerTon : t.ratePerTruck * t.trucksCommitted);
                 return (
                   <tr key={t._id} className="border-b border-border hover:bg-surface/50 transition-colors">
                     {colVis.has('code') && (
@@ -333,51 +325,16 @@ export default function TransportersPage() {
                         )}
                       </td>
                     )}
-                    {colVis.has('trucks') && (
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 h-1.5 bg-surface-hover rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all ${fulfilled ? 'bg-emerald-500' : 'bg-accent'}`}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <span className={`font-semibold ${fulfilled ? 'text-emerald-600' : 'text-t1'}`}>
-                            {t.trucksDelivered}/{t.trucksCommitted}
-                          </span>
-                          {fulfilled && <CheckCircle size={13} weight="fill" className="text-emerald-500 shrink-0" />}
-                        </div>
+                    {colVis.has('tonnage') && (
+                      <td className="px-4 py-3 text-t2">
+                        {tonnage > 0 ? <span className="font-semibold text-t1">{tonnage.toLocaleString()} t</span> : '—'}
                       </td>
                     )}
                     {colVis.has('rate') && (
-                      <td className="px-4 py-3 text-t2">{fmtCurrency(t.ratePerTruck, t.currency)}</td>
+                      <td className="px-4 py-3 text-t2">{ratePerTon > 0 ? fmtCurrency(ratePerTon, t.currency) : '—'}</td>
                     )}
                     {colVis.has('amount') && (
                       <td className="px-4 py-3 font-semibold text-t1">{fmtCurrency(invoiceAmt, t.currency)}</td>
-                    )}
-                    {colVis.has('status') && (
-                      <td className="px-4 py-3">
-                        <span className={`inline-block px-2 py-0.5 rounded-md border text-[10px] font-bold uppercase tracking-wide ${STATUS_STYLES[t.status]}`}>
-                          {t.status}
-                        </span>
-                      </td>
-                    )}
-                    {colVis.has('invoice') && (
-                      <td className="px-4 py-3">
-                        {canInvoice ? (
-                          <button
-                            onClick={() => { setInvoiceError(''); setConfirmInvoice(t); }}
-                            className="flex items-center gap-1.5 px-2.5 py-1 bg-accent hover:bg-accent-h text-white text-[10px] font-bold rounded-lg transition-colors"
-                          >
-                            <Invoice size={12} weight="bold" /> Issue Invoice
-                          </button>
-                        ) : (
-                          <span className={`inline-block px-2 py-0.5 rounded-md border text-[10px] font-bold uppercase tracking-wide ${INV_STYLES[t.invoiceStatus]}`}>
-                            {INV_LABELS[t.invoiceStatus]}
-                            {t.invoiceRef && <span className="ml-1 opacity-70">· {t.invoiceRef}</span>}
-                          </span>
-                        )}
-                      </td>
                     )}
                     {colVis.has('actions') && (
                       <td className="px-4 py-3">
@@ -477,6 +434,44 @@ export default function TransportersPage() {
                       <label className="block text-xs font-semibold text-t3 mb-2">Country</label>
                       <input value={draft.country} onChange={e => set('country', e.target.value)} className={inp} />
                     </div>
+                  </div>
+
+                  <div className="border-t border-border pt-4">
+                    <p className="text-xs font-black text-t3 uppercase tracking-widest mb-3">Tonnage Commitment</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-t3 mb-2">Tonnage</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={draft.tonnage}
+                          onChange={e => set('tonnage', e.target.value)}
+                          placeholder="e.g. 250"
+                          className={inp}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-t3 mb-2">Rate / Ton ({draft.currency})</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={draft.ratePerTon}
+                          onChange={e => set('ratePerTon', e.target.value)}
+                          placeholder="0"
+                          className={inp}
+                        />
+                      </div>
+                    </div>
+                    {Number(draft.tonnage) > 0 && Number(draft.ratePerTon) > 0 && (
+                      <p className="text-xs text-t3 mt-2">
+                        Estimated total:{" "}
+                        <span className="font-semibold text-t1">
+                          {fmtCurrency(Number(draft.tonnage) * Number(draft.ratePerTon), draft.currency)}
+                        </span>
+                      </p>
+                    )}
                   </div>
 
                   <div className='mt-2'>

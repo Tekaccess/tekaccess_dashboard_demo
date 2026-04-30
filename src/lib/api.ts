@@ -1633,6 +1633,8 @@ export type Transporter = {
   trucksCommitted: number;
   trucksDelivered: number;
   ratePerTruck: number;
+  tonnage: number;
+  ratePerTon: number;
   invoiceStatus: 'not_invoiced' | 'invoiced' | 'paid';
   invoicedAt: string | null;
   invoiceRef: string | null;
