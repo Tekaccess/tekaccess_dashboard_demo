@@ -184,7 +184,7 @@ const procurementReportsRoute = createRoute({
 
 const procurementInvoicesRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/procurement/invoices",
+  path: "/procurement/settlements",
   component: ProcurementInvoicesPage,
 });
 

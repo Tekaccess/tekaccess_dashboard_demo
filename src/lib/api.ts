@@ -849,6 +849,43 @@ export async function apiInstantiateContract(data: { templateId: string; targetI
   });
 }
 
+// ─── Procurement Contracts (same schema, own routes) ─────────────────────────
+
+export async function apiGetProcurementContractsSummary() {
+  return request<{
+    summary: { active: number; draft: number; completed: number; disputed: number; totalActiveValue: number; totalActiveTons: number };
+    nearingDeadline: OperationsContract[];
+  }>('/procurement/contracts/summary');
+}
+
+export async function apiListProcurementContracts(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ contracts: OperationsContract[]; pagination: { total: number; pages: number; page: number; limit: number } }>(
+    `/procurement/contracts${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function apiCreateProcurementContract(data: Partial<OperationsContract>) {
+  return request<{ contract: OperationsContract }>('/procurement/contracts', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateProcurementContract(id: string, data: Partial<OperationsContract>) {
+  return request<{ contract: OperationsContract }>(`/procurement/contracts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function apiUploadProcurementContractDocument(contractId: string, file: File) {
+  const form = new FormData();
+  form.append('document', file);
+  return request<{ contract: OperationsContract }>(`/procurement/contracts/${contractId}/document`, {
+    method: 'POST',
+    body: form,
+  });
+}
+
+export async function apiDeleteProcurementContract(id: string) {
+  return request(`/procurement/contracts/${id}`, { method: 'DELETE' });
+}
+
 // ─── Employees ───────────────────────────────────────────────────────────────
 
 export async function apiListEmployees(params: { department?: string; status?: string; search?: string } = {}) {

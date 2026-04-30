@@ -252,7 +252,7 @@ export const departmentsData = [
             subItems: [],
           },
           {
-            name: "Invoices",
+            name: "Settlements",
             icon: ReceiptIcon,
             subItems: [],
           },

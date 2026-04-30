@@ -40,15 +40,15 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 const COLS: ColDef[] = [
-  { key: 'ref',          label: 'Invoice Ref',   defaultVisible: true  },
-  { key: 'party',        label: 'Counterparty',  defaultVisible: true  },
-  { key: 'type',         label: 'Type',          defaultVisible: true  },
-  { key: 'po',           label: 'Linked PO',     defaultVisible: true  },
-  { key: 'amount',       label: 'Amount',        defaultVisible: true  },
-  { key: 'invoiceDate',  label: 'Invoice Date',  defaultVisible: true  },
-  { key: 'dueDate',      label: 'Due Date',      defaultVisible: true  },
-  { key: 'status',       label: 'Status',        defaultVisible: true  },
-  { key: 'actions',      label: 'Actions',       defaultVisible: true  },
+  { key: 'ref',          label: 'Settlement Ref', defaultVisible: true  },
+  { key: 'party',        label: 'Counterparty',   defaultVisible: true  },
+  { key: 'type',         label: 'Type',           defaultVisible: true  },
+  { key: 'po',           label: 'Linked PO',      defaultVisible: true  },
+  { key: 'amount',       label: 'Amount',         defaultVisible: true  },
+  { key: 'invoiceDate',  label: 'Issue Date',     defaultVisible: true  },
+  { key: 'dueDate',      label: 'Due Date',       defaultVisible: true  },
+  { key: 'status',       label: 'Status',         defaultVisible: true  },
+  { key: 'actions',      label: 'Actions',        defaultVisible: true  },
 ];
 
 type ModalMode = 'new' | 'edit' | 'view' | null;
@@ -239,7 +239,7 @@ export default function InvoicesPage() {
             <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center mx-auto mb-3 text-t3 border border-border border-dashed">
               <Receipt size={32} />
             </div>
-            <p className="text-sm text-t3 font-medium">New Invoice</p>
+            <p className="text-sm text-t3 font-medium">New Settlement</p>
             <p className="text-xs text-t4 mt-1">Fill in details</p>
           </div>
         )}
@@ -304,7 +304,7 @@ export default function InvoicesPage() {
       </div>
 
       <div>
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Invoice Details</p>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Settlement Details</p>
         <div className="space-y-3">
           <div>
             <label className="block text-xs text-t3 mb-1.5">Linked PO Reference</label>
@@ -316,11 +316,11 @@ export default function InvoicesPage() {
             <label className="block text-xs text-t3 mb-1.5">Description</label>
             <input className={inp} value={draft.description}
               onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
-              placeholder="What is this invoice for?" />
+              placeholder="What is this settlement for?" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-t3 mb-1.5">Invoice Date *</label>
+              <label className="block text-xs text-t3 mb-1.5">Issue Date *</label>
               <input type="date" className={inp} value={draft.invoiceDate}
                 onChange={e => setDraft(d => ({ ...d, invoiceDate: e.target.value }))} />
             </div>
@@ -401,7 +401,7 @@ export default function InvoicesPage() {
       <button onClick={handleSave} disabled={saving}
         className="w-full py-3 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
         {saving && <Spinner className="animate-spin" size={14} />}
-        {modalMode === 'new' ? 'Create Invoice' : 'Save Changes'}
+        {modalMode === 'new' ? 'Create Settlement' : 'Save Changes'}
       </button>
     </div>
   ) : null;
@@ -466,7 +466,7 @@ export default function InvoicesPage() {
       <div className="pt-2 border-t border-border space-y-2">
         <button onClick={() => openEdit(selected)}
           className="w-full flex items-center justify-center gap-2 py-2.5 text-sm border border-border rounded-xl hover:bg-surface text-t2 transition-colors">
-          <PencilSimple size={14} /> Edit Invoice
+          <PencilSimple size={14} /> Edit Settlement
         </button>
         <div>
           <label className="block text-xs text-t3 mb-1.5">Update Status</label>
@@ -501,7 +501,7 @@ export default function InvoicesPage() {
       </div>
 
       <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-        <p className="text-xs text-t3 mb-2">Total Invoice Value</p>
+        <p className="text-xs text-t3 mb-2">Total Settlement Value</p>
         <p className="text-2xl font-bold text-t1">{fmt(selected.totalAmount, selected.currency)}</p>
         <p className="text-xs text-t3 mt-1">{selected.currency} · Tax: {fmt(selected.taxAmount, selected.currency)}</p>
       </div>
@@ -512,7 +512,7 @@ export default function InvoicesPage() {
           <span className="text-xs font-mono text-accent bg-accent/10 px-2 py-0.5 rounded-md">{selected.invoiceRef}</span>
         </div>
         <div className="flex items-center justify-between border-b border-border pb-2">
-          <span className="text-xs text-t3">Invoice Date</span>
+          <span className="text-xs text-t3">Issue Date</span>
           <span className="text-xs text-t1 font-medium">{fmtDate(selected.invoiceDate)}</span>
         </div>
         <div className="flex items-center justify-between">
@@ -529,12 +529,12 @@ export default function InvoicesPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-t1">Procurement Invoices</h1>
-            <p className="text-sm text-t3 mt-1">Manage invoices for suppliers &amp; transporters</p>
+            <h1 className="text-2xl font-bold text-t1">Settlements</h1>
+            <p className="text-sm text-t3 mt-1">Manage settlements for suppliers &amp; transporters</p>
           </div>
           <button onClick={openNew}
             className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-h transition-colors">
-            <Plus size={16} /> New Invoice
+            <Plus size={16} /> New Settlement
           </button>
         </div>
 
@@ -611,7 +611,7 @@ export default function InvoicesPage() {
           ) : invoices.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-t3">
               <Receipt size={40} className="mb-2 opacity-40" />
-              <p>No invoices found.</p>
+              <p>No settlements found.</p>
             </div>
           ) : (
             <OverlayScrollbarsComponent options={{ scrollbars: { autoHide: 'never' } }}>
@@ -706,8 +706,8 @@ export default function InvoicesPage() {
         isOpen={modalMode !== null}
         onClose={() => setModalMode(null)}
         title={
-          modalMode === 'new' ? 'New Invoice'
-          : modalMode === 'edit' ? `Edit ${selected?.invoiceRef ?? 'Invoice'}`
+          modalMode === 'new' ? 'New Settlement'
+          : modalMode === 'edit' ? `Edit ${selected?.invoiceRef ?? 'Settlement'}`
           : selected?.invoiceRef ?? ''
         }
         summaryContent={modalMode === 'view' ? viewSummaryPanel : modalSummary}
@@ -715,7 +715,7 @@ export default function InvoicesPage() {
           <button onClick={handleSave} disabled={saving}
             className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h transition-all disabled:opacity-60 flex items-center justify-center gap-2">
             {saving && <Spinner size={14} className="animate-spin" />}
-            {modalMode === 'new' ? 'Create Invoice' : 'Save Changes'}
+            {modalMode === 'new' ? 'Create Settlement' : 'Save Changes'}
           </button>
         ) : undefined}
       >
@@ -736,7 +736,7 @@ export default function InvoicesPage() {
                 <div className="w-12 h-12 bg-red-100 dark:bg-red-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Trash size={22} weight="duotone" className="text-red-500" />
                 </div>
-                <h2 className="text-base font-bold text-t1 mb-1">Delete invoice?</h2>
+                <h2 className="text-base font-bold text-t1 mb-1">Delete settlement?</h2>
                 <p className="text-xs text-t3 mb-5">
                   <span className="font-semibold text-t2">{deleteTarget.invoiceRef}</span> will be permanently removed.
                   Only draft or rejected invoices can be deleted.

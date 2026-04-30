@@ -18,7 +18,7 @@ const EXPLICIT_ROUTES: Record<string, string> = {
   "transport/spare-parts": "/procurement/spare-parts",
   "procurement/transporters": "/procurement/transporters",
   "procurement/reports": "/procurement/reports",
-  "procurement/invoices": "/procurement/invoices",
+  "procurement/settlements": "/procurement/settlements",
   "procurement/contracts": "/procurement/contracts",
   "operations/contracts": "/operations/contracts",
   "operations/deliveries": "/operations/deliveries",
