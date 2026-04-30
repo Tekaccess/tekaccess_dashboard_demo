@@ -4,17 +4,19 @@ import {
   ShoppingCart, Handshake, Boat, Gear, Warning,
   FileText, Checks, Package, Buildings, ArrowUp, ArrowDown,
   Spinner, ChartBar, ArrowsClockwise, Hourglass,
+  BriefcaseMetal, Clock, Receipt, ArrowRight,
 } from '@phosphor-icons/react';
+import { useNavigate } from '@tanstack/react-router';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area, Legend,
 } from 'recharts';
 import {
   apiGetTransportSummary, apiListTrips, apiListFuelLogs, apiListMaintenanceRecords,
-  apiGetProcurementSummary, apiGetShipmentsSummary,
+  apiGetProcurementSummary, apiGetTransportersSummary,
   apiGetContractsSummary, apiGetDeliveriesSummary,
-  apiGetInventorySummary, apiListSites,
-  Trip, FuelLog, MaintenanceRecord, Site,
+  apiGetInventorySummary, apiListSites, apiListProjects,
+  Trip, FuelLog, MaintenanceRecord, Site, Project,
 } from '../lib/api';
 
 interface DashboardProps {
@@ -269,26 +271,68 @@ function TransportDashboard() {
 
 // ─── Procurement Dashboard ─────────────────────────────────────────────────────
 
-const SHIPMENT_COLORS: Record<string, string> = {
-  'In Transit': '#3b82f6',
-  'At Customs': '#f59e0b',
-  'Received': '#10b981',
-  'Delayed': '#f43f5e',
-  'Overdue': '#dc2626',
-};
+function formatCompact(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${Math.round(value / 1_000)}K`;
+  return value.toLocaleString();
+}
+
+function ActionCard({
+  label, count, sub, Icon, tone, onClick,
+}: {
+  label: string;
+  count: number;
+  sub?: string;
+  Icon: any;
+  tone: 'amber' | 'rose' | 'emerald' | 'blue';
+  onClick: () => void;
+}) {
+  const TONES: Record<typeof tone, { bg: string; ring: string; text: string; dot: string }> = {
+    amber:   { bg: 'bg-amber-500/10',   ring: 'hover:ring-amber-500/30',   text: 'text-amber-500',   dot: 'bg-amber-500' },
+    rose:    { bg: 'bg-rose-500/10',    ring: 'hover:ring-rose-500/30',    text: 'text-rose-400',    dot: 'bg-rose-500' },
+    emerald: { bg: 'bg-emerald-500/10', ring: 'hover:ring-emerald-500/30', text: 'text-emerald-400', dot: 'bg-emerald-500' },
+    blue:    { bg: 'bg-blue-500/10',    ring: 'hover:ring-blue-500/30',    text: 'text-blue-400',    dot: 'bg-blue-500' },
+  };
+  const t = TONES[tone];
+  const muted = count === 0;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group bg-card rounded-xl border border-border p-4 text-left transition-all hover:ring-2 ${t.ring} ${muted ? 'opacity-60' : ''}`}
+    >
+      <div className="flex items-start justify-between">
+        <div className={`p-2.5 rounded-xl ${t.bg} shrink-0`}>
+          <Icon size={18} weight="duotone" className={t.text} />
+        </div>
+        {!muted && <span className={`w-2 h-2 rounded-full ${t.dot} mt-1`} />}
+      </div>
+      <p className="text-xs text-t3 mt-3">{label}</p>
+      <p className="text-2xl font-bold text-t1 leading-tight mt-0.5">{count}</p>
+      {sub && <p className="text-xs text-t3 mt-1">{sub}</p>}
+      <p className="text-xs font-semibold text-accent mt-3 inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        Review <ArrowRight size={12} weight="bold" />
+      </p>
+    </button>
+  );
+}
 
 function ProcurementDashboard() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [procSummary, setProcSummary] = useState<any>(null);
-  const [shipSummary, setShipSummary] = useState<any>(null);
+  const [transporterSummary, setTransporterSummary] = useState<any>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
     Promise.all([
       apiGetProcurementSummary(),
-      apiGetShipmentsSummary(),
-    ]).then(([pRes, sRes]) => {
+      apiGetTransportersSummary(),
+      apiListProjects(undefined, 'active'),
+    ]).then(([pRes, tRes, projRes]) => {
       if (pRes.success) setProcSummary(pRes.data);
-      if (sRes.success) setShipSummary(sRes.data.summary);
+      if (tRes.success) setTransporterSummary(tRes.data.summary);
+      if (projRes.success) setProjects(projRes.data.projects);
       setLoading(false);
     });
   }, []);
@@ -296,83 +340,69 @@ function ProcurementDashboard() {
   if (loading) return <SectionSpinner />;
 
   const ps = procSummary?.summary ?? {};
-  const ss = shipSummary ?? {};
-
-  const poChartData = (procSummary?.poByStatus ?? []).map((d: any) => ({
-    status: d._id.replace(/_/g, ' '),
-    count: d.count,
-    value: Math.round(d.value / 1000),
-  }));
-
-  const shipDonut = [
-    { name: 'In Transit', value: ss.inTransit ?? 0 },
-    { name: 'At Customs', value: ss.atCustoms ?? 0 },
-    { name: 'Received', value: ss.received ?? 0 },
-    { name: 'Delayed', value: ss.delayed ?? 0 },
-    { name: 'Overdue', value: ss.overdue ?? 0 },
-  ].filter(d => d.value > 0);
+  const ts = transporterSummary ?? {};
+  const activeProjects = projects.filter(p => p.status === 'active');
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-4">
-        <KpiCard label="Active POs" value={ps.activePOs ?? 0} Icon={ShoppingCart} bg="bg-accent-glow" color="text-accent" />
-        <KpiCard label="Draft POs" value={ps.draftPOs ?? 0} Icon={ShoppingCart} bg="bg-surface" color="text-t3" />
-        <KpiCard label="Active Suppliers" value={ps.activeSuppliers ?? 0} Icon={Handshake} bg="bg-emerald-500/10" color="text-emerald-400" />
+      {/* Active Projects */}
+      <div className="bg-card rounded-xl border border-border p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-accent-glow shrink-0">
+              <BriefcaseMetal size={18} weight="duotone" className="text-accent" />
+            </div>
+            <div>
+              <p className="text-xs text-t3">Active Projects</p>
+              <p className="text-2xl font-bold text-t1 leading-tight">{activeProjects.length}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate({ to: '/procurement/projects' })}
+            className="text-xs font-semibold text-accent hover:underline inline-flex items-center gap-1"
+          >
+            View all <ArrowRight size={12} weight="bold" />
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartCard title="Purchase Orders by Status">
-          {poChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={poChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="status" tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
-                <YAxis tick={{ fill: 'var(--color-t3)', fontSize: 11 }} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="count" fill="var(--color-accent)" radius={ROUNDING} name="PO Count" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-sm text-t3 text-center py-12">No PO data available</p>
-          )}
-        </ChartCard>
-
-        <ChartCard title="Shipments Status">
-          {shipDonut.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={shipDonut} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
-                  {shipDonut.map((entry, i) => (
-                    <Cell key={i} fill={SHIPMENT_COLORS[entry.name] ?? '#6366f1'} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: 'var(--color-t2)' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-sm text-t3 text-center py-12">No shipment data available</p>
-          )}
-        </ChartCard>
-      </div>
-
-      <div className="bg-card rounded-xl border border-border p-5 flex flex-col gap-3">
-        <p className="text-sm font-semibold text-t1">Active PO Value</p>
-        <p className="text-4xl font-bold text-accent mt-2">
-          {(ps.activePoValue ?? 0) >= 1_000_000
-            ? `${((ps.activePoValue ?? 0) / 1_000_000).toFixed(2)}M`
-            : `${Math.round((ps.activePoValue ?? 0) / 1000)}K`}
-        </p>
-        <p className="text-xs text-t3">Across approved, sent &amp; partially received POs</p>
-        <div className="mt-auto pt-4 border-t border-border grid grid-cols-2 gap-3">
-          <div>
-            <p className="text-xs text-t3">Shipments In Transit</p>
-            <p className="text-lg font-bold text-blue-400">{ss.inTransit ?? 0}</p>
-          </div>
-          <div>
-            <p className="text-xs text-t3">At Customs</p>
-            <p className="text-lg font-bold text-amber-500">{ss.atCustoms ?? 0}</p>
-          </div>
+      {/* Action Required */}
+      <div>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">Action Required</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <ActionCard
+            label="Draft POs"
+            count={ps.draftPOs ?? 0}
+            sub={ps.draftPoValue ? `${formatCompact(ps.draftPoValue)} value` : 'Awaiting approval'}
+            Icon={ShoppingCart}
+            tone="amber"
+            onClick={() => navigate({ to: '/procurement/purchase-orders' })}
+          />
+          <ActionCard
+            label="POs Past Deadline"
+            count={ps.pastDeadlinePOs ?? 0}
+            sub={ps.pastDeadlinePoValue ? `${formatCompact(ps.pastDeadlinePoValue)} at risk` : 'Chase suppliers'}
+            Icon={Clock}
+            tone="rose"
+            onClick={() => navigate({ to: '/procurement/purchase-orders' })}
+          />
+          <ActionCard
+            label="Transporters Ready to Invoice"
+            count={ts.readyToInvoice ?? 0}
+            sub="Generate invoice"
+            Icon={Receipt}
+            tone="emerald"
+            onClick={() => navigate({ to: '/procurement/transporters' })}
+          />
+          <ActionCard
+            label="Spare Parts Below Reorder"
+            count={ps.sparePartAlerts ?? 0}
+            sub="Trigger restock"
+            Icon={Warning}
+            tone="blue"
+            onClick={() => navigate({ to: '/procurement/spare-parts' })}
+          />
         </div>
       </div>
     </div>

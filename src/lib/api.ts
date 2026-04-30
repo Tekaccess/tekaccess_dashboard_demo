@@ -400,7 +400,18 @@ export async function apiDeletePurchaseOrder(id: string) {
 
 export async function apiGetProcurementSummary() {
   return request<{
-    summary: { activePOs: number; draftPOs: number; activePoValue: number; activeSuppliers: number; shipmentsInTransit: number; shipmentsAtCustoms: number; sparePartAlerts: number };
+    summary: {
+      activePOs: number;
+      draftPOs: number;
+      draftPoValue: number;
+      activePoValue: number;
+      activeSuppliers: number;
+      shipmentsInTransit: number;
+      shipmentsAtCustoms: number;
+      sparePartAlerts: number;
+      pastDeadlinePOs: number;
+      pastDeadlinePoValue: number;
+    };
     poByStatus: { _id: string; count: number; value: number }[];
   }>('/procurement/summary');
 }
