@@ -264,6 +264,10 @@ type ModalState =
 
 export default function PurchaseOrdersPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("All");
+  const [recipientFilter, setRecipientFilter] = useState<
+    "all" | "supplier" | "transporter"
+  >("all");
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<ModalState>(null);
@@ -292,7 +296,9 @@ export default function PurchaseOrdersPage() {
   const [transporters, setTransporters] = useState<Transporter[]>([]);
 
   // Bill linked to the currently-viewed PO
-  const [billForOrder, setBillForOrder] = useState<ProcurementInvoice | null>(null);
+  const [billForOrder, setBillForOrder] = useState<ProcurementInvoice | null>(
+    null,
+  );
   const [billLoading, setBillLoading] = useState(false);
   const [showBillForm, setShowBillForm] = useState(false);
   const [billDraft, setBillDraft] = useState({
@@ -397,7 +403,9 @@ export default function PurchaseOrdersPage() {
     const res = await apiCreateProcurementInvoice({
       invoiceRef: billDraft.invoiceRef.trim(),
       counterpartyType:
-        viewedOrder.recipientType === "transporter" ? "transporter" : "supplier",
+        viewedOrder.recipientType === "transporter"
+          ? "transporter"
+          : "supplier",
       counterpartyId: supplierIdStr,
       counterpartyName: viewedOrder.supplierName,
       linkedPoId: viewedOrder._id,
@@ -525,6 +533,9 @@ export default function PurchaseOrdersPage() {
     const statusFilter = TAB_STATUS_MAP[activeTab];
     return orders.filter((o) => {
       const matchesTab = statusFilter ? statusFilter.includes(o.status) : true;
+      const matchesRecipient =
+        recipientFilter === "all" ||
+        (o.recipientType || "supplier") === recipientFilter;
       const matchesSearch =
         !search ||
         o.poRef.toLowerCase().includes(search.toLowerCase()) ||
@@ -532,9 +543,9 @@ export default function PurchaseOrdersPage() {
         (o.deliverToClientName || "")
           .toLowerCase()
           .includes(search.toLowerCase());
-      return matchesTab && matchesSearch;
+      return matchesTab && matchesRecipient && matchesSearch;
     });
-  }, [orders, activeTab, search]);
+  }, [orders, activeTab, recipientFilter, search]);
 
   // Summary stats
   const summaryStats = useMemo(
@@ -676,17 +687,11 @@ export default function PurchaseOrdersPage() {
       );
       return;
     }
-    if (
-      draft.procurementType === "trading" &&
-      !draft.destinationWarehouseId
-    ) {
+    if (draft.procurementType === "trading" && !draft.destinationWarehouseId) {
       setSaveError("A destination warehouse is required for trading POs.");
       return;
     }
-    if (
-      draft.recipientType === "transporter" &&
-      !draft.deliverToClientId
-    ) {
+    if (draft.recipientType === "transporter" && !draft.deliverToClientId) {
       setSaveError("Please select the client this transport is for.");
       return;
     }
@@ -828,7 +833,9 @@ export default function PurchaseOrdersPage() {
                   : "text-t2 hover:text-t1"
               }`}
             >
-              {type === "supplier" ? "Supplier (goods)" : "Transporter (service)"}
+              {type === "supplier"
+                ? "Supplier (goods)"
+                : "Transporter (service)"}
             </button>
           ))}
         </div>
@@ -1013,7 +1020,9 @@ export default function PurchaseOrdersPage() {
         {draft.recipientType === "transporter" && (
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] text-t3">Deliver To (Client) *</label>
+              <label className="text-[10px] text-t3">
+                Deliver To (Client) *
+              </label>
               <button
                 type="button"
                 onClick={() => setShowAddClient(true)}
@@ -1754,31 +1763,6 @@ export default function PurchaseOrdersPage() {
           </p>
         </div>
       )}
-
-      <div className="text-[10px] text-gray-400 space-y-1 mb-8">
-        <p className="font-black uppercase mb-1">Conditions of Purchase</p>
-        <p>
-          • This order is subject to standard procurement terms of Tekaccess
-          Ltd.
-        </p>
-        <p>
-          • Delivery must be confirmed to the address / client specified above.
-        </p>
-        <p>
-          • Invoice must reference this PO number for successful processing.
-        </p>
-      </div>
-
-      <div className="flex justify-between items-end border-t border-gray-100 pt-6">
-        <div className="text-center w-36 border-t border-gray-300 pt-2">
-          <p className="text-[9px] font-black uppercase text-gray-400">
-            Authorized Signature
-          </p>
-        </div>
-        <div className="bg-gray-50 p-3 rounded-full border-4 border-double border-gray-100">
-          <CheckCircle size={36} weight="duotone" className="text-green-200" />
-        </div>
-      </div>
     </div>
   );
 
@@ -1920,10 +1904,62 @@ export default function PurchaseOrdersPage() {
               className="pl-9"
             />
           </div>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
-            <Funnel size={14} weight="duotone" /> Filter{" "}
-            <CaretDown size={11} weight="bold" />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setFilterMenuOpen((o) => !o)}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 border rounded-lg text-sm transition-colors ${
+                recipientFilter !== "all"
+                  ? "border-accent text-accent bg-accent/5"
+                  : "border-border text-t2 hover:bg-surface"
+              }`}
+            >
+              <Funnel size={14} weight="duotone" /> Filter
+              {recipientFilter !== "all" && (
+                <span className="text-[10px] font-bold uppercase">
+                  · {recipientFilter}
+                </span>
+              )}
+              <CaretDown size={11} weight="bold" />
+            </button>
+            {filterMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={() => setFilterMenuOpen(false)}
+                />
+                <div className="absolute right-0 mt-1 w-56 bg-card border border-border rounded-lg shadow-lg z-40 p-2">
+                  <p className="text-[10px] font-black text-t3 uppercase tracking-widest px-2 py-1.5">
+                    Recipient
+                  </p>
+                  {(
+                    [
+                      { id: "all", label: "All" },
+                      { id: "supplier", label: "Suppliers" },
+                      { id: "transporter", label: "Transporters" },
+                    ] as { id: typeof recipientFilter; label: string }[]
+                  ).map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => {
+                        setRecipientFilter(opt.id);
+                        setFilterMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-2 py-2 rounded-md text-sm transition-colors ${
+                        recipientFilter === opt.id
+                          ? "bg-accent/10 text-accent font-semibold"
+                          : "text-t2 hover:bg-surface"
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {recipientFilter === opt.id && (
+                        <CheckCircle size={14} weight="fill" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
             <DownloadSimple size={14} weight="duotone" /> Export
           </button>
@@ -2044,7 +2080,10 @@ export default function PurchaseOrdersPage() {
                       )}
                       {colVis.has("total") && (
                         <TableCell className="font-bold text-t1">
-                          {formatCurrency(order.totalValueWithTax, order.currency)}
+                          {formatCurrency(
+                            order.totalValueWithTax,
+                            order.currency,
+                          )}
                         </TableCell>
                       )}
                       {colVis.has("status") && (
