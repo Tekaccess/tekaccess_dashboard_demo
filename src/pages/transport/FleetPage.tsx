@@ -36,7 +36,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 const CHART_COLORS = ['#4285f4', '#93bbfa', '#bfd0fc', '#d5e4ff', '#e8f0ff'];
 
-const FLEET_TYPES = ['truck', 'tanker', 'tipper', 'flatbed', 'van', 'other'];
+const FLEET_TYPES = ['tipper', 'sideboarded', 'flatbed'];
 
 interface DraftTruck {
   plateNumber: string;
@@ -55,7 +55,7 @@ interface DraftTruck {
 
 function emptyDraft(): DraftTruck {
   return {
-    plateNumber: '', make: '', model: '', year: '', fleetType: 'truck',
+    plateNumber: '', make: '', model: '', year: '', fleetType: 'tipper',
     status: 'idle', assignedDriverName: '', currentOdometer: '',
     lastServiceDate: '', nextServiceDueKm: '', insuranceExpiry: '', notes: '',
   };
