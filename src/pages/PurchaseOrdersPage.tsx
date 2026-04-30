@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import {
   Plus,
   MagnifyingGlass,
@@ -69,6 +68,15 @@ import {
   Product,
   Warehouse,
 } from "../lib/api";
+import { Input } from "../components/ui/input";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "../components/ui/table";
 
 type ViewMode = "table" | "bar" | "trend" | "pie";
 type ActiveTab =
@@ -756,12 +764,10 @@ export default function PurchaseOrdersPage() {
           <label className="block text-[10px] text-t3 mb-1">
             Supplier Reference (auto-filled)
           </label>
-          <input
-            type="text"
+          <Input
             value={draft.vendorReference}
             onChange={(e) => updateDraft({ vendorReference: e.target.value })}
             placeholder="Supplier reference number"
-            className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors"
           />
         </div>
 
@@ -912,7 +918,7 @@ export default function PurchaseOrdersPage() {
                   <label className="block text-[10px] text-t3 mb-1">
                     Quantity *
                   </label>
-                  <input
+                  <Input
                     type="number"
                     min="0"
                     step="any"
@@ -922,7 +928,6 @@ export default function PurchaseOrdersPage() {
                         orderedQty: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-card border border-border px-3 py-1.5 rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
                   />
                 </div>
                 <SearchSelect
@@ -941,7 +946,7 @@ export default function PurchaseOrdersPage() {
                   <label className="block text-[10px] text-t3 mb-1">
                     Unit Price *
                   </label>
-                  <input
+                  <Input
                     type="number"
                     min="0"
                     step="any"
@@ -951,7 +956,6 @@ export default function PurchaseOrdersPage() {
                         unitPrice: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-card border border-border px-3 py-1.5 rounded-lg text-sm text-t1 outline-none focus:border-accent transition-colors"
                   />
                 </div>
                 <div>
@@ -1535,12 +1539,11 @@ export default function PurchaseOrdersPage() {
               size={15}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-t3"
             />
-            <input
-              type="text"
+            <Input
               placeholder="Search orders..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-border rounded-lg text-sm bg-surface text-t1 placeholder-t3 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
+              className="pl-9"
             />
           </div>
           <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-t2 hover:bg-surface transition-colors">
@@ -1586,73 +1589,38 @@ export default function PurchaseOrdersPage() {
 
         {/* TABLE VIEW */}
         {viewMode === "table" && (
-          <OverlayScrollbarsComponent
-            options={{ scrollbars: { autoHide: "never" } }}
-            defer
-          >
-            <table className="min-w-full divide-y divide-border">
-              <thead className="bg-surface">
-                <tr>
-                  {colVis.has("poRef") && (
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                      PO Ref
-                    </th>
-                  )}
-                  {colVis.has("supplier") && (
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                      Supplier
-                    </th>
-                  )}
-                  {colVis.has("deliverTo") && (
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                      Deliver To
-                    </th>
-                  )}
-                  {colVis.has("contract") && (
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                      Contract
-                    </th>
-                  )}
-                  {colVis.has("currency") && (
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                      Currency
-                    </th>
-                  )}
-                  {colVis.has("total") && (
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                      Total
-                    </th>
-                  )}
-                  {colVis.has("status") && (
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                      Status
-                    </th>
-                  )}
-                  {colVis.has("actions") && (
-                    <th className="px-4 py-3 text-left text-xs font-bold text-t3 uppercase tracking-wider whitespace-nowrap">
-                      Actions
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="bg-card divide-y divide-border-s">
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {colVis.has("poRef") && <TableHead>PO Ref</TableHead>}
+                  {colVis.has("supplier") && <TableHead>Supplier</TableHead>}
+                  {colVis.has("deliverTo") && <TableHead>Deliver To</TableHead>}
+                  {colVis.has("contract") && <TableHead>Contract</TableHead>}
+                  {colVis.has("currency") && <TableHead>Currency</TableHead>}
+                  {colVis.has("total") && <TableHead>Total</TableHead>}
+                  {colVis.has("status") && <TableHead>Status</TableHead>}
+                  {colVis.has("actions") && <TableHead>Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {loadingOrders ? (
-                  <tr>
-                    <td
+                  <TableRow>
+                    <TableCell
                       colSpan={colVis.size}
-                      className="px-4 py-16 text-center"
+                      className="py-16 text-center"
                     >
                       <Spinner
                         size={24}
                         className="animate-spin text-t3 mx-auto"
                       />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : filteredOrders.length === 0 ? (
-                  <tr>
-                    <td
+                  <TableRow>
+                    <TableCell
                       colSpan={colVis.size}
-                      className="px-4 py-16 text-center text-t3 text-sm"
+                      className="py-16 text-center text-t3"
                     >
                       {orders.length === 0 ? (
                         <div className="flex flex-col items-center gap-3">
@@ -1672,50 +1640,47 @@ export default function PurchaseOrdersPage() {
                       ) : (
                         "No orders match your criteria"
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   filteredOrders.map((order) => (
-                    <tr
+                    <TableRow
                       key={order._id}
-                      className="hover:bg-surface transition-colors cursor-pointer"
+                      className="hover:bg-surface cursor-pointer"
                       onClick={() => setModal({ mode: "view", order })}
                     >
                       {colVis.has("poRef") && (
-                        <td className="px-4 py-3.5 text-sm font-semibold text-accent whitespace-nowrap">
+                        <TableCell className="font-semibold text-accent">
                           {order.poRef}
-                        </td>
+                        </TableCell>
                       )}
                       {colVis.has("supplier") && (
-                        <td className="px-4 py-3.5 text-sm font-medium text-t1 max-w-[150px] truncate">
+                        <TableCell className="font-medium text-t1 max-w-[150px] truncate">
                           {order.supplierName}
-                        </td>
+                        </TableCell>
                       )}
                       {colVis.has("deliverTo") && (
-                        <td className="px-4 py-3.5 text-sm text-t2 max-w-[130px] truncate">
+                        <TableCell className="text-t2 max-w-[130px] truncate">
                           {order.deliverToClientName || "—"}
-                        </td>
+                        </TableCell>
                       )}
                       {colVis.has("contract") && (
-                        <td className="px-4 py-3.5 text-sm text-t2">
+                        <TableCell className="text-t2">
                           {order.contractRef || "—"}
-                        </td>
+                        </TableCell>
                       )}
                       {colVis.has("currency") && (
-                        <td className="px-4 py-3.5 text-sm text-t2">
+                        <TableCell className="text-t2">
                           {order.currency}
-                        </td>
+                        </TableCell>
                       )}
                       {colVis.has("total") && (
-                        <td className="px-4 py-3.5 text-sm font-bold text-t1 whitespace-nowrap">
-                          {formatCurrency(
-                            order.totalValueWithTax,
-                            order.currency,
-                          )}
-                        </td>
+                        <TableCell className="font-bold text-t1">
+                          {formatCurrency(order.totalValueWithTax, order.currency)}
+                        </TableCell>
                       )}
                       {colVis.has("status") && (
-                        <td className="px-4 py-3.5">
+                        <TableCell>
                           <span
                             className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[order.status] || STATUS_STYLES.draft}`}
                           >
@@ -1724,10 +1689,10 @@ export default function PurchaseOrdersPage() {
                             />
                             {STATUS_LABEL[order.status] || order.status}
                           </span>
-                        </td>
+                        </TableCell>
                       )}
                       {colVis.has("actions") && (
-                        <td className="px-4 py-3.5">
+                        <TableCell>
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={(e) => {
@@ -1760,13 +1725,13 @@ export default function PurchaseOrdersPage() {
                               <Trash size={14} weight="duotone" />
                             </button>
                           </div>
-                        </td>
+                        </TableCell>
                       )}
-                    </tr>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
             {filteredOrders.length > 0 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-border text-xs text-t3">
                 <span>
@@ -1774,7 +1739,7 @@ export default function PurchaseOrdersPage() {
                 </span>
               </div>
             )}
-          </OverlayScrollbarsComponent>
+          </>
         )}
 
         {/* BAR CHART VIEW */}

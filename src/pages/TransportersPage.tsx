@@ -16,7 +16,6 @@ import ColumnSelector, { useColumnVisibility, ColDef } from '../components/ui/Co
 type ModalMode = 'new' | 'edit' | 'view' | null;
 
 interface DraftTransporter {
-  transporterCode: string;
   name: string;
   contactName: string;
   contactEmail: string;
@@ -33,7 +32,7 @@ interface DraftTransporter {
 
 function emptyDraft(): DraftTransporter {
   return {
-    transporterCode: '', name: '',
+    name: '',
     contactName: '', contactEmail: '', contactPhone: '',
     address: '', country: 'Rwanda', currency: 'USD',
     trucksCommitted: 1, trucksDelivered: 0, ratePerTruck: 0,
@@ -67,15 +66,15 @@ const TABS = [
 ];
 
 const COLS: ColDef[] = [
-  { key: 'code',     label: 'Code',       defaultVisible: true },
-  { key: 'name',     label: 'Name',       defaultVisible: true },
-  { key: 'contact',  label: 'Contact',    defaultVisible: true },
-  { key: 'trucks',   label: 'Trucks',     defaultVisible: true },
-  { key: 'rate',     label: 'Rate/Truck', defaultVisible: true },
-  { key: 'amount',   label: 'Inv. Amount',defaultVisible: true },
-  { key: 'status',   label: 'Status',     defaultVisible: true },
-  { key: 'invoice',  label: 'Invoice',    defaultVisible: true },
-  { key: 'actions',  label: 'Actions',    defaultVisible: true },
+  { key: 'code',    label: 'Code',        defaultVisible: true },
+  { key: 'name',    label: 'Name',        defaultVisible: true },
+  { key: 'contact', label: 'Contact',     defaultVisible: true },
+  { key: 'trucks',  label: 'Trucks',      defaultVisible: true },
+  { key: 'rate',    label: 'Rate/Truck',  defaultVisible: true },
+  { key: 'amount',  label: 'Inv. Amount', defaultVisible: true },
+  { key: 'status',  label: 'Status',      defaultVisible: true },
+  { key: 'invoice', label: 'Invoice',     defaultVisible: true },
+  { key: 'actions', label: 'Actions',     defaultVisible: true },
 ];
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
@@ -142,7 +141,6 @@ export default function TransportersPage() {
   function openEdit(t: Transporter) {
     setSelected(t);
     setDraft({
-      transporterCode: t.transporterCode,
       name: t.name,
       contactName: t.contactName ?? '',
       contactEmail: t.contactEmail ?? '',
@@ -174,15 +172,29 @@ export default function TransportersPage() {
     if (draft.trucksCommitted < 1) { setError('Trucks committed must be at least 1.'); return; }
     setSaving(true);
     setError(null);
+
+    const contactFields = {
+      name: draft.name,
+      contactName: draft.contactName,
+      contactEmail: draft.contactEmail,
+      contactPhone: draft.contactPhone,
+      address: draft.address,
+      country: draft.country,
+      currency: draft.currency,
+      notes: draft.notes,
+      status: draft.status,
+    };
+
     const payload = {
-      ...draft,
+      ...contactFields,
       trucksCommitted: Number(draft.trucksCommitted),
       trucksDelivered: Number(draft.trucksDelivered),
       ratePerTruck: Number(draft.ratePerTruck),
     };
+
     const res = modalMode === 'new'
-      ? await apiCreateTransporter(payload)
-      : await apiUpdateTransporter(selected!._id, payload);
+      ? await apiCreateTransporter(payload as any)
+      : await apiUpdateTransporter(selected!._id, payload as any);
     setSaving(false);
     if (!res.success) { setError((res as any).message ?? 'Save failed.'); return; }
     setModalMode(null);
@@ -210,7 +222,7 @@ export default function TransportersPage() {
   }
 
   const kpi = [
-    { label: 'Transporters', value: summary.totalTransporters },
+    { label: 'Transporters',     value: summary.totalTransporters },
     { label: 'Trucks Committed', value: summary.totalTrucksCommitted },
     { label: 'Trucks Delivered', value: summary.totalTrucksDelivered },
     { label: 'Ready to Invoice', value: summary.readyToInvoice, accent: true },
@@ -296,7 +308,7 @@ export default function TransportersPage() {
               {!loading && paginated.map(t => {
                 const pct = Math.min(100, t.trucksCommitted > 0 ? (t.trucksDelivered / t.trucksCommitted) * 100 : 0);
                 const fulfilled = t.trucksDelivered >= t.trucksCommitted;
-                const canInvoice = fulfilled && t.invoiceStatus === 'not_invoiced';
+                const canInvoice = t.invoiceStatus === 'not_invoiced';
                 const invoiceAmt = t.invoiceAmount ?? (t.ratePerTruck * t.trucksCommitted);
                 return (
                   <tr key={t._id} className="border-b border-border hover:bg-surface/50 transition-colors">
@@ -429,47 +441,40 @@ export default function TransportersPage() {
                   </button>
                 </div>
 
-                <OverlayScrollbarsComponent className="p-5 space-y-4 flex-1" options={{ scrollbars: { autoHide: 'scroll' } }} defer>
+                <OverlayScrollbarsComponent className="px-6 py-6 space-y-6 flex-1" options={{ scrollbars: { autoHide: 'scroll' } }} defer>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-t3 mb-1.5">Code</label>
-                      <input value={draft.transporterCode} onChange={e => set('transporterCode', e.target.value)}
-                        placeholder="Auto-generated" className={inp} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-t3 mb-1.5">Status</label>
-                      <select value={draft.status} onChange={e => set('status', e.target.value)} className={inp}>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="blacklisted">Blacklisted</option>
-                      </select>
-                    </div>
+                  <div className='mb-4'>
+                    <label className="block text-xs font-semibold text-t3 mb-2">Status</label>
+                    <select value={draft.status} onChange={e => set('status', e.target.value)} className={inp}>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="blacklisted">Blacklisted</option>
+                    </select>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-t3 mb-1.5">Company Name <span className="text-rose-500">*</span></label>
+                  <div className='mb-4'>
+                    <label className="block text-xs font-semibold text-t3 mb-2">Company Name <span className="text-rose-500">*</span></label>
                     <input value={draft.name} onChange={e => set('name', e.target.value)} placeholder="Transporter Ltd." className={inp} />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                      <label className="block text-xs font-semibold text-t3 mb-1.5">Contact Person</label>
+                      <label className="block text-xs font-semibold text-t3 mb-2">Contact Person</label>
                       <input value={draft.contactName} onChange={e => set('contactName', e.target.value)} placeholder="Full name" className={inp} />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-t3 mb-1.5">Phone</label>
+                      <label className="block text-xs font-semibold text-t3 mb-2">Phone</label>
                       <input value={draft.contactPhone} onChange={e => set('contactPhone', e.target.value)} placeholder="+250 7xx xxx xxx" className={inp} />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-t3 mb-1.5">Email</label>
+                      <label className="block text-xs font-semibold text-t3 mb-2">Email</label>
                       <input value={draft.contactEmail} onChange={e => set('contactEmail', e.target.value)} placeholder="contact@company.com" className={inp} />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-t3 mb-1.5">Country</label>
+                      <label className="block text-xs font-semibold text-t3 mb-2">Country</label>
                       <input value={draft.country} onChange={e => set('country', e.target.value)} className={inp} />
                     </div>
                   </div>
@@ -478,17 +483,17 @@ export default function TransportersPage() {
                     <p className="text-xs font-black text-t3 uppercase tracking-widest mb-3">Truck Commitment</p>
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-xs font-semibold text-t3 mb-1.5">Committed <span className="text-rose-500">*</span></label>
+                        <label className="block text-xs font-semibold text-t3 mb-2">Committed <span className="text-rose-500">*</span></label>
                         <input type="number" min={1} value={draft.trucksCommitted}
                           onChange={e => set('trucksCommitted', e.target.value)} className={inp} />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-t3 mb-1.5">Delivered</label>
+                        <label className="block text-xs font-semibold text-t3 mb-2">Delivered</label>
                         <input type="number" min={0} value={draft.trucksDelivered}
                           onChange={e => set('trucksDelivered', e.target.value)} className={inp} />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-t3 mb-1.5">Rate / Truck ({draft.currency})</label>
+                        <label className="block text-xs font-semibold text-t3 mb-2">Rate / Truck ({draft.currency})</label>
                         <input type="number" min={0} value={draft.ratePerTruck}
                           onChange={e => set('ratePerTruck', e.target.value)} className={inp} />
                       </div>
@@ -528,8 +533,8 @@ export default function TransportersPage() {
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-t3 mb-1.5">Notes</label>
+                  <div className='mt-2'>
+                    <label className="block text-xs font-semibold text-t3 mb-2">Notes</label>
                     <textarea value={draft.notes} onChange={e => set('notes', e.target.value)}
                       rows={2} placeholder="Optional remarks…" className={inp} />
                   </div>
@@ -579,7 +584,8 @@ export default function TransportersPage() {
                   </button>
                 </div>
 
-                {/* Progress */}
+
+                {/* Commitment progress */}
                 <div className="p-4 bg-surface rounded-xl border border-border space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-t3">Truck Commitment</span>
@@ -590,7 +596,7 @@ export default function TransportersPage() {
                   <div className="h-2.5 bg-surface-hover rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full ${selected.trucksDelivered >= selected.trucksCommitted ? 'bg-emerald-500' : 'bg-accent'}`}
-                      style={{ width: `${Math.min(100, (selected.trucksDelivered / selected.trucksCommitted) * 100)}%` }}
+                      style={{ width: `${Math.min(100, selected.trucksCommitted > 0 ? (selected.trucksDelivered / selected.trucksCommitted) * 100 : 0)}%` }}
                     />
                   </div>
                   <div className="flex items-center justify-between text-xs">
@@ -599,7 +605,7 @@ export default function TransportersPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-2 gap-4 text-xs">
                   {[
                     { label: 'Contact', value: selected.contactName },
                     { label: 'Phone', value: selected.contactPhone },
