@@ -8,7 +8,7 @@ import {
 import {
   apiListWarehouses, apiCreateWarehouse, apiUpdateWarehouse, apiDeleteWarehouse,
   apiGetInventorySummary, apiListMovements,
-  Warehouse, StockMovement,
+  Warehouse, WarehouseRole, StockMovement,
   warehouseUsedPct, warehouseAvailable, isNearCapacity,
 } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
@@ -22,12 +22,25 @@ import { TableSkeleton, KpiCardsSkeleton } from '../../components/ui/Skeleton';
 const SITE_LABELS: Record<string, string> = {
   standard: 'Mine Warehouse',
   crushing_site: 'Crushing Site',
+  loading_site: 'Loading Site',
 };
 
 const SITE_STYLES: Record<string, string> = {
   standard:      'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   crushing_site: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  loading_site:  'bg-blue-500/10 text-blue-400 border-blue-500/20',
 };
+
+const ROLE_OPTIONS: { value: WarehouseRole; label: string; hint: string }[] = [
+  { value: 'standard',      label: 'Mine Warehouse', hint: 'Holds processed / sellable stock' },
+  { value: 'crushing_site', label: 'Crushing Site',  hint: 'Holds raw / uncrushed material' },
+  { value: 'loading_site',  label: 'Loading Site',   hint: 'Used for outbound loading' },
+];
+
+function getRoles(w: Pick<Warehouse, 'siteRoles' | 'siteType'>): WarehouseRole[] {
+  if (w.siteRoles && w.siteRoles.length > 0) return w.siteRoles;
+  return [w.siteType || 'standard'];
+}
 
 const CAPACITY_UNITS = ['tons', 'cubic_metres', 'pallets', 'litres', 'units'];
 
@@ -35,7 +48,7 @@ type ModalMode = 'new' | 'edit' | 'view' | null;
 
 interface DraftWarehouse {
   warehouseCode: string; name: string;
-  siteType: 'standard' | 'crushing_site';
+  siteRoles: WarehouseRole[];
   address: string; region: string; country: string;
   capacityUnit: string; totalCapacity: number;
   managerName: string; managerContact: string;
@@ -44,7 +57,7 @@ interface DraftWarehouse {
 function emptyDraft(): DraftWarehouse {
   return {
     warehouseCode: '', name: '',
-    siteType: 'standard',
+    siteRoles: ['standard'],
     address: '', region: '', country: 'Rwanda',
     capacityUnit: 'tons', totalCapacity: 0,
     managerName: '', managerContact: '',
@@ -122,12 +135,24 @@ export default function WarehousesPage() {
   function openEdit(w: Warehouse) {
     setDraft({
       warehouseCode: w.warehouseCode, name: w.name,
-      siteType: w.siteType || 'standard',
+      siteRoles: getRoles(w),
       address: w.address || '', region: w.region || '', country: w.country,
       capacityUnit: w.capacityUnit, totalCapacity: w.totalCapacity,
       managerName: w.managerName || '', managerContact: w.managerContact || '',
     });
     setSelected(w); setError(null); setModalMode('edit');
+  }
+
+  function toggleRole(role: WarehouseRole) {
+    setDraft(d => {
+      const has = d.siteRoles.includes(role);
+      // Don't allow deselecting the last role — at least one is required.
+      if (has && d.siteRoles.length === 1) return d;
+      return {
+        ...d,
+        siteRoles: has ? d.siteRoles.filter(r => r !== role) : [...d.siteRoles, role],
+      };
+    });
   }
 
   function openView(w: Warehouse) { setSelected(w); setModalMode('view'); }
@@ -168,8 +193,10 @@ export default function WarehousesPage() {
             <span className="font-mono font-bold text-accent">{draft.warehouseCode || 'auto-assigned'}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-t3">Role</span>
-            <span className="text-t1 font-medium">{SITE_LABELS[draft.siteType]}</span>
+            <span className="text-t3">Roles</span>
+            <span className="text-t1 font-medium text-right">
+              {draft.siteRoles.map(r => SITE_LABELS[r]).join(', ')}
+            </span>
           </div>
         </div>
       </div>
@@ -203,8 +230,8 @@ export default function WarehousesPage() {
             <span className="font-mono text-t1">{selected.warehouseCode}</span>
           </div>
           <div>
-            <span className="text-t3">Role: </span>
-            <span className="text-t1 font-medium">{SITE_LABELS[selected.siteType || 'standard']}</span>
+            <span className="text-t3">Roles: </span>
+            <span className="text-t1 font-medium">{getRoles(selected).map(r => SITE_LABELS[r]).join(', ')}</span>
           </div>
           <div>
             <span className="text-t3">Country: </span>
@@ -263,15 +290,36 @@ export default function WarehousesPage() {
               placeholder="e.g. Kigali Main Warehouse" />
           </div>
           <div>
-            <label className="block text-xs text-t3 mb-1.5">Site Role *</label>
-            <select className={inp}
-              value={draft.siteType}
-              onChange={e => updateDraft({ siteType: e.target.value as 'standard' | 'crushing_site' })}>
-              <option value="standard">Mine Warehouse — holds processed / sellable stock</option>
-              <option value="crushing_site">Crushing Site — holds raw / uncrushed material to be processed</option>
-            </select>
-            <p className="text-[10px] text-t3 mt-1 leading-relaxed">
-              Crushing Sites receive uncrushed material from suppliers. Once processed, transfer the stock to a Mine Warehouse.
+            <label className="block text-xs text-t3 mb-1.5">Site Roles * <span className="text-t3 font-normal">(select one or more)</span></label>
+            <div className="space-y-1.5">
+              {ROLE_OPTIONS.map(opt => {
+                const checked = draft.siteRoles.includes(opt.value);
+                const isLast = checked && draft.siteRoles.length === 1;
+                return (
+                  <label
+                    key={opt.value}
+                    className={`flex items-start gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
+                      checked ? 'bg-accent-glow border-accent/40' : 'bg-surface border-border hover:border-border/60'
+                    } ${isLast ? 'cursor-not-allowed' : ''}`}
+                    title={isLast ? 'At least one role is required' : ''}
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 accent-accent"
+                      checked={checked}
+                      disabled={isLast}
+                      onChange={() => toggleRole(opt.value)}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-t1">{opt.label}</p>
+                      <p className="text-[10px] text-t3">{opt.hint}</p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-t3 mt-2 leading-relaxed">
+              The first role determines the auto-generated code prefix (WH / CS / LS) on new warehouses.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -353,9 +401,13 @@ export default function WarehousesPage() {
           <div className="space-y-2">
             <p className="text-xs text-t3">{selected.warehouseCode}</p>
             <h3 className="text-2xl font-bold text-t1">{selected.name}</h3>
-            <span className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-0.5 font-medium ${SITE_STYLES[selected.siteType || 'standard']}`}>
-              {SITE_LABELS[selected.siteType || 'standard']}
-            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {getRoles(selected).map(r => (
+                <span key={r} className={`inline-flex items-center gap-1.5 text-xs border rounded-full px-2.5 py-0.5 font-medium ${SITE_STYLES[r]}`}>
+                  {SITE_LABELS[r]}
+                </span>
+              ))}
+            </div>
           </div>
           <span className={`text-xs font-medium px-2.5 py-1 rounded-full border shrink-0 ${selected.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-surface text-t3 border-border'}`}>
             {selected.isActive ? 'Active' : 'Inactive'}
@@ -563,9 +615,13 @@ export default function WarehousesPage() {
                         )}
                         {colVis.has('role') && (
                           <TableCell className="py-4">
-                            <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${SITE_STYLES[w.siteType || 'standard']}`}>
-                              {SITE_LABELS[w.siteType || 'standard']}
-                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {getRoles(w).map(r => (
+                                <span key={r} className={`inline-flex items-center gap-1.5 text-[10px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wider ${SITE_STYLES[r]}`}>
+                                  {SITE_LABELS[r]}
+                                </span>
+                              ))}
+                            </div>
                           </TableCell>
                         )}
                         {colVis.has('usage') && (

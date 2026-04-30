@@ -55,6 +55,7 @@ import SearchSelect, {
   SearchSelectOption,
 } from "../../components/ui/SearchSelect";
 import DocumentSidePanel from "../../components/DocumentSidePanel";
+import WeighbridgeScanner from "../../components/WeighbridgeScanner";
 import ColumnSelector, {
   useColumnVisibility,
   ColDef,
@@ -1364,9 +1365,15 @@ export default function MovementsPage() {
         </p>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[10px] text-t3 mb-1">
-              Gross Weight (tons)
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-[10px] text-t3">
+                Gross Weight (tons)
+              </label>
+              <WeighbridgeScanner
+                title="Scan gross weight"
+                onResult={(v) => upd({ grossWeight: v })}
+              />
+            </div>
             <input
               type="number"
               min={0}
@@ -1378,9 +1385,15 @@ export default function MovementsPage() {
             />
           </div>
           <div>
-            <label className="block text-[10px] text-t3 mb-1">
-              Tare Weight (tons)
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-[10px] text-t3">
+                Tare Weight (tons)
+              </label>
+              <WeighbridgeScanner
+                title="Scan tare weight"
+                onResult={(v) => upd({ tareWeight: v })}
+              />
+            </div>
             <input
               type="number"
               min={0}

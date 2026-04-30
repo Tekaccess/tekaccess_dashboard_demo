@@ -973,11 +973,14 @@ export async function apiDeleteSite(id: string) {
 
 // ─── Warehouses ───────────────────────────────────────────────────────────────
 
+export type WarehouseRole = 'standard' | 'crushing_site' | 'loading_site';
+
 export type Warehouse = {
   _id: string;
   warehouseCode: string;
   name: string;
-  siteType?: 'standard' | 'crushing_site' | 'loading_site';
+  siteType?: WarehouseRole;
+  siteRoles?: WarehouseRole[];
   address: string | null;
   region: string | null;
   country: string;
