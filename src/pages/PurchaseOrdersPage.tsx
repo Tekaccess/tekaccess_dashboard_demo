@@ -1525,7 +1525,7 @@ export default function PurchaseOrdersPage() {
     previewOrder ||
     (draft
       ? {
-          poRef: "— DRAFT —",
+          poRef: null,
           recipientType: draft.recipientType,
           supplierName: draft.supplierName || "Not selected",
           vendorReference: draft.vendorReference,
@@ -1617,12 +1617,23 @@ export default function PurchaseOrdersPage() {
         </div>
       </div>
 
-      <h1 className="text-[24px] font-medium text-[#4285f4] mb-6">
-        Purchase Order{" "}
-        <span className="font-bold text-gray-800">
-          #{(orderForPreview as any).poRef}
-        </span>
-      </h1>
+      {(() => {
+        // Saved POs: pull the trailing sequence number from poRef
+        // (e.g. "PO-2025-0312" → "0312"). Drafts: project the next number
+        // as orders.length + 1, padded to 4 digits to match backend codes.
+        const ref = (orderForPreview as any).poRef as string | null | undefined;
+        let seq: string | null = null;
+        if (ref) {
+          const m = ref.match(/(\d+)\s*$/);
+          if (m) seq = m[1];
+        }
+        if (!seq) seq = String(orders.length + 1).padStart(4, "0");
+        return (
+          <h1 className="text-[24px] font-medium text-[#4285f4] mb-6">
+            P.O <span className="font-bold text-gray-800">{seq}</span>
+          </h1>
+        );
+      })()}
 
       <div className="flex justify-between items-start mb-6 text-[12px] border-y border-gray-100 py-5">
         <div>
