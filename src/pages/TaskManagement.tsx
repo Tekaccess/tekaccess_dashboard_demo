@@ -637,7 +637,7 @@ export default function TaskManagement() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFunnel, setStatusFunnel] = useState<string>('all');
-  const [dueRange, setDueRange] = useState<DueRange>('all');
+  const [dueRange, setDueRange] = useState<DueRange>('this-day');
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
