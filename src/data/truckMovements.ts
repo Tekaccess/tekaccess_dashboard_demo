@@ -36,6 +36,7 @@ export interface TruckAllocation {
   trailerNumber?: string;
   truckType: TruckType;
   driverName: string;
+  driverContact?: string;
   transporterId: string;
   transporterName: string;
   supplierId: string;
@@ -114,6 +115,7 @@ export const mockTruckAllocations: TruckAllocation[] = [
     trailerNumber: 'RL 8519',
     truckType: 'flatbed',
     driverName: 'SALMIN KITHUMA',
+    driverContact: '+250 788 451 207',
     transporterId: 'trp-own',
     transporterName: 'TEKACCESS LTD',
     supplierId: 'sup-001',
@@ -143,6 +145,7 @@ export const mockTruckAllocations: TruckAllocation[] = [
     trailerNumber: 'RL 8520',
     truckType: 'flatbed',
     driverName: 'UZABARINDA JEAN BAPTISTE',
+    driverContact: '+250 788 612 384',
     transporterId: 'trp-own',
     transporterName: 'TEKACCESS LTD',
     supplierId: 'sup-001',
@@ -171,6 +174,7 @@ export const mockTruckAllocations: TruckAllocation[] = [
     trailerNumber: 'RL 8521',
     truckType: 'flatbed',
     driverName: 'NGANGO PIEUX',
+    driverContact: '+250 788 905 116',
     transporterId: 'trp-own',
     transporterName: 'TEKACCESS LTD',
     supplierId: 'sup-001',
@@ -197,6 +201,7 @@ export const mockTruckAllocations: TruckAllocation[] = [
     trailerNumber: 'RL 8524',
     truckType: 'flatbed',
     driverName: 'MUGISHA JEAN BOSCO',
+    driverContact: '+250 788 327 590',
     transporterId: 'trp-own',
     transporterName: 'TEKACCESS LTD',
     supplierId: 'sup-002',
@@ -221,6 +226,7 @@ export const mockTruckAllocations: TruckAllocation[] = [
     trailerNumber: 'RL 8522',
     truckType: 'flatbed',
     driverName: 'UWAYEZU RAMADHAN',
+    driverContact: '+250 788 144 962',
     transporterId: 'trp-own',
     transporterName: 'TEKACCESS LTD',
     supplierId: 'sup-002',
@@ -250,6 +256,7 @@ export const mockTruckAllocations: TruckAllocation[] = [
     trailerNumber: 'RL 3523',
     truckType: 'flatbed',
     driverName: 'BIZIMANA AIME',
+    driverContact: '+250 788 558 023',
     transporterId: 'trp-own',
     transporterName: 'TEKACCESS LTD',
     supplierId: 'sup-002',
@@ -277,6 +284,7 @@ export const mockTruckAllocations: TruckAllocation[] = [
     trailerNumber: 'RL 8525',
     truckType: 'flatbed',
     driverName: 'JOHN NJAGI',
+    driverContact: '+250 788 416 758',
     transporterId: 'trp-own',
     transporterName: 'TEKACCESS LTD',
     supplierId: 'sup-003',
@@ -293,6 +301,54 @@ export const mockTruckAllocations: TruckAllocation[] = [
     ],
   },
 
+  // Standby 1 · RAJ 191 Q · MUNYANEZA ERIC → wait_shunting
+  {
+    _id: 'ta-101',
+    plateNumber: 'RAJ 191 Q',
+    trailerNumber: 'RL 8523',
+    truckType: 'flatbed',
+    driverName: 'MUNYANEZA ERIC',
+    driverContact: '+250 788 502 119',
+    transporterId: 'trp-own',
+    transporterName: 'TEKACCESS LTD',
+    supplierId: 'sup-003',
+    supplierName: 'Hyle',
+    productId: 'prod-003',
+    productName: 'Stone Chips',
+    purchaseOrderRef: 'P00175',
+    quantity: 28,
+    warehouseName: 'Hyle warehouse',
+    currentStage: 'wait_shunting',
+    allocatedAt: `${D}T07:30:00Z`,
+    history: [
+      { stage: 'wait_shunting', enteredAt: `${D}T07:30:00Z`, postedBy: 'MUGABO Richard (Transport)' },
+    ],
+  },
+
+  // Standby 2 · RAJ 197 Q · HABIYAREMYE PASCAL → wait_shunting
+  {
+    _id: 'ta-102',
+    plateNumber: 'RAJ 197 Q',
+    trailerNumber: 'RL 8528',
+    truckType: 'flatbed',
+    driverName: 'HABIYAREMYE PASCAL',
+    driverContact: '+250 788 884 537',
+    transporterId: 'trp-own',
+    transporterName: 'TEKACCESS LTD',
+    supplierId: 'sup-001',
+    supplierName: 'Bakal',
+    productId: 'prod-001',
+    productName: 'Raw Stone',
+    purchaseOrderRef: 'P00193',
+    quantity: 30,
+    warehouseName: 'Bakal warehouse',
+    currentStage: 'wait_shunting',
+    allocatedAt: `${D}T08:45:00Z`,
+    history: [
+      { stage: 'wait_shunting', enteredAt: `${D}T08:45:00Z`, postedBy: 'MUGABO Richard (Transport)' },
+    ],
+  },
+
   // Flatbed 8 · RAJ 195 Q · NTAWUGARUKA CLEMENT → transit (completed full journey)
   {
     _id: 'ta-008',
@@ -300,6 +356,7 @@ export const mockTruckAllocations: TruckAllocation[] = [
     trailerNumber: 'RL 8526',
     truckType: 'flatbed',
     driverName: 'NTAWUGARUKA CLEMENT',
+    driverContact: '+250 788 290 483',
     transporterId: 'trp-own',
     transporterName: 'TEKACCESS LTD',
     supplierId: 'sup-003',
@@ -329,6 +386,7 @@ export const mockTruckAllocations: TruckAllocation[] = [
     trailerNumber: 'RL 8527',
     truckType: 'flatbed',
     driverName: 'SEBAHIRE GASTON',
+    driverContact: '+250 788 671 244',
     transporterId: 'trp-own',
     transporterName: 'TEKACCESS LTD',
     supplierId: 'sup-003',
@@ -451,6 +509,27 @@ export const mockMovementRecords: MovementRecord[] = [
     timestamp: `${D}T10:00:00Z`, transporterName: 'Tahita',
     supplierName: 'Hyle', productName: 'Stone Chips', warehouseName: 'Hyle warehouse',
   },
+];
+
+// ─── Warehouse Stock by Material State ────────────────────────────────────────
+// Tonnage on hand at each warehouse, split by whether the material has been
+// crushed yet. Crushing sites only hold material in transit, so they're not
+// included here — see Stock Summary for processing throughput.
+
+export interface WarehouseStock {
+  warehouseId: string;
+  warehouseName: string;
+  siteRole: 'standard' | 'crushing_site' | 'loading_site';
+  uncrushedTons: number;
+  crushedTons: number;
+}
+
+export const mockWarehouseStock: WarehouseStock[] = [
+  { warehouseId: 'wh-001', warehouseName: 'Bakal warehouse',         siteRole: 'standard',      uncrushedTons: 142, crushedTons:  87 },
+  { warehouseId: 'wh-002', warehouseName: 'Hazamoda warehouse',      siteRole: 'standard',      uncrushedTons:  96, crushedTons: 124 },
+  { warehouseId: 'wh-003', warehouseName: 'Hyle warehouse',          siteRole: 'standard',      uncrushedTons: 118, crushedTons:  64 },
+  { warehouseId: 'cs-001', warehouseName: 'Marziq crushing site',    siteRole: 'crushing_site', uncrushedTons:  58, crushedTons:  31 },
+  { warehouseId: 'cs-002', warehouseName: 'Tusmo crushing site',     siteRole: 'crushing_site', uncrushedTons:  42, crushedTons:  19 },
 ];
 
 // ─── Stock Summary ────────────────────────────────────────────────────────────

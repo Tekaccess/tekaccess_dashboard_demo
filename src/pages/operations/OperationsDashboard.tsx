@@ -14,11 +14,13 @@ import {
   ArrowDown,
   ArrowUp,
   Users,
+  Buildings,
 } from "@phosphor-icons/react";
 import {
   mockTruckAllocations,
   mockMovementRecords,
   mockStockSummary,
+  mockWarehouseStock,
   TIPPER_STAGE_CONFIGS,
   FLATBED_STAGE_CONFIGS,
   type TruckAllocation,
@@ -26,6 +28,7 @@ import {
   type TruckStage,
   type StageConfig,
   type MovementRecord,
+  type WarehouseStock,
 } from "../../data/truckMovements";
 
 // ─── Color Helpers ────────────────────────────────────────────────────────────
@@ -377,6 +380,11 @@ function TruckStageModal({
     (t) => t.truckType === truckType && t.currentStage === stageId,
   );
 
+  // For flatbeds on standby (wait_shunting), the per-truck journey timeline
+  // adds no information — the queue is what the user wants to see. Show a
+  // flat table instead.
+  const isStandbyView = truckType === 'flatbed' && stageId === 'wait_shunting';
+
   const suppliers = useMemo(() => {
     const map = new Map<
       string,
@@ -450,83 +458,211 @@ function TruckStageModal({
           </button>
         </div>
 
-        {/* Supplier tabs */}
-        <div className="border-b border-border px-5">
-          <nav className="-mb-px flex gap-0 overflow-x-auto">
-            {suppliers.map((sup) => (
-              <button
-                key={sup.id}
-                type="button"
-                onClick={() => setActiveSupplier(sup.id)}
-                className={`whitespace-nowrap py-3 px-4 border-b-2 text-xs font-semibold transition-colors ${
-                  activeSupplier === sup.id
-                    ? "border-accent text-accent"
-                    : "border-transparent text-t3 hover:text-t2 hover:border-border"
-                }`}
-              >
-                {sup.name}
-                <span
-                  className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    sup.trucks.length > 0
-                      ? `${c.bg} ${c.text}`
-                      : "bg-surface text-t3"
-                  }`}
-                >
-                  {sup.trucks.length}
-                </span>
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Truck list */}
-        <div className="overflow-y-auto flex-1 p-5 space-y-3">
-          {!currentSupplierData || currentSupplierData.trucks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Truck
-                size={32}
-                weight="duotone"
-                className="text-t3 opacity-30 mb-3"
-              />
-              <p className="text-sm text-t3">
-                No trucks from this supplier at this stage
-              </p>
-            </div>
-          ) : (
-            currentSupplierData.trucks.map((truck) => (
-              <TruckJourneyRow
-                key={truck._id}
-                truck={truck}
-                stageConfigs={stageConfigs}
-              />
-            ))
-          )}
-        </div>
-
-        {/* Footer: all trucks from this supplier today */}
-        {currentSupplierData && (
-          <div className="border-t border-border px-5 py-3">
-            <p className="text-xs text-t3">
-              All {truckType === "tipper" ? "tipper" : "flatbed"} trucks from{" "}
-              <span className="text-t2 font-medium">
-                {currentSupplierData.name}
-              </span>{" "}
-              today:{" "}
-              {allocations
-                .filter(
-                  (t) =>
-                    t.truckType === truckType &&
-                    t.supplierId === activeSupplier,
-                )
-                .map((t) => (
-                  <span key={t._id} className="font-mono text-t1 mr-2">
-                    {t.plateNumber}
-                  </span>
-                ))}
-            </p>
+        {isStandbyView ? (
+          <div className="overflow-y-auto flex-1 p-5">
+            <StandbyQueueTable trucks={trucksInStage} />
           </div>
+        ) : (
+          <>
+            {/* Supplier tabs */}
+            <div className="border-b border-border px-5">
+              <nav className="-mb-px flex gap-0 overflow-x-auto">
+                {suppliers.map((sup) => (
+                  <button
+                    key={sup.id}
+                    type="button"
+                    onClick={() => setActiveSupplier(sup.id)}
+                    className={`whitespace-nowrap py-3 px-4 border-b-2 text-xs font-semibold transition-colors ${
+                      activeSupplier === sup.id
+                        ? "border-accent text-accent"
+                        : "border-transparent text-t3 hover:text-t2 hover:border-border"
+                    }`}
+                  >
+                    {sup.name}
+                    <span
+                      className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        sup.trucks.length > 0
+                          ? `${c.bg} ${c.text}`
+                          : "bg-surface text-t3"
+                      }`}
+                    >
+                      {sup.trucks.length}
+                    </span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+
+            {/* Truck list */}
+            <div className="overflow-y-auto flex-1 p-5 space-y-3">
+              {!currentSupplierData || currentSupplierData.trucks.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Truck
+                    size={32}
+                    weight="duotone"
+                    className="text-t3 opacity-30 mb-3"
+                  />
+                  <p className="text-sm text-t3">
+                    No trucks from this supplier at this stage
+                  </p>
+                </div>
+              ) : (
+                currentSupplierData.trucks.map((truck) => (
+                  <TruckJourneyRow
+                    key={truck._id}
+                    truck={truck}
+                    stageConfigs={stageConfigs}
+                  />
+                ))
+              )}
+            </div>
+
+            {/* Footer: all trucks from this supplier today */}
+            {currentSupplierData && (
+              <div className="border-t border-border px-5 py-3">
+                <p className="text-xs text-t3">
+                  All {truckType === "tipper" ? "tipper" : "flatbed"} trucks from{" "}
+                  <span className="text-t2 font-medium">
+                    {currentSupplierData.name}
+                  </span>{" "}
+                  today:{" "}
+                  {allocations
+                    .filter(
+                      (t) =>
+                        t.truckType === truckType &&
+                        t.supplierId === activeSupplier,
+                    )
+                    .map((t) => (
+                      <span key={t._id} className="font-mono text-t1 mr-2">
+                        {t.plateNumber}
+                      </span>
+                    ))}
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Warehouse Stock Card ─────────────────────────────────────────────────────
+
+function WarehouseStockCard({ wh }: { wh: WarehouseStock }) {
+  const total = wh.uncrushedTons + wh.crushedTons;
+  const isCrusher = wh.siteRole === 'crushing_site';
+  return (
+    <div className="bg-card rounded-xl border border-border p-4">
+      <div className="flex items-start gap-2 mb-3">
+        <div className={`p-2 rounded-lg shrink-0 ${isCrusher ? 'bg-purple-500/10' : 'bg-accent-glow'}`}>
+          <Buildings
+            size={14}
+            weight="duotone"
+            className={isCrusher ? 'text-purple-400' : 'text-accent'}
+          />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-t1 truncate">{wh.warehouseName}</p>
+          <p className="text-[10px] text-t3 capitalize">
+            {isCrusher ? 'Crushing site' : 'Warehouse'}
+          </p>
+        </div>
+      </div>
+      <p className="text-2xl font-bold text-t1 leading-tight">{total}t</p>
+      <p className="text-[10px] text-t3 mt-0.5">Total on hand</p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="bg-surface rounded-md px-2 py-1.5">
+          <p className="text-[10px] text-t3 leading-tight">Uncrushed</p>
+          <p className="text-sm font-bold text-amber-500 leading-tight">{wh.uncrushedTons}t</p>
+        </div>
+        <div className="bg-surface rounded-md px-2 py-1.5">
+          <p className="text-[10px] text-t3 leading-tight">Crushed</p>
+          <p className="text-sm font-bold text-emerald-400 leading-tight">{wh.crushedTons}t</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Standby Queue Table ──────────────────────────────────────────────────────
+// For Flatbed Trucks at the "Standby" (wait_shunting) stage we show a flat
+// table — plate, driver, contact, and how long it has been queued — instead
+// of the per-truck journey timeline used for downstream stages.
+
+function timeAgo(iso: string, now: Date = new Date()) {
+  const diffMs = Math.max(0, now.getTime() - new Date(iso).getTime());
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rem = minutes % 60;
+  return rem === 0 ? `${hours}h` : `${hours}h ${rem}m`;
+}
+
+function formatHm(iso: string) {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function StandbyQueueTable({ trucks }: { trucks: TruckAllocation[] }) {
+  if (trucks.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <Truck size={32} weight="duotone" className="text-t3 opacity-30 mb-3" />
+        <p className="text-sm text-t3">No flatbed trucks currently on standby</p>
+      </div>
+    );
+  }
+
+  const sorted = [...trucks].sort((a, b) => {
+    const aT = a.history.find((h) => h.stage === 'wait_shunting')?.enteredAt ?? a.allocatedAt;
+    const bT = b.history.find((h) => h.stage === 'wait_shunting')?.enteredAt ?? b.allocatedAt;
+    return new Date(aT).getTime() - new Date(bT).getTime();
+  });
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[600px]">
+        <thead>
+          <tr className="border-b border-border">
+            {['Plate', 'Driver', 'Contact', 'Added', 'In queue'].map((h) => (
+              <th
+                key={h}
+                className="text-left text-[10px] font-black text-t3 uppercase tracking-widest px-3 py-2"
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((t) => {
+            const queued = t.history.find((h) => h.stage === 'wait_shunting')?.enteredAt ?? t.allocatedAt;
+            return (
+              <tr
+                key={t._id}
+                className="border-b border-border last:border-0 hover:bg-surface/50 transition-colors"
+              >
+                <td className="px-3 py-2.5">
+                  <span className="font-mono text-xs font-bold text-t1">{t.plateNumber}</span>
+                  {t.trailerNumber && (
+                    <p className="font-mono text-[10px] text-t3">+ {t.trailerNumber}</p>
+                  )}
+                </td>
+                <td className="px-3 py-2.5 text-xs text-t1">{t.driverName}</td>
+                <td className="px-3 py-2.5 text-xs text-t2 font-mono">
+                  {t.driverContact ?? '—'}
+                </td>
+                <td className="px-3 py-2.5 text-xs text-t2">{formatHm(queued)}</td>
+                <td className="px-3 py-2.5 text-xs font-semibold text-amber-500">
+                  {timeAgo(queued)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -714,6 +850,18 @@ export default function OperationsDashboard() {
               setModal({ truckType: "flatbed", stageId })
             }
           />
+        </div>
+      </div>
+
+      {/* ── Warehouse Stock On Hand ── */}
+      <div>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">
+          Warehouses — Stock On Hand
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+          {mockWarehouseStock.map((wh) => (
+            <WarehouseStockCard key={wh.warehouseId} wh={wh} />
+          ))}
         </div>
       </div>
 
