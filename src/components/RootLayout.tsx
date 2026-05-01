@@ -70,11 +70,11 @@ export default function RootLayout() {
     }
   }, [isAuthenticated, isInitialising, isPublicRoute, navigate]);
 
-  // Redirect to first accessible dept if current route is a dept the user can't access.
+  // Redirect to first accessible dept (or /tasks if none) when the current route is a dept the user can't access.
   useEffect(() => {
     if (isInitialising || !isAuthenticated || isPublicRoute || !user) return;
     if (urlDepartmentId && !accessibleDepts.includes(urlDepartmentId)) {
-      navigate({ to: `/${defaultDept}` });
+      navigate({ to: accessibleDepts.length > 0 ? `/${defaultDept}` : '/tasks' });
     }
   }, [isInitialising, isAuthenticated, isPublicRoute, urlDepartmentId, accessibleDepts, defaultDept, navigate, user]);
 

@@ -89,8 +89,8 @@ const DEPT_ACCESS_SLUGS: Record<string, string[]> = {
   data_team:   ['data_entry'],
 };
 
-function getFirstDept(user: ReturnType<typeof useAuth>['user']): string {
-  if (!user) return ALL_DEPT_IDS[0];
+function getFirstDept(user: ReturnType<typeof useAuth>['user']): string | null {
+  if (!user) return null;
   const slugToDeptId: Record<string, string> = {};
   for (const [id, slugs] of Object.entries(DEPT_ACCESS_SLUGS)) {
     for (const s of slugs) slugToDeptId[s] = id;
@@ -98,12 +98,13 @@ function getFirstDept(user: ReturnType<typeof useAuth>['user']): string {
   const access = user.role === 'super_admin' ? ALL_DEPT_IDS : ALL_DEPT_IDS.filter(id =>
     DEPT_ACCESS_SLUGS[id]?.some(s => user.dashboardAccess?.includes(s))
   );
+  if (access.length === 0) return null;
   const order = user.preferences?.dashboardOrder ?? [];
   const ordered = [
     ...order.map(s => slugToDeptId[s]).filter(id => id && access.includes(id)),
     ...access.filter(id => !order.map(s => slugToDeptId[s]).includes(id)),
   ];
-  return ordered[0] ?? ALL_DEPT_IDS[0];
+  return ordered[0] ?? null;
 }
 
 function IndexRedirect() {
@@ -112,7 +113,8 @@ function IndexRedirect() {
 
   useEffect(() => {
     if (isInitialising || !user) return;
-    navigate({ to: `/${getFirstDept(user)}`, replace: true });
+    const dept = getFirstDept(user);
+    navigate({ to: dept ? `/${dept}` : '/tasks', replace: true });
   }, [user, isInitialising, navigate]);
 
   return null;
