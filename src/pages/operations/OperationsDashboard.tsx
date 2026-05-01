@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import {
   Truck,
   Hourglass,
@@ -124,7 +124,7 @@ function StageCard({
     <button
       type="button"
       onClick={onClick}
-      className={`group bg-card rounded-xl border border-border p-3 text-left transition-all hover:ring-2 ${c.ring} ${count === 0 ? "opacity-50" : ""}`}
+      className={`group bg-card rounded-xl border border-border p-3 text-left transition-all ${count === 0 ? "opacity-50" : ""}`}
     >
       <div className="flex items-center justify-between mb-2">
         <div className={`p-2 rounded-lg ${c.bg} shrink-0`}>
@@ -380,39 +380,6 @@ function TruckStageModal({
     (t) => t.truckType === truckType && t.currentStage === stageId,
   );
 
-  // For flatbeds on standby (wait_shunting), the per-truck journey timeline
-  // adds no information — the queue is what the user wants to see. Show a
-  // flat table instead.
-  const isStandbyView = truckType === 'flatbed' && stageId === 'wait_shunting';
-
-  const suppliers = useMemo(() => {
-    const map = new Map<
-      string,
-      { id: string; name: string; trucks: TruckAllocation[] }
-    >();
-    // All suppliers that have trucks of this type today
-    allocations
-      .filter((t) => t.truckType === truckType)
-      .forEach((t) => {
-        if (!map.has(t.supplierId)) {
-          map.set(t.supplierId, {
-            id: t.supplierId,
-            name: t.supplierName,
-            trucks: [],
-          });
-        }
-        if (t.currentStage === stageId) {
-          map.get(t.supplierId)!.trucks.push(t);
-        }
-      });
-    return Array.from(map.values()).sort(
-      (a, b) => b.trucks.length - a.trucks.length,
-    );
-  }, [allocations, truckType, stageId]);
-
-  const [activeSupplier, setActiveSupplier] = useState(suppliers[0]?.id ?? "");
-  const currentSupplierData = suppliers.find((s) => s.id === activeSupplier);
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -422,7 +389,7 @@ function TruckStageModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+      <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] lg:min-h-[420px] flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between p-5 border-b border-border">
           <div>
@@ -458,90 +425,9 @@ function TruckStageModal({
           </button>
         </div>
 
-        {isStandbyView ? (
-          <div className="overflow-y-auto flex-1 p-5">
-            <StandbyQueueTable trucks={trucksInStage} />
-          </div>
-        ) : (
-          <>
-            {/* Supplier tabs */}
-            <div className="border-b border-border px-5">
-              <nav className="-mb-px flex gap-0 overflow-x-auto">
-                {suppliers.map((sup) => (
-                  <button
-                    key={sup.id}
-                    type="button"
-                    onClick={() => setActiveSupplier(sup.id)}
-                    className={`whitespace-nowrap py-3 px-4 border-b-2 text-xs font-semibold transition-colors ${
-                      activeSupplier === sup.id
-                        ? "border-accent text-accent"
-                        : "border-transparent text-t3 hover:text-t2 hover:border-border"
-                    }`}
-                  >
-                    {sup.name}
-                    <span
-                      className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        sup.trucks.length > 0
-                          ? `${c.bg} ${c.text}`
-                          : "bg-surface text-t3"
-                      }`}
-                    >
-                      {sup.trucks.length}
-                    </span>
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            {/* Truck list */}
-            <div className="overflow-y-auto flex-1 p-5 space-y-3">
-              {!currentSupplierData || currentSupplierData.trucks.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Truck
-                    size={32}
-                    weight="duotone"
-                    className="text-t3 opacity-30 mb-3"
-                  />
-                  <p className="text-sm text-t3">
-                    No trucks from this supplier at this stage
-                  </p>
-                </div>
-              ) : (
-                currentSupplierData.trucks.map((truck) => (
-                  <TruckJourneyRow
-                    key={truck._id}
-                    truck={truck}
-                    stageConfigs={stageConfigs}
-                  />
-                ))
-              )}
-            </div>
-
-            {/* Footer: all trucks from this supplier today */}
-            {currentSupplierData && (
-              <div className="border-t border-border px-5 py-3">
-                <p className="text-xs text-t3">
-                  All {truckType === "tipper" ? "tipper" : "flatbed"} trucks from{" "}
-                  <span className="text-t2 font-medium">
-                    {currentSupplierData.name}
-                  </span>{" "}
-                  today:{" "}
-                  {allocations
-                    .filter(
-                      (t) =>
-                        t.truckType === truckType &&
-                        t.supplierId === activeSupplier,
-                    )
-                    .map((t) => (
-                      <span key={t._id} className="font-mono text-t1 mr-2">
-                        {t.plateNumber}
-                      </span>
-                    ))}
-                </p>
-              </div>
-            )}
-          </>
-        )}
+        <div className="overflow-y-auto flex-1">
+          <StandbyQueueTable trucks={trucksInStage} stageId={stageId} />
+        </div>
       </div>
     </div>
   );
@@ -605,64 +491,85 @@ function formatHm(iso: string) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function StandbyQueueTable({ trucks }: { trucks: TruckAllocation[] }) {
-  if (trucks.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <Truck size={32} weight="duotone" className="text-t3 opacity-30 mb-3" />
-        <p className="text-sm text-t3">No flatbed trucks currently on standby</p>
-      </div>
-    );
-  }
+function StandbyQueueTable({ trucks, stageId }: { trucks: TruckAllocation[]; stageId: TruckStage }) {
+  const [query, setQuery] = useState('');
 
   const sorted = [...trucks].sort((a, b) => {
-    const aT = a.history.find((h) => h.stage === 'wait_shunting')?.enteredAt ?? a.allocatedAt;
-    const bT = b.history.find((h) => h.stage === 'wait_shunting')?.enteredAt ?? b.allocatedAt;
+    const aT = a.history.find((h) => h.stage === stageId)?.enteredAt ?? a.allocatedAt;
+    const bT = b.history.find((h) => h.stage === stageId)?.enteredAt ?? b.allocatedAt;
     return new Date(aT).getTime() - new Date(bT).getTime();
   });
 
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? sorted.filter(
+        (t) =>
+          t.plateNumber.toLowerCase().includes(q) ||
+          t.driverName.toLowerCase().includes(q),
+      )
+    : sorted;
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[600px]">
-        <thead>
-          <tr className="border-b border-border">
-            {['Plate', 'Driver', 'Contact', 'Added', 'In queue'].map((h) => (
-              <th
-                key={h}
-                className="text-left text-[10px] font-black text-t3 uppercase tracking-widest px-3 py-2"
-              >
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((t) => {
-            const queued = t.history.find((h) => h.stage === 'wait_shunting')?.enteredAt ?? t.allocatedAt;
-            return (
-              <tr
-                key={t._id}
-                className="border-b border-border last:border-0 hover:bg-surface/50 transition-colors"
-              >
-                <td className="px-3 py-2.5">
-                  <span className="font-mono text-xs font-bold text-t1">{t.plateNumber}</span>
-                  {t.trailerNumber && (
-                    <p className="font-mono text-[10px] text-t3">+ {t.trailerNumber}</p>
-                  )}
-                </td>
-                <td className="px-3 py-2.5 text-xs text-t1">{t.driverName}</td>
-                <td className="px-3 py-2.5 text-xs text-t2 font-mono">
-                  {t.driverContact ?? '—'}
-                </td>
-                <td className="px-3 py-2.5 text-xs text-t2">{formatHm(queued)}</td>
-                <td className="px-3 py-2.5 text-xs font-semibold text-amber-500">
-                  {timeAgo(queued)}
-                </td>
+    <div>
+      {/* Search */}
+      <div className="px-5 py-3 border-b border-border">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search plate or driver…"
+          className="w-full max-w-xs text-xs bg-surface border border-border rounded-lg px-3 py-2 text-t1 placeholder-t3 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all"
+        />
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <Truck size={32} weight="duotone" className="text-t3 opacity-30 mb-3" />
+          <p className="text-sm text-t3">
+            {trucks.length === 0 ? 'No trucks currently at this stage' : 'No matches found'}
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px] divide-y divide-border">
+            <thead>
+              <tr className="divide-x divide-border">
+                {['Plate', 'Driver', 'Contact', 'Added', 'In queue'].map((h, i, arr) => (
+                  <th
+                    key={h}
+                    className={`text-left text-[10px] font-black text-t3 uppercase tracking-widest px-3 py-2 ${i === 0 ? 'pl-5' : ''} ${i === arr.length - 1 ? 'pr-5' : ''}`}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filtered.map((t) => {
+                const enteredAt = t.history.find((h) => h.stage === stageId)?.enteredAt ?? t.allocatedAt;
+                return (
+                  <tr key={t._id} className="divide-x divide-border">
+                    <td className="pl-5 pr-3 py-2.5">
+                      <span className="font-mono text-xs font-bold text-t1">{t.plateNumber}</span>
+                      {t.trailerNumber && (
+                        <p className="text-xs text-t3">+ {t.trailerNumber}</p>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-t1">{t.driverName}</td>
+                    <td className="px-3 py-2.5 text-xs text-t2 font-mono">
+                      {t.driverContact ?? '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-t2">{formatHm(enteredAt)}</td>
+                    <td className="pl-3 pr-5 py-2.5 text-xs text-t2">
+                      {timeAgo(enteredAt)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -903,9 +810,6 @@ export default function OperationsDashboard() {
           />
         </div>*/}
       </div>
-
-      {/*── Movements Table ── */}
-      <MovementsTable records={mockMovementRecords} />
 
       {/* ── Modal ── */}
       {modal && (
