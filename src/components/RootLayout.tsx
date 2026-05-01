@@ -3,7 +3,6 @@ import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import AIAssistant from './AIAssistant';
 import { useAuth } from '../contexts/AuthContext';
 
 const ALL_DEPT_IDS = ['executive', 'finance', 'transport', 'operations', 'procurement', 'sales', 'admin_hr', 'data_team'];
@@ -101,7 +100,6 @@ export default function RootLayout() {
           <Outlet />
         </OverlayScrollbarsComponent>
       </div>
-      <AIAssistant />
     </div>
   );
 }

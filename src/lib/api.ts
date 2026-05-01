@@ -1946,17 +1946,6 @@ export async function apiDeleteCalendarEvent(id: string) {
   return request<{ id: string }>(`/calendar/events/${id}`, { method: 'DELETE' });
 }
 
-// ─── AI assistant ────────────────────────────────────────────────────────────
-
-export type AiChatMessage = { role: 'user' | 'assistant'; content: string };
-
-export async function apiAiChat(messages: AiChatMessage[], context?: string) {
-  return request<{ reply: string }>('/ai/chat', {
-    method: 'POST',
-    body: JSON.stringify({ messages, context }),
-  });
-}
-
 // ─── HR task tracking ────────────────────────────────────────────────────────
 
 export type TaskTrackingRow = {
