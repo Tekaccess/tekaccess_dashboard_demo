@@ -142,16 +142,6 @@ const LoginPage: React.FC = () => {
 
                 {loginError && <p className="text-xs text-red-500 -mt-1">{loginError}</p>}
 
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => navigate({ to: "/forgot-password" })}
-                    className="text-xs text-accent hover:text-accent-h font-medium transition-colors"
-                  >
-                    Forgot your password?
-                  </button>
-                </div>
-
                 <button
                   type="submit"
                   disabled={isLoading}

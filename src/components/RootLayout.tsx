@@ -39,7 +39,7 @@ export default function RootLayout() {
   const { isAuthenticated, isInitialising, user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const isPublicRoute = ['/login', '/forgot-password', '/reset-password'].includes(location.pathname);
+  const isPublicRoute = ['/login', '/reset-password'].includes(location.pathname);
 
   const pathParts = location.pathname.split('/').filter(Boolean);
   const firstSegment = pathParts[0] || '';

@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useRef } from "r
 import {
   apiLogin,
   apiLogout,
-  apiForgotPassword,
   apiResetPassword,
   apiUpdateProfile,
   apiUpdateDashboardOrder,
@@ -37,7 +36,6 @@ interface AuthContextType {
   isInitialising: boolean;
   login: (email: string, password: string) => Promise<string | null>;
   logout: () => Promise<void>;
-  forgotPassword: (email: string) => Promise<string | null>;
   resetPassword: (token: string, password: string) => Promise<string | null>;
   updateName: (fullName: string) => Promise<string | null>;
   updateDashboardOrder: (order: string[]) => Promise<string | null>;
@@ -104,14 +102,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userRef.current = null;
     setUser(null);
     localStorage.removeItem("tekaccess_user");
-  };
-
-  const forgotPassword = async (email: string): Promise<string | null> => {
-    const res = await apiForgotPassword(email);
-    if (!res.success) {
-      return res.message || "Could not send reset email. Please try again.";
-    }
-    return null;
   };
 
   const updateName = async (fullName: string): Promise<string | null> => {
@@ -183,7 +173,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isInitialising,
         login,
         logout,
-        forgotPassword,
         resetPassword,
         updateName,
         updateDashboardOrder,

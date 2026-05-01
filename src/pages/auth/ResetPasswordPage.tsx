@@ -22,17 +22,17 @@ const ResetPasswordPage: React.FC = () => {
 
   useEffect(() => {
     if (!token) {
-      navigate({ to: "/forgot-password", replace: true });
+      navigate({ to: "/login", replace: true });
       return;
     }
     apiValidateResetToken(token).then((res) => {
       if (res.success) {
         setPageState("ready");
       } else {
-        navigate({ to: "/forgot-password", replace: true });
+        navigate({ to: "/login", replace: true });
       }
     }).catch(() => {
-      navigate({ to: "/forgot-password", replace: true });
+      navigate({ to: "/login", replace: true });
     });
   }, [token]);
 

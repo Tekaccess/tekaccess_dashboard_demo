@@ -14,7 +14,6 @@ import Calendar from "./pages/Calendar";
 import TaskManagement from "./pages/TaskManagement";
 
 import LoginPage from "./pages/auth/LoginPage";
-import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import AdminPage from "./pages/AdminPage";
 import PurchaseOrdersPage from "./pages/PurchaseOrdersPage";
@@ -62,12 +61,6 @@ export const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
   component: LoginPage,
-});
-
-export const forgotPasswordRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/forgot-password",
-  component: ForgotPasswordPage,
 });
 
 export const resetPasswordRoute = createRoute({
@@ -368,7 +361,6 @@ const routeTree = rootRoute.addChildren([
   departmentRoute,
   sectionRoute,
   loginRoute,
-  forgotPasswordRoute,
   resetPasswordRoute,
   adminRoute,
   // Shared top-level pages

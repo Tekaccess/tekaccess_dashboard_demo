@@ -168,13 +168,6 @@ export async function apiValidateResetToken(token: string) {
   });
 }
 
-export async function apiForgotPassword(email: string) {
-  return request('/auth/forgot-password', {
-    method: 'POST',
-    body: JSON.stringify({ email }),
-  });
-}
-
 export async function apiResetPassword(token: string, password: string) {
   return request('/auth/reset-password', {
     method: 'POST',
