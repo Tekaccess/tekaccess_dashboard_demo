@@ -192,7 +192,7 @@ function TruckTypeSection({
         </div>
       </div>
       <div className="overflow-x-auto pb-1">
-        <div className="grid grid-cols-7 gap-2 min-w-[560px]">
+        <div className="grid grid-cols-7 gap-2 min-w-[700px]">
           {stageConfigs.map((cfg) => (
             <StageCard
               key={cfg.id}
@@ -381,17 +381,22 @@ function TruckStageModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] lg:min-h-[420px] flex flex-col">
+      {/* Modal — slides up on mobile, centered dialog on sm+ */}
+      <div className="relative bg-card border border-border shadow-2xl w-full rounded-t-2xl sm:rounded-2xl sm:max-w-3xl max-h-[90dvh] sm:max-h-[85vh] lg:min-h-[420px] flex flex-col">
+        {/* Drag handle on mobile */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-10 h-1 rounded-full bg-border" />
+        </div>
+
         {/* Header */}
-        <div className="flex items-start justify-between p-5 border-b border-border">
+        <div className="flex items-start justify-between px-5 py-4 border-b border-border">
           <div>
             <div className="flex items-center gap-2">
               <div className={`p-1.5 rounded-lg ${c.bg}`}>
@@ -774,9 +779,9 @@ export default function OperationsDashboard() {
 
       {/* ── Stock Summary ── */}
       <div>
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">
+        {/* <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">
           Stock Summary — Today
-        </p>
+        </p> */}
         {/*<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <StockKpiCard
             label="Inbound"
