@@ -50,6 +50,7 @@ import HrAnnouncementsPage from "./pages/hr/AnnouncementsPage";
 import HrTimeOffPage from "./pages/hr/TimeOffPage";
 import HrAttendancePage from "./pages/hr/AttendancePage";
 import HrPayrollPage from "./pages/hr/PayrollPage";
+import HrTaskTrackingPage from "./pages/hr/TaskTrackingPage";
 import EmployeesPage from "./pages/EmployeesPage";
 
 export const rootRoute = createRootRoute({
@@ -355,6 +356,11 @@ const hrPayrollRoute = createRoute({
   path: "/hr/payroll",
   component: HrPayrollPage,
 });
+const hrTaskTrackingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/task-tracking",
+  component: HrTaskTrackingPage,
+});
 
 // ── Route Tree ──────────────────────────────────────────────────────────────
 const routeTree = rootRoute.addChildren([
@@ -422,6 +428,7 @@ const routeTree = rootRoute.addChildren([
   hrTimeOffRoute,
   hrAttendanceRoute,
   hrPayrollRoute,
+  hrTaskTrackingRoute,
 ]);
 
 export const router = createRouter({ routeTree });

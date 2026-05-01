@@ -1952,3 +1952,122 @@ export async function apiUpdateCalendarEvent(id: string, data: Partial<CalendarE
 export async function apiDeleteCalendarEvent(id: string) {
   return request<{ id: string }>(`/calendar/events/${id}`, { method: 'DELETE' });
 }
+
+// ─── AI assistant ────────────────────────────────────────────────────────────
+
+export type AiChatMessage = { role: 'user' | 'assistant'; content: string };
+
+export async function apiAiChat(messages: AiChatMessage[], context?: string) {
+  return request<{ reply: string }>('/ai/chat', {
+    method: 'POST',
+    body: JSON.stringify({ messages, context }),
+  });
+}
+
+// ─── HR task tracking ────────────────────────────────────────────────────────
+
+export type TaskTrackingRow = {
+  user: { _id: string; fullName: string; email: string; role: string; avatarUrl: string | null };
+  tasks: { total: number; notStarted: number; inProgress: number; completed: number; postponed: number; overdue: number; completionRate: number };
+  weekly: { total: number; completed: number };
+  monthly: { total: number; completed: number };
+};
+
+export type TaskTrackingSummary = {
+  tasks: { total: number; completed: number; inProgress: number; overdue: number; completionRate: number };
+  weekly: { total: number; completed: number };
+  monthly: { total: number; completed: number };
+};
+
+export async function apiHrTaskTrackingOverview(params: { from?: string; to?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return request<{ rows: TaskTrackingRow[]; summary: TaskTrackingSummary; range: { from: string | null; to: string | null } }>(
+    `/hr/task-tracking/overview${suffix}`,
+  );
+}
+
+export type TrackingUserTask = {
+  _id: string;
+  title: string;
+  description: string;
+  status: 'not-started' | 'in-progress' | 'completed' | 'postponed';
+  assignee: string | null;
+  dueDate: string | null;
+  weeklyTargetId: string | null;
+  updatedAt: string;
+  createdAt: string;
+};
+
+export type PerformanceStatus = 'on-track' | 'at-risk' | 'behind' | 'no-data';
+
+export type PerformanceSignal = {
+  metric: string;
+  target: string;
+  actual: string;
+  status: PerformanceStatus;
+};
+
+export type PerformanceRow = {
+  user: { _id: string; fullName: string; email: string; role: string; avatarUrl: string | null };
+  employee: { _id: string; department: string; role: string; status: string } | null;
+  status: PerformanceStatus;
+  scores: { completionRate: number; onTimeRate: number; weeklyHitRate: number; monthlyHitRate: number };
+  counts: {
+    totalTasks: number; completedTasks: number; inProgressTasks: number; overdueTasks: number;
+    weeklyTotal: number; weeklyDone: number; monthlyTotal: number; monthlyDone: number;
+  };
+  signals: PerformanceSignal[];
+  manualKpis: PerformanceSignal[];
+};
+
+export async function apiHrPerformanceOverview(params: { from?: string; to?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return request<{
+    rows: PerformanceRow[];
+    totals: Record<PerformanceStatus, number>;
+    range: { from: string | null; to: string | null };
+  }>(`/hr/performance/overview${suffix}`);
+}
+
+export type PerformanceDetail = {
+  user: { _id: string; fullName: string; email: string; role: string; avatarUrl: string | null };
+  employee: { _id: string; department: string; role: string; status: string } | null;
+  status: PerformanceStatus;
+  range: { from: string; to: string };
+  counts: { total: number; completed: number; inProgress: number; notStarted: number; postponed: number; overdue: number };
+  scores: { completionRate: number; onTimeRate: number; weeklyHitRate: number; monthlyHitRate: number };
+  signals: PerformanceSignal[];
+  yearlyKpis: PerformanceSignal[];
+  weeklyTargets: { _id: string; title: string; monthlyTargetId: string | null; tasksTotal: number; tasksDone: number; progress: number }[];
+  monthlyTargets: { _id: string; title: string; weeklies: number; progress: number }[];
+  daily: { date: string; created: number; completed: number }[];
+  recentTasks: {
+    _id: string; title: string; status: TrackingUserTask['status'];
+    dueDate: string | null; updatedAt: string; createdAt: string; weeklyTargetId: string | null;
+  }[];
+};
+
+export async function apiHrPerformanceDetail(userId: string, params: { from?: string; to?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return request<PerformanceDetail>(`/hr/performance/users/${userId}${suffix}`);
+}
+
+export async function apiHrTaskTrackingUserTasks(userId: string, params: { status?: string; dueFrom?: string; dueTo?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set('status', params.status);
+  if (params.dueFrom) qs.set('dueFrom', params.dueFrom);
+  if (params.dueTo) qs.set('dueTo', params.dueTo);
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return request<{ user: { _id: string; fullName: string; email: string; role: string; avatarUrl: string | null } | null; tasks: TrackingUserTask[] }>(
+    `/hr/task-tracking/users/${userId}/tasks${suffix}`,
+  );
+}

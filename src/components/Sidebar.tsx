@@ -43,6 +43,7 @@ const DEPT_ACCESS_SLUGS: Record<string, string[]> = {
   operations:  ["operations", "inventory"],
   procurement: ["procurement"],
   sales:       ["sales"],
+  admin_hr:    ["admin", "hr", "admin_hr"],
   data_team:   ["data_entry"],
 };
 
@@ -101,15 +102,19 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
     if (onClose) onClose();
   };
 
-  const handleSectionClick = (itemName: string, hasSubItems: boolean) => {
+  const handleSectionClick = (itemName: string, hasSubItems: boolean, itemPath?: string) => {
     if (hasSubItems) toggleExpand(itemName);
-    const sectionId = itemName.toLowerCase().replace(/\s+/g, "-");
-    const explicitKey = `${currentDepartmentId}/${sectionId}`;
-    const explicitRoute = EXPLICIT_ROUTES[explicitKey];
-    if (explicitRoute) {
-      navigate({ to: explicitRoute });
+    if (itemPath) {
+      navigate({ to: itemPath });
     } else {
-      navigate({ to: `/${currentDepartmentId}/${sectionId}` });
+      const sectionId = itemName.toLowerCase().replace(/\s+/g, "-");
+      const explicitKey = `${currentDepartmentId}/${sectionId}`;
+      const explicitRoute = EXPLICIT_ROUTES[explicitKey];
+      if (explicitRoute) {
+        navigate({ to: explicitRoute });
+      } else {
+        navigate({ to: `/${currentDepartmentId}/${sectionId}` });
+      }
     }
     if (!hasSubItems && onClose) onClose();
   };
@@ -206,17 +211,20 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
                 {section.items.map((item, itemIdx) => {
                   const isExpanded = expandedItems[item.name];
                   const hasSubItems = item.subItems && item.subItems.length > 0;
+                  const itemPath = (item as { path?: string }).path;
                   const sectionId = item.name.toLowerCase().replace(/\s+/g, "-");
                   const explicitKey = `${currentDepartmentId}/${sectionId}`;
                   const explicitRoute = EXPLICIT_ROUTES[explicitKey];
-                  const isActive = explicitRoute
-                    ? location.pathname === explicitRoute
-                    : location.pathname.includes(`/${currentDepartmentId}/${sectionId}`);
+                  const isActive = itemPath
+                    ? location.pathname === itemPath
+                    : explicitRoute
+                      ? location.pathname === explicitRoute
+                      : location.pathname.includes(`/${currentDepartmentId}/${sectionId}`);
 
                   return (
                     <li key={itemIdx}>
                       <button
-                        onClick={() => handleSectionClick(item.name, !!hasSubItems)}
+                        onClick={() => handleSectionClick(item.name, !!hasSubItems, itemPath)}
                         className={`${navItemClass(isActive)} justify-between`}
                       >
                         <div className="flex items-center">
