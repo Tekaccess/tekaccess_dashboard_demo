@@ -2365,7 +2365,7 @@ export default function PurchaseOrdersPage() {
             : `Status: ${STATUS_LABEL[(modal as any)?.order?.status] || "—"} • ${new Date().toLocaleDateString()}`
         }
         formContent={modal?.mode === "view" ? viewFormContent : formContent}
-        previewContent={previewContent}
+        previewContent={modal?.mode === "new" ? undefined : previewContent}
       />
 
       {showAddClient && (
