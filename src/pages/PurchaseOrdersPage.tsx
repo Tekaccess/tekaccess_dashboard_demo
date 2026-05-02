@@ -38,6 +38,10 @@ import {
   Line,
 } from "recharts";
 import DocumentSidePanel from "../components/DocumentSidePanel";
+import PurchaseOrderPdfEditor, {
+  PurchaseOrderPdfValues,
+} from "../components/PurchaseOrderPdfEditor";
+import { useAuth } from "../contexts/AuthContext";
 import DatePicker from "../components/ui/DatePicker";
 import SearchSelect, {
   SearchSelectOption,
@@ -263,6 +267,7 @@ type ModalState =
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PurchaseOrdersPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>("All");
   const [recipientFilter, setRecipientFilter] = useState<
     "all" | "supplier" | "transporter"
@@ -1567,6 +1572,30 @@ export default function PurchaseOrdersPage() {
         }
       : null);
 
+  // Form-driven values pushed into the PDF editor. Fields the form doesn't
+  // own (e.g. paymentTerms) are left undefined so the user can edit them on
+  // the PDF directly.
+  const pdfValues: PurchaseOrderPdfValues | undefined = useMemo(() => {
+    if (!draft) return undefined;
+    const seq = String(orders.length + 1).padStart(5, "0");
+    return {
+      supplierName: draft.supplierName,
+      destinationWarehouseName: draft.destinationWarehouseName,
+      poRef: `Purchase Order #P${seq}`,
+      buyer: user?.fullName ?? "",
+      orderDate: new Date().toLocaleDateString("en-GB"),
+      expectedArrival: draft.orderDeadline
+        ? draft.orderDeadline.toLocaleDateString("en-GB")
+        : "",
+    };
+  }, [
+    draft?.supplierName,
+    draft?.destinationWarehouseName,
+    draft?.orderDeadline,
+    orders.length,
+    user?.fullName,
+  ]);
+
   const previewContent = orderForPreview && (
     <div className="font-sans text-[#1a1a1a] w-full">
       {/* Header */}
@@ -2335,7 +2364,17 @@ export default function PurchaseOrdersPage() {
             : `Status: ${STATUS_LABEL[(modal as any)?.order?.status] || "—"} • ${new Date().toLocaleDateString()}`
         }
         formContent={modal?.mode === "view" ? viewFormContent : formContent}
-        previewContent={previewContent}
+        previewContent={
+          modal?.mode === "new" ? (
+            <PurchaseOrderPdfEditor
+              pdfUrl="/documents/Purchase Order.pdf"
+              values={pdfValues}
+            />
+          ) : (
+            previewContent
+          )
+        }
+        previewBare={modal?.mode === "new"}
       />
 
       {showAddClient && (

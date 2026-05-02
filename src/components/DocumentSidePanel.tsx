@@ -14,6 +14,8 @@ interface DocumentSidePanelProps {
   totalItems?: number;
   onNext?: () => void;
   onPrev?: () => void;
+  /** Render preview without the default white padded paper wrapper (e.g. for PDF). */
+  previewBare?: boolean;
 }
 
 export default function DocumentSidePanel({
@@ -27,6 +29,7 @@ export default function DocumentSidePanel({
   totalItems,
   onNext,
   onPrev,
+  previewBare = false,
 }: DocumentSidePanelProps) {
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : 'unset';
@@ -105,9 +108,13 @@ export default function DocumentSidePanel({
             defer
           >
           <div className="flex justify-center w-full">
-            <div className="w-full max-w-[800px] bg-white shadow-sm border border-gray-100 min-h-[1000px] p-12">
-              {previewContent}
-            </div>
+            {previewBare ? (
+              <div className="flex justify-center">{previewContent}</div>
+            ) : (
+              <div className="w-full max-w-[800px] bg-white shadow-sm border border-gray-100 min-h-[1000px] p-12">
+                {previewContent}
+              </div>
+            )}
           </div>
           </OverlayScrollbarsComponent>
         </div>
