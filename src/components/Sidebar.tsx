@@ -24,6 +24,11 @@ const EXPLICIT_ROUTES: Record<string, string> = {
   "operations/deliveries": "/operations/deliveries",
   "operations/sites": "/operations/sites",
   "operations/clients": "/operations/clients",
+  // Sales reuses the Clients page but on its OWN URL (/sales/clients) so the
+  // active department stays "sales" when the user clicks it. RootLayout
+  // derives currentDepartmentId from the first URL segment.
+  "sales/clients": "/sales/clients",
+  "sales/contracts": "/sales/contracts",
   "operations/products": "/inventory/products",
   "operations/stock": "/inventory/stock",
   "operations/movements": "/inventory/movements",
@@ -58,7 +63,6 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
   const location = useLocation();
   const { user } = useAuth();
   const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   const dashboardOrder = user?.preferences?.dashboardOrder ?? [];
 
@@ -92,18 +96,16 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
     ? sharedMenu.items.filter((i) => i.name === "Calendar" || i.name === "Task management")
     : sharedMenu.items;
 
-  const toggleExpand = (itemName: string) => {
-    setExpandedItems((prev) => ({ ...prev, [itemName]: !prev[itemName] }));
-  };
-
   const handleDepartmentChange = (deptId: string) => {
     setIsDeptDropdownOpen(false);
     navigate({ to: `/${deptId}` });
     if (onClose) onClose();
   };
 
-  const handleSectionClick = (itemName: string, hasSubItems: boolean, itemPath?: string) => {
-    if (hasSubItems) toggleExpand(itemName);
+  // Sidebar items navigate directly — no expand/collapse. The legacy
+  // `subItems` arrays in navigation.ts are now ignored at render time so
+  // every entry is one click → one page.
+  const handleSectionClick = (itemName: string, itemPath?: string) => {
     if (itemPath) {
       navigate({ to: itemPath });
     } else {
@@ -116,7 +118,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
         navigate({ to: `/${currentDepartmentId}/${sectionId}` });
       }
     }
-    if (!hasSubItems && onClose) onClose();
+    if (onClose) onClose();
   };
 
   const navItemClass = (isActive: boolean) =>
@@ -209,8 +211,6 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
               </p>
               <ul className="space-y-0.5">
                 {section.items.map((item, itemIdx) => {
-                  const isExpanded = expandedItems[item.name];
-                  const hasSubItems = item.subItems && item.subItems.length > 0;
                   const itemPath = (item as { path?: string }).path;
                   const sectionId = item.name.toLowerCase().replace(/\s+/g, "-");
                   const explicitKey = `${currentDepartmentId}/${sectionId}`;
@@ -224,38 +224,16 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
                   return (
                     <li key={itemIdx}>
                       <button
-                        onClick={() => handleSectionClick(item.name, !!hasSubItems, itemPath)}
-                        className={`${navItemClass(isActive)} justify-between`}
+                        onClick={() => handleSectionClick(item.name, itemPath)}
+                        className={navItemClass(isActive)}
                       >
-                        <div className="flex items-center">
-                          <item.icon
-                            size={20}
-                            weight={isActive ? "fill" : "regular"}
-                            className={`mr-2.5 shrink-0 ${isActive ? "text-accent" : "text-t3"}`}
-                          />
-                          {item.name}
-                        </div>
-                        {hasSubItems && (
-                          isExpanded
-                            ? <CaretUpIcon size={15} weight="bold" className={isActive ? "text-accent" : "text-t3"} />
-                            : <CaretDownIcon size={15} weight="bold" className={isActive ? "text-accent" : "text-t3"} />
-                        )}
+                        <item.icon
+                          size={20}
+                          weight={isActive ? "fill" : "regular"}
+                          className={`mr-2.5 shrink-0 ${isActive ? "text-accent" : "text-t3"}`}
+                        />
+                        {item.name}
                       </button>
-
-                      {hasSubItems && isExpanded && (
-                        <ul className="mt-0.5 space-y-0.5 pl-8 pr-1">
-                          {item.subItems!.map((subItem, subIdx) => (
-                            <li key={subIdx}>
-                              <button
-                                onClick={() => { if (onClose) onClose(); }}
-                                className="w-full text-left py-1.5 px-2 text-xs text-t3 hover:text-t1 rounded-md hover:bg-surface transition-colors"
-                              >
-                                {subItem}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
                     </li>
                   );
                 })}

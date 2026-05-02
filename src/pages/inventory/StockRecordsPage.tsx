@@ -15,6 +15,7 @@ import {
 import SearchSelect, { SearchSelectOption } from '../../components/ui/SearchSelect';
 import DocumentSidePanel from '../../components/DocumentSidePanel';
 import { TableSkeleton, KpiCardsSkeleton } from '../../components/ui/Skeleton';
+import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 
 const STATUS_STYLES: Record<string, string> = {
   Complete: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
@@ -203,8 +204,12 @@ export default function StockRecordsPage() {
   }
   function openView(r: StockRecord) { setSelected(r); setModalMode('view'); }
 
+  // Tracks the in-flight delete so the ConfirmDialog can show its spinner.
+  const [deleting, setDeleting] = useState(false);
   async function handleDelete(id: string) {
+    setDeleting(true);
     await apiDeleteStockRecord(id);
+    setDeleting(false);
     setDeleteConfirm(null);
     setModalMode(null);
     load();
@@ -707,38 +712,26 @@ export default function StockRecordsPage() {
         previewContent={previewContent}
       />
 
-      {/* Delete confirmation modal */}
-      {deleteConfirm && createPortal(
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setDeleteConfirm(null)}>
-          <div className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-2xl p-6" onClick={e => e.stopPropagation()}>
-            <div className="w-12 h-12 bg-rose-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash size={22} weight="duotone" className="text-rose-400" />
-            </div>
-            <h3 className="text-base font-bold text-t1 text-center mb-1">Delete Stock Record?</h3>
-            <p className="text-xs font-mono text-accent text-center mb-2">
+      {/* Delete confirmation — uses the shared ConfirmDialog so the look
+          matches the logout dialog and every other delete in the app. */}
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(v) => { if (!deleting && !v) setDeleteConfirm(null); }}
+        onConfirm={() => { if (deleteConfirm) return handleDelete(deleteConfirm); }}
+        tone="danger"
+        icon="trash"
+        title="Delete stock record?"
+        message={
+          <span>
+            <span className="block font-mono text-accent mb-2">
               {records.find(r => r._id === deleteConfirm)?.item_code}
-            </p>
-            <p className="text-xs text-t3 text-center mb-6">
-              This will permanently remove the record. This cannot be undone.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="flex-1 py-2.5 border border-border text-t2 hover:bg-surface rounded-xl text-sm font-medium transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(deleteConfirm)}
-                className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-sm font-bold transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+            </span>
+            This will permanently remove the record. This cannot be undone.
+          </span>
+        }
+        confirmLabel="Delete"
+        busy={deleting}
+      />
 
       {/* Route-stop editor */}
       {routeEditing && createPortal(

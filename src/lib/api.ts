@@ -284,7 +284,7 @@ export type Contract = {
   status: string;
   currency: string;
   totalContractValue: number;
-  contractType: 'employee' | 'driver' | 'client';
+  contractType: 'client' | 'supplier' | 'transporter' | 'employee' | 'driver';
   perks?: string[];
 };
 
@@ -669,7 +669,7 @@ export type OperationsContract = {
   _id: string;
   contractRef: string;
   title: string;
-  contractType: 'employee' | 'driver' | 'client';
+  contractType: 'client' | 'supplier' | 'transporter' | 'employee' | 'driver';
   isTemplate?: boolean;
   perks?: string[];
   clientId: string | null;
@@ -693,6 +693,9 @@ export type OperationsContract = {
   notes: string | null;
   documentUrl: string | null;
   documentName: string | null;
+  // null when the document is an external link (Google Doc, Drive, etc) —
+  // the frontend uses this to label "Attached file" vs "External link".
+  documentPublicId?: string | null;
   createdAt: string;
 };
 
@@ -837,6 +840,9 @@ export async function apiCreateContract(data: Partial<OperationsContract> & { co
 export async function apiUpdateContract(id: string, data: Partial<OperationsContract>) {
   return request<{ contract: OperationsContract }>(`/operations/contracts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
+export async function apiDeleteContract(id: string) {
+  return request<null>(`/operations/contracts/${id}`, { method: 'DELETE' });
+}
 
 export async function apiUploadContractDocument(contractId: string, file: File) {
   const form = new FormData();
@@ -854,42 +860,11 @@ export async function apiInstantiateContract(data: { templateId: string; targetI
   });
 }
 
-// ─── Procurement Contracts (same schema, own routes) ─────────────────────────
-
-export async function apiGetProcurementContractsSummary() {
-  return request<{
-    summary: { active: number; draft: number; completed: number; disputed: number; totalActiveValue: number; totalActiveTons: number };
-    nearingDeadline: OperationsContract[];
-  }>('/procurement/contracts/summary');
-}
-
-export async function apiListProcurementContracts(params: Record<string, string> = {}) {
-  const qs = new URLSearchParams(params).toString();
-  return request<{ contracts: OperationsContract[]; pagination: { total: number; pages: number; page: number; limit: number } }>(
-    `/procurement/contracts${qs ? `?${qs}` : ''}`
-  );
-}
-
-export async function apiCreateProcurementContract(data: Partial<OperationsContract>) {
-  return request<{ contract: OperationsContract }>('/procurement/contracts', { method: 'POST', body: JSON.stringify(data) });
-}
-
-export async function apiUpdateProcurementContract(id: string, data: Partial<OperationsContract>) {
-  return request<{ contract: OperationsContract }>(`/procurement/contracts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
-}
-
-export async function apiUploadProcurementContractDocument(contractId: string, file: File) {
-  const form = new FormData();
-  form.append('document', file);
-  return request<{ contract: OperationsContract }>(`/procurement/contracts/${contractId}/document`, {
-    method: 'POST',
-    body: form,
-  });
-}
-
-export async function apiDeleteProcurementContract(id: string) {
-  return request(`/procurement/contracts/${id}`, { method: 'DELETE' });
-}
+// Procurement Contracts wrappers removed — the unified ContractsPage now
+// uses the operations endpoints (`apiListContracts`, `apiCreateContract`,
+// etc.) for every scope. Backend `/procurement/contracts/*` routes still
+// exist as aliases pointing at the same controller, kept for backwards
+// compatibility with any external integrations.
 
 // ─── Employees ───────────────────────────────────────────────────────────────
 

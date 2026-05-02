@@ -267,7 +267,26 @@ export const departmentsData = [
     id: "sales",
     name: "Sales Department",
     role: "Sales Manager",
-    sections: [],
+    sections: [
+      {
+        title: "Sales Department",
+        items: [
+          // Sales owns the customer relationship. Both Clients and Contracts
+          // are shared with Operations — same component, same data,
+          // mounted under /sales/* so the active department stays Sales.
+          {
+            name: "Clients",
+            icon: Users,
+            subItems: [],
+          },
+          {
+            name: "Contracts",
+            icon: FileText,
+            subItems: [],
+          },
+        ],
+      },
+    ],
   },
   {
     id: "admin_hr",

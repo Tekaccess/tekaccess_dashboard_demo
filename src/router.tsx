@@ -41,7 +41,9 @@ import TripsPage from "./pages/transport/TripsPage";
 import FuelPage from "./pages/transport/FuelPage";
 import MaintenancePage from "./pages/transport/MaintenancePage";
 import ProcurementInvoicesPage from "./pages/procurement/InvoicesPage";
-import ProcurementContractsPage from "./pages/procurement/ContractsPage";
+// Procurement and Sales now reuse the unified ContractsPage from operations.
+// Each path (operations/procurement/sales) mounts the same component, which
+// reads its scope from the URL to set defaults and filter the type list.
 import HrPerformancePage from "./pages/hr/PerformancePage";
 import HrOrgChartPage from "./pages/hr/OrgChartPage";
 import HrDocumentsPage from "./pages/hr/DocumentsPage";
@@ -196,7 +198,14 @@ const procurementInvoicesRoute = createRoute({
 const procurementContractsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/procurement/contracts",
-  component: ProcurementContractsPage,
+  // Same component as operations — scope-aware via URL.
+  component: ContractsPage,
+});
+
+const salesContractsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sales/contracts",
+  component: ContractsPage,
 });
 
 // ── Explicit Transport Routes ───────────────────────────────────────────────
@@ -246,6 +255,16 @@ const sitesRoute = createRoute({
 const opClientsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/operations/clients",
+  component: ClientsPage,
+});
+
+// Sales reuses the Clients page from Operations, but mounted under /sales/*
+// so the active department stays "sales" when a user clicks Clients from
+// the Sales sidebar. Same component, same data — only the URL prefix
+// differs, which is what RootLayout uses to derive currentDepartmentId.
+const salesClientsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sales/clients",
   component: ClientsPage,
 });
 
@@ -396,11 +415,13 @@ const routeTree = rootRoute.addChildren([
   procurementReportsRoute,
   procurementInvoicesRoute,
   procurementContractsRoute,
+  salesContractsRoute,
   // Operations explicit pages
   contractsRoute,
   deliveriesRoute,
   sitesRoute,
   opClientsRoute,
+  salesClientsRoute,
   // Finance explicit pages
   financeApprovalsRoute,
   // Inventory explicit pages
