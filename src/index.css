@@ -10,6 +10,31 @@ button, a {
   user-select: none;
 }
 
+/* ── Print: a clone of .print-region is appended as #print-clone ─ */
+@media print {
+  body.printing > *:not(#print-clone) { display: none !important; }
+  body.printing { background: #fff !important; }
+  #print-clone {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #fff !important;
+    color: #1a1a1a !important;
+  }
+  /* Keep table fills, status pills, brand colors when printed. */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  @page { margin: 12mm; }
+}
+
 /* ── Light mode (original) ───────────────────────────────────── */
 /* :root {
   --app-bg: #f6f6f6;

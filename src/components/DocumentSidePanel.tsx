@@ -111,7 +111,7 @@ export default function DocumentSidePanel({
             {previewBare ? (
               <div className="flex justify-center">{previewContent}</div>
             ) : (
-              <div className="w-full max-w-[800px] bg-white shadow-sm border border-gray-100 min-h-[1000px] p-12">
+              <div className="w-full max-w-[800px] bg-white shadow-sm border border-gray-100 min-h-[1000px] p-12 print-region">
                 {previewContent}
               </div>
             )}
