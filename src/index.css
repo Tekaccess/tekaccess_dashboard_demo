@@ -21,7 +21,9 @@ button, a {
     max-width: none !important;
     min-height: 0 !important;
     margin: 0 !important;
-    padding: 0 !important;
+    /* page padding lives inside the document because @page margin is 0,
+       which suppresses the browser's auto header/footer. */
+    padding: 12mm !important;
     box-shadow: none !important;
     border: none !important;
     background: #fff !important;
@@ -32,7 +34,7 @@ button, a {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  @page { margin: 12mm; }
+  @page { margin: 0; }
 }
 
 /* ── Light mode (original) ───────────────────────────────────── */
