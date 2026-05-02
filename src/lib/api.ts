@@ -1576,25 +1576,68 @@ export type TaskRecord = {
   updatedAt: string;
 };
 
+// Trimmed user info returned alongside shared targets so the UI can render
+// avatars without a second round-trip.
+export type TargetMember = {
+  _id: string;
+  fullName: string;
+  avatarUrl: string | null;
+  isOwner: boolean;
+};
+
 export type WeeklyTargetRecord = {
   _id: string;
   title: string;
   description: string;
   monthlyTargetId: string | null;
   createdBy: string;
+  sharedWith?: string[];
+  hiddenFor?: string[];
   createdAt: string;
   updatedAt: string;
-  progress: number; // computed server-side
+  progress: number;       // caller-scoped progress (per-member semantics)
+  isOwner: boolean;       // is the calling user the creator?
+  members: TargetMember[];
 };
 
 export type MonthlyTargetRecord = {
   _id: string;
   title: string;
   description: string;
+  yearlyTargetId: string | null;
   createdBy: string;
+  sharedWith?: string[];
+  hiddenFor?: string[];
   createdAt: string;
   updatedAt: string;
-  progress: number; // computed server-side
+  progress: number;
+  isOwner: boolean;
+  members: TargetMember[];
+};
+
+export type YearlyTargetRecord = {
+  _id: string;
+  title: string;
+  description: string;
+  createdBy: string;
+  sharedWith?: string[];
+  hiddenFor?: string[];
+  createdAt: string;
+  updatedAt: string;
+  progress: number;
+  isOwner: boolean;
+  members: TargetMember[];
+};
+
+// Per-member progress on a shared target (revealed to other members but
+// without exposing each member's individual task list).
+export type TargetMemberProgress = {
+  _id: string;
+  fullName: string;
+  avatarUrl: string | null;
+  role: string;
+  isOwner: boolean;
+  progress: number;
 };
 
 // Assignable users (id + fullName + avatarUrl, available to all authenticated users)
@@ -1602,7 +1645,10 @@ export async function apiListAssignableUsers() {
   return request<{ users: AssignableUser[] }>('/users/assignable');
 }
 
-// Tasks
+// Tasks. `view` controls the read scope:
+//   - 'mine'    (default): tasks assigned to the caller, plus self-created with no assignee.
+//   - 'created':           tasks the caller created (regardless of assignee).
+//   - 'all':               either creator or assignee.
 export async function apiListTasks(params: Record<string, string> = {}) {
   const qs = new URLSearchParams(params).toString();
   return request<{ tasks: TaskRecord[] }>(`/task-management/tasks${qs ? `?${qs}` : ''}`);
@@ -1646,9 +1692,12 @@ export async function apiDeleteWeeklyTarget(id: string) {
   return request<{ id: string }>(`/task-management/weekly-targets/${id}`, { method: 'DELETE' });
 }
 export async function apiBulkDeleteWeeklyTargets(ids: string[]) {
-  return request<{ deleted: number; ids: string[] }>('/task-management/weekly-targets/bulk-delete', {
+  return request<{ hardDeleted: number; hidden: number; ids: string[] }>('/task-management/weekly-targets/bulk-delete', {
     method: 'POST', body: JSON.stringify({ ids }),
   });
+}
+export async function apiGetWeeklyTargetMembers(id: string) {
+  return request<{ members: TargetMemberProgress[] }>(`/task-management/weekly-targets/${id}/members`);
 }
 
 // Monthly targets
@@ -1670,9 +1719,41 @@ export async function apiDeleteMonthlyTarget(id: string) {
   return request<{ id: string }>(`/task-management/monthly-targets/${id}`, { method: 'DELETE' });
 }
 export async function apiBulkDeleteMonthlyTargets(ids: string[]) {
-  return request<{ deleted: number; ids: string[] }>('/task-management/monthly-targets/bulk-delete', {
+  return request<{ hardDeleted: number; hidden: number; ids: string[] }>('/task-management/monthly-targets/bulk-delete', {
     method: 'POST', body: JSON.stringify({ ids }),
   });
+}
+export async function apiGetMonthlyTargetMembers(id: string) {
+  return request<{ members: TargetMemberProgress[] }>(`/task-management/monthly-targets/${id}/members`);
+}
+
+// Yearly targets — top of the hierarchy. Behaves like monthly: shared,
+// per-member progress, soft-hide deletion. Surfaces letter grades on the
+// Performance page.
+export async function apiListYearlyTargets(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ yearlyTargets: YearlyTargetRecord[] }>(`/task-management/yearly-targets${qs ? `?${qs}` : ''}`);
+}
+export async function apiCreateYearlyTarget(data: Partial<YearlyTargetRecord> & { sharedWith?: string[] }) {
+  return request<{ yearlyTarget: YearlyTargetRecord }>('/task-management/yearly-targets', {
+    method: 'POST', body: JSON.stringify(data),
+  });
+}
+export async function apiUpdateYearlyTarget(id: string, data: Partial<YearlyTargetRecord> & { sharedWith?: string[] }) {
+  return request<{ yearlyTarget: YearlyTargetRecord }>(`/task-management/yearly-targets/${id}`, {
+    method: 'PATCH', body: JSON.stringify(data),
+  });
+}
+export async function apiDeleteYearlyTarget(id: string) {
+  return request<{ id: string; hardDeleted: boolean; hidden?: boolean }>(`/task-management/yearly-targets/${id}`, { method: 'DELETE' });
+}
+export async function apiBulkDeleteYearlyTargets(ids: string[]) {
+  return request<{ hardDeleted: number; hidden: number; ids: string[] }>('/task-management/yearly-targets/bulk-delete', {
+    method: 'POST', body: JSON.stringify({ ids }),
+  });
+}
+export async function apiGetYearlyTargetMembers(id: string) {
+  return request<{ members: TargetMemberProgress[] }>(`/task-management/yearly-targets/${id}/members`);
 }
 
 // ─── Transporters ────────────────────────────────────────────────────────────
@@ -1984,6 +2065,7 @@ export type TrackingUserTask = {
 };
 
 export type PerformanceStatus = 'on-track' | 'at-risk' | 'behind' | 'no-data';
+export type PerformanceMode = 'doing' | 'delegating';
 
 export type PerformanceSignal = {
   metric: string;
@@ -2005,29 +2087,58 @@ export type PerformanceRow = {
   manualKpis: PerformanceSignal[];
 };
 
-export async function apiHrPerformanceOverview(params: { from?: string; to?: string } = {}) {
+export async function apiHrPerformanceOverview(params: { from?: string; to?: string; mode?: PerformanceMode } = {}) {
   const qs = new URLSearchParams();
   if (params.from) qs.set('from', params.from);
   if (params.to) qs.set('to', params.to);
+  if (params.mode) qs.set('mode', params.mode);
   const suffix = qs.toString() ? `?${qs.toString()}` : '';
   return request<{
     rows: PerformanceRow[];
     totals: Record<PerformanceStatus, number>;
+    mode: PerformanceMode;
     range: { from: string | null; to: string | null };
   }>(`/hr/performance/overview${suffix}`);
 }
+
+// Letter grade returned by the backend, derived from progress percent.
+// 'A' 90+, 'B' 75-89, 'C' 60-74, 'D' 40-59, 'F' <40, '—' when no data.
+export type LetterGrade = 'A' | 'B' | 'C' | 'D' | 'F' | '—';
 
 export type PerformanceDetail = {
   user: { _id: string; fullName: string; email: string; role: string; avatarUrl: string | null };
   employee: { _id: string; department: string; role: string; status: string } | null;
   status: PerformanceStatus;
+  mode: PerformanceMode;
   range: { from: string; to: string };
   counts: { total: number; completed: number; inProgress: number; notStarted: number; postponed: number; overdue: number };
-  scores: { completionRate: number; onTimeRate: number; weeklyHitRate: number; monthlyHitRate: number };
+  scores: {
+    completionRate: number; onTimeRate: number;
+    weeklyHitRate: number; monthlyHitRate: number; yearlyHitRate: number;
+  };
+  // Overall yearly score and grade across all of the user's yearly targets.
+  yearlyAvg: number | null;
+  yearlyGrade: LetterGrade;
+  // The lowest-progress yearly with actual data — surfaced as the
+  // "needs improvement" callout on the Performance page.
+  weakestYearly: {
+    _id: string; title: string; monthlies: number;
+    progress: number; grade: LetterGrade; hasData: boolean;
+  } | null;
   signals: PerformanceSignal[];
   yearlyKpis: PerformanceSignal[];
-  weeklyTargets: { _id: string; title: string; monthlyTargetId: string | null; tasksTotal: number; tasksDone: number; progress: number }[];
-  monthlyTargets: { _id: string; title: string; weeklies: number; progress: number }[];
+  weeklyTargets: {
+    _id: string; title: string; monthlyTargetId: string | null;
+    tasksTotal: number; tasksDone: number; progress: number; grade: LetterGrade;
+  }[];
+  monthlyTargets: {
+    _id: string; title: string; yearlyTargetId: string | null;
+    weeklies: number; progress: number; grade: LetterGrade;
+  }[];
+  yearlyTargets: {
+    _id: string; title: string; monthlies: number;
+    progress: number; grade: LetterGrade; hasData: boolean;
+  }[];
   daily: { date: string; created: number; completed: number }[];
   recentTasks: {
     _id: string; title: string; status: TrackingUserTask['status'];
@@ -2035,10 +2146,11 @@ export type PerformanceDetail = {
   }[];
 };
 
-export async function apiHrPerformanceDetail(userId: string, params: { from?: string; to?: string } = {}) {
+export async function apiHrPerformanceDetail(userId: string, params: { from?: string; to?: string; mode?: PerformanceMode } = {}) {
   const qs = new URLSearchParams();
   if (params.from) qs.set('from', params.from);
   if (params.to) qs.set('to', params.to);
+  if (params.mode) qs.set('mode', params.mode);
   const suffix = qs.toString() ? `?${qs.toString()}` : '';
   return request<PerformanceDetail>(`/hr/performance/users/${userId}${suffix}`);
 }

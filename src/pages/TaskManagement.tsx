@@ -59,6 +59,8 @@ import {
   apiBulkDeleteWeeklyTargets,
   apiListMonthlyTargets, apiCreateMonthlyTarget, apiUpdateMonthlyTarget, apiDeleteMonthlyTarget,
   apiBulkDeleteMonthlyTargets,
+  apiListYearlyTargets, apiCreateYearlyTarget, apiUpdateYearlyTarget, apiDeleteYearlyTarget,
+  apiBulkDeleteYearlyTargets,
   apiListAssignableUsers,
   type AssignableUser,
 } from '../lib/api';
@@ -73,9 +75,21 @@ import {
   SelectValue,
 } from '../components/ui/select';
 import DatePicker from '../components/ui/DatePicker';
+import { AvatarGroup as MemberAvatarGroup } from '../components/ui/avatar';
+import { Badge } from '../components/ui/badge';
 
 type Status = 'not-started' | 'in-progress' | 'completed' | 'postponed';
-type TabKey = 'tasks' | 'weekly' | 'monthly';
+type TabKey = 'tasks' | 'weekly' | 'monthly' | 'yearly';
+// Read scope for the tasks list. Mirrors backend ?view= param.
+//   mine    — assigned to me (or self-created with no assignee)
+//   created — I created (regardless of who's assigned)
+//   all     — either creator or assignee
+type TaskView = 'mine' | 'created' | 'all';
+const TASK_VIEW_LABELS: Record<TaskView, string> = {
+  mine: 'My tasks',
+  created: 'I created',
+  all: 'All',
+};
 type DueRange =
   | 'all'
   | 'past-day'   | 'this-day'   | 'next-day'
@@ -110,23 +124,54 @@ interface Task {
   assignee: string | null; // user id, or null if unassigned
   dueDate: string;
   weeklyTargetId: string | null;
+  createdBy: string;       // creator's user id — used to gate edit/delete
   updatedAt: string; // ISO timestamp
 }
 
 // User shape now mirrors the backend's `AssignableUser` exactly.
 type User = AssignableUser;
 
+// Lightweight member info used to render avatars on shared targets.
+interface TargetMemberLite {
+  _id: string;
+  fullName: string;
+  avatarUrl: string | null;
+  isOwner: boolean;
+}
+
 interface WeeklyTarget {
   id: string;
   title: string;
   description: string;
   monthlyTargetId: string | null;
+  createdBy: string;
+  isOwner: boolean;             // calling user is the creator
+  sharedWith: string[];
+  members: TargetMemberLite[];
+  progress: number;             // server-computed, per-caller
 }
 
 interface MonthlyTarget {
   id: string;
   title: string;
   description: string;
+  yearlyTargetId: string | null;
+  createdBy: string;
+  isOwner: boolean;
+  sharedWith: string[];
+  members: TargetMemberLite[];
+  progress: number;
+}
+
+interface YearlyTarget {
+  id: string;
+  title: string;
+  description: string;
+  createdBy: string;
+  isOwner: boolean;
+  sharedWith: string[];
+  members: TargetMemberLite[];
+  progress: number;
 }
 
 const STATUSES: Status[] = ['not-started', 'in-progress', 'completed', 'postponed'];
@@ -155,8 +200,15 @@ const WEEKLY_COLS: ColDef[] = [
 
 const MONTHLY_COLS: ColDef[] = [
   { key: 'title',     label: 'Monthly Target',  defaultVisible: true },
+  { key: 'yearly',    label: 'Yearly Target',   defaultVisible: true },
   { key: 'weeklies',  label: 'Weekly Targets',  defaultVisible: true },
   { key: 'progress',  label: 'Progress',        defaultVisible: true },
+];
+
+const YEARLY_COLS: ColDef[] = [
+  { key: 'title',      label: 'Yearly Target',     defaultVisible: true },
+  { key: 'monthlies',  label: 'Monthly Targets',   defaultVisible: true },
+  { key: 'progress',   label: 'Progress',          defaultVisible: true },
 ];
 
 // Default column widths (in pixels). Persisted per-user in localStorage.
@@ -169,7 +221,10 @@ const WEEKLY_COL_WIDTHS: Record<string, number> = {
   title: 320, monthly: 220, tasks: 110, progress: 180,
 };
 const MONTHLY_COL_WIDTHS: Record<string, number> = {
-  title: 320, weeklies: 200, progress: 180,
+  title: 320, yearly: 220, weeklies: 200, progress: 180,
+};
+const YEARLY_COL_WIDTHS: Record<string, number> = {
+  title: 360, monthlies: 200, progress: 180,
 };
 
 // Sample data removed — tasks, weekly targets, monthly targets and users
@@ -191,7 +246,7 @@ function dueFromApi(iso: string | null | undefined): string {
 function mapTaskFromApi(t: {
   _id: string; title: string; description: string; status: Status;
   assignee: string | null; dueDate: string | null; weeklyTargetId: string | null;
-  updatedAt: string;
+  createdBy: string; updatedAt: string;
 }): Task {
   return {
     id: t._id,
@@ -201,28 +256,60 @@ function mapTaskFromApi(t: {
     assignee: t.assignee ?? null,
     dueDate: dueFromApi(t.dueDate),
     weeklyTargetId: t.weeklyTargetId ?? null,
+    createdBy: t.createdBy,
     updatedAt: t.updatedAt,
   };
 }
 
 function mapWeeklyFromApi(w: {
   _id: string; title: string; description: string; monthlyTargetId: string | null;
+  createdBy: string; isOwner?: boolean; sharedWith?: string[];
+  members?: TargetMemberLite[]; progress?: number;
 }): WeeklyTarget {
   return {
     id: w._id,
     title: w.title,
     description: w.description ?? '',
     monthlyTargetId: w.monthlyTargetId ?? null,
+    createdBy: w.createdBy,
+    isOwner: w.isOwner ?? true,
+    sharedWith: w.sharedWith ?? [],
+    members: w.members ?? [],
+    progress: typeof w.progress === 'number' ? w.progress : 100,
   };
 }
 
 function mapMonthlyFromApi(m: {
-  _id: string; title: string; description: string;
+  _id: string; title: string; description: string; createdBy: string;
+  yearlyTargetId?: string | null;
+  isOwner?: boolean; sharedWith?: string[]; members?: TargetMemberLite[]; progress?: number;
 }): MonthlyTarget {
   return {
     id: m._id,
     title: m.title,
     description: m.description ?? '',
+    yearlyTargetId: m.yearlyTargetId ?? null,
+    createdBy: m.createdBy,
+    isOwner: m.isOwner ?? true,
+    sharedWith: m.sharedWith ?? [],
+    members: m.members ?? [],
+    progress: typeof m.progress === 'number' ? m.progress : 100,
+  };
+}
+
+function mapYearlyFromApi(y: {
+  _id: string; title: string; description: string; createdBy: string;
+  isOwner?: boolean; sharedWith?: string[]; members?: TargetMemberLite[]; progress?: number;
+}): YearlyTarget {
+  return {
+    id: y._id,
+    title: y.title,
+    description: y.description ?? '',
+    createdBy: y.createdBy,
+    isOwner: y.isOwner ?? true,
+    sharedWith: y.sharedWith ?? [],
+    members: y.members ?? [],
+    progress: typeof y.progress === 'number' ? y.progress : 100,
   };
 }
 
@@ -589,11 +676,15 @@ function PropertyRow({
 
 export default function TaskManagement() {
   const [tab, setTab] = useState<TabKey>('tasks');
+  // Default to "mine" so users land on their own queue, not their delegations.
+  const [taskView, setTaskView] = useState<TaskView>('mine');
 
   const { user: currentUser } = useAuth();
+  const currentUserId = (currentUser as { _id?: string } | null)?._id ?? null;
   const [tasks, setTasks] = useState<Task[]>([]);
   const [weeklies, setWeeklies] = useState<WeeklyTarget[]>([]);
   const [monthlies, setMonthlies] = useState<MonthlyTarget[]>([]);
+  const [yearlies, setYearlies] = useState<YearlyTarget[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -607,16 +698,18 @@ export default function TaskManagement() {
     let cancelled = false;
     (async () => {
       try {
-        const [tasksRes, weeklyRes, monthlyRes, usersRes] = await Promise.all([
-          apiListTasks(),
+        const [tasksRes, weeklyRes, monthlyRes, yearlyRes, usersRes] = await Promise.all([
+          apiListTasks({ view: taskView }),
           apiListWeeklyTargets(),
           apiListMonthlyTargets(),
+          apiListYearlyTargets(),
           apiListAssignableUsers(),
         ]);
         if (cancelled) return;
         if (tasksRes.success && tasksRes.data) setTasks(tasksRes.data.tasks.map(mapTaskFromApi));
         if (weeklyRes.success && weeklyRes.data) setWeeklies(weeklyRes.data.weeklyTargets.map(mapWeeklyFromApi));
         if (monthlyRes.success && monthlyRes.data) setMonthlies(monthlyRes.data.monthlyTargets.map(mapMonthlyFromApi));
+        if (yearlyRes.success && yearlyRes.data) setYearlies(yearlyRes.data.yearlyTargets.map(mapYearlyFromApi));
         if (usersRes.success && usersRes.data) setUsers(usersRes.data.users);
       } catch (err) {
         console.error('Failed to load task management data', err);
@@ -625,7 +718,21 @@ export default function TaskManagement() {
       }
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Refetch tasks when the read scope changes — switching from "My tasks" to
+  // "I created" / "All" must hit the backend so we get the right rows. We
+  // skip the very first run (handled by the mount effect above).
+  const didMountRef = useRef(false);
+  useEffect(() => {
+    if (!didMountRef.current) { didMountRef.current = true; return; }
+    let cancelled = false;
+    apiListTasks({ view: taskView })
+      .then((r) => { if (!cancelled && r.success && r.data) setTasks(r.data.tasks.map(mapTaskFromApi)); })
+      .catch((e) => console.error('apiListTasks (view change) failed', e));
+    return () => { cancelled = true; };
+  }, [taskView]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFunnel, setStatusFunnel] = useState<string>('all');
@@ -635,47 +742,57 @@ export default function TaskManagement() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedWeeklyId, setSelectedWeeklyId] = useState<string | null>(null);
   const [selectedMonthlyId, setSelectedMonthlyId] = useState<string | null>(null);
+  const [selectedYearlyId, setSelectedYearlyId] = useState<string | null>(null);
 
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [selectedWeeklyIds, setSelectedWeeklyIds] = useState<Set<string>>(new Set());
   const [selectedMonthlyIds, setSelectedMonthlyIds] = useState<Set<string>>(new Set());
+  const [selectedYearlyIds, setSelectedYearlyIds] = useState<Set<string>>(new Set());
 
   // Inline-add: ID of the row currently in "fresh empty" mode. Auto-removed on blur if title is still empty.
   const [inlineDraftTaskId, setInlineDraftTaskId] = useState<string | null>(null);
   const [inlineDraftWeeklyId, setInlineDraftWeeklyId] = useState<string | null>(null);
   const [inlineDraftMonthlyId, setInlineDraftMonthlyId] = useState<string | null>(null);
+  const [inlineDraftYearlyId, setInlineDraftYearlyId] = useState<string | null>(null);
 
   const activeSelected =
-    tab === 'tasks'  ? selectedTaskIds  :
-    tab === 'weekly' ? selectedWeeklyIds :
-                       selectedMonthlyIds;
+    tab === 'tasks'   ? selectedTaskIds   :
+    tab === 'weekly'  ? selectedWeeklyIds :
+    tab === 'monthly' ? selectedMonthlyIds :
+                        selectedYearlyIds;
 
   const setActiveSelected =
-    tab === 'tasks'  ? setSelectedTaskIds  :
-    tab === 'weekly' ? setSelectedWeeklyIds :
-                       setSelectedMonthlyIds;
+    tab === 'tasks'   ? setSelectedTaskIds   :
+    tab === 'weekly'  ? setSelectedWeeklyIds :
+    tab === 'monthly' ? setSelectedMonthlyIds :
+                        setSelectedYearlyIds;
 
   const activeNoun =
-    tab === 'tasks'  ? (activeSelected.size === 1 ? 'task'           : 'tasks') :
-    tab === 'weekly' ? (activeSelected.size === 1 ? 'weekly target'  : 'weekly targets') :
-                       (activeSelected.size === 1 ? 'monthly target' : 'monthly targets');
+    tab === 'tasks'   ? (activeSelected.size === 1 ? 'task'           : 'tasks') :
+    tab === 'weekly'  ? (activeSelected.size === 1 ? 'weekly target'  : 'weekly targets') :
+    tab === 'monthly' ? (activeSelected.size === 1 ? 'monthly target' : 'monthly targets') :
+                        (activeSelected.size === 1 ? 'yearly target'  : 'yearly targets');
 
   const isNewItemRef = useRef(false);
 
   const { visible: taskColVis, toggle: taskColToggle } = useColumnVisibility('task-management', TASK_COLS);
   const { visible: weeklyColVis, toggle: weeklyColToggle } = useColumnVisibility('weekly-targets', WEEKLY_COLS);
   const { visible: monthlyColVis, toggle: monthlyColToggle } = useColumnVisibility('monthly-targets', MONTHLY_COLS);
+  const { visible: yearlyColVis, toggle: yearlyColToggle } = useColumnVisibility('yearly-targets', YEARLY_COLS);
 
   const { widths: taskColW, setWidth: setTaskColW } = useColumnWidths('task-management', TASK_COL_WIDTHS);
   const { widths: weeklyColW, setWidth: setWeeklyColW } = useColumnWidths('weekly-targets', WEEKLY_COL_WIDTHS);
   const { widths: monthlyColW, setWidth: setMonthlyColW } = useColumnWidths('monthly-targets', MONTHLY_COL_WIDTHS);
+  const { widths: yearlyColW, setWidth: setYearlyColW } = useColumnWidths('yearly-targets', YEARLY_COL_WIDTHS);
 
   const selectedTask = tasks.find((t) => t.id === selectedTaskId) ?? null;
   const selectedWeekly = weeklies.find((w) => w.id === selectedWeeklyId) ?? null;
   const selectedMonthly = monthlies.find((m) => m.id === selectedMonthlyId) ?? null;
+  const selectedYearly = yearlies.find((y) => y.id === selectedYearlyId) ?? null;
 
   const weeklyOptions = useMemo(() => weeklies.map((w) => ({ id: w.id, title: w.title })), [weeklies]);
   const monthlyOptions = useMemo(() => monthlies.map((m) => ({ id: m.id, title: m.title })), [monthlies]);
+  const yearlyOptions = useMemo(() => yearlies.map((y) => ({ id: y.id, title: y.title })), [yearlies]);
 
   const dueBounds = useMemo(() => getDueRangeBounds(dueRange), [dueRange]);
 
@@ -707,6 +824,11 @@ export default function TaskManagement() {
     return m.title.toLowerCase().includes(q) || m.description.toLowerCase().includes(q);
   });
 
+  const filteredYearlies = yearlies.filter((y) => {
+    const q = searchTerm.toLowerCase();
+    return y.title.toLowerCase().includes(q) || y.description.toLowerCase().includes(q);
+  });
+
   // Optimistic local update + fire PATCH if the row is server-side. Drafts stay
   // local until they're committed (see commitDraftTask / closeTaskPanel).
   const updateTask = useCallback((id: string, patch: Partial<Task>) => {
@@ -732,6 +854,14 @@ export default function TaskManagement() {
     if (isDraftId(id)) return;
     apiUpdateMonthlyTarget(id, patch as Record<string, unknown>).catch((e) =>
       console.error('apiUpdateMonthlyTarget failed', e),
+    );
+  }, []);
+
+  const updateYearly = useCallback((id: string, patch: Partial<YearlyTarget>) => {
+    setYearlies((prev) => prev.map((y) => (y.id === id ? { ...y, ...patch } : y)));
+    if (isDraftId(id)) return;
+    apiUpdateYearlyTarget(id, patch as Record<string, unknown>).catch((e) =>
+      console.error('apiUpdateYearlyTarget failed', e),
     );
   }, []);
 
@@ -826,6 +956,11 @@ export default function TaskManagement() {
     setSelectedMonthlyId((cur) => (cur === draftId ? real.id : cur));
     setInlineDraftMonthlyId((cur) => (cur === draftId ? null : cur));
   };
+  const swapDraftYearlyId = (draftId: string, real: YearlyTarget) => {
+    setYearlies((prev) => prev.map((y) => (y.id === draftId ? real : y)));
+    setSelectedYearlyId((cur) => (cur === draftId ? real.id : cur));
+    setInlineDraftYearlyId((cur) => (cur === draftId ? null : cur));
+  };
 
   const commitTaskDraft = async (draft: Task) => {
     try {
@@ -871,6 +1006,7 @@ export default function TaskManagement() {
       const res = await apiCreateMonthlyTarget({
         title: draft.title.trim(),
         description: draft.description,
+        yearlyTargetId: draft.yearlyTargetId,
       } as Record<string, unknown>);
       if (res.success && res.data) swapDraftMonthlyId(draft.id, mapMonthlyFromApi(res.data.monthlyTarget));
       else {
@@ -883,6 +1019,51 @@ export default function TaskManagement() {
     }
   };
 
+  const commitYearlyDraft = async (draft: YearlyTarget) => {
+    try {
+      const res = await apiCreateYearlyTarget({
+        title: draft.title.trim(),
+        description: draft.description,
+      } as Record<string, unknown>);
+      if (res.success && res.data) swapDraftYearlyId(draft.id, mapYearlyFromApi(res.data.yearlyTarget));
+      else {
+        console.error('Create yearly target failed:', res.message);
+        setYearlies((prev) => prev.filter((y) => y.id !== draft.id));
+      }
+    } catch (e) {
+      console.error('apiCreateYearlyTarget failed', e);
+      setYearlies((prev) => prev.filter((y) => y.id !== draft.id));
+    }
+  };
+
+  // Defaults for the new shared-target fields on locally-created drafts.
+  // Drafts are always owned by the current user; sharing is added later via
+  // the edit panel after the row is committed to the backend.
+  const draftTaskDefaults = (): Pick<Task, 'createdBy'> => ({
+    createdBy: currentUserId ?? '',
+  });
+  const draftWeeklyDefaults = (): Pick<WeeklyTarget, 'createdBy' | 'isOwner' | 'sharedWith' | 'members' | 'progress'> => ({
+    createdBy: currentUserId ?? '',
+    isOwner: true,
+    sharedWith: [],
+    members: [],
+    progress: 100,
+  });
+  const draftMonthlyDefaults = (): Pick<MonthlyTarget, 'createdBy' | 'isOwner' | 'sharedWith' | 'members' | 'progress'> => ({
+    createdBy: currentUserId ?? '',
+    isOwner: true,
+    sharedWith: [],
+    members: [],
+    progress: 100,
+  });
+  const draftYearlyDefaults = (): Pick<YearlyTarget, 'createdBy' | 'isOwner' | 'sharedWith' | 'members' | 'progress'> => ({
+    createdBy: currentUserId ?? '',
+    isOwner: true,
+    sharedWith: [],
+    members: [],
+    progress: 100,
+  });
+
   const handleNewTask = () => {
     const id = newDraftId('task');
     const newTask: Task = {
@@ -894,6 +1075,7 @@ export default function TaskManagement() {
       dueDate: format(new Date(), 'yyyy-MM-dd'),
       weeklyTargetId: null,
       updatedAt: new Date().toISOString(),
+      ...draftTaskDefaults(),
     };
     isNewItemRef.current = true;
     setTasks((prev) => [newTask, ...prev]);
@@ -907,6 +1089,7 @@ export default function TaskManagement() {
       title: '',
       description: '',
       monthlyTargetId: null,
+      ...draftWeeklyDefaults(),
     };
     isNewItemRef.current = true;
     setWeeklies((prev) => [newWeekly, ...prev]);
@@ -915,10 +1098,18 @@ export default function TaskManagement() {
 
   const handleNewMonthly = () => {
     const id = newDraftId('monthly');
-    const newMonthly: MonthlyTarget = { id, title: '', description: '' };
+    const newMonthly: MonthlyTarget = { id, title: '', description: '', yearlyTargetId: null, ...draftMonthlyDefaults() };
     isNewItemRef.current = true;
     setMonthlies((prev) => [newMonthly, ...prev]);
     setSelectedMonthlyId(id);
+  };
+
+  const handleNewYearly = () => {
+    const id = newDraftId('yearly');
+    const newYearly: YearlyTarget = { id, title: '', description: '', ...draftYearlyDefaults() };
+    isNewItemRef.current = true;
+    setYearlies((prev) => [newYearly, ...prev]);
+    setSelectedYearlyId(id);
   };
 
   const addInlineTask = () => {
@@ -930,6 +1121,7 @@ export default function TaskManagement() {
         assignee: currentUser?.id ?? null,
         dueDate: format(new Date(), 'yyyy-MM-dd'),
         weeklyTargetId: null, updatedAt: new Date().toISOString(),
+        ...draftTaskDefaults(),
       },
     ]);
     setInlineDraftTaskId(id);
@@ -937,14 +1129,20 @@ export default function TaskManagement() {
 
   const addInlineWeekly = () => {
     const id = newDraftId('weekly');
-    setWeeklies((prev) => [...prev, { id, title: '', description: '', monthlyTargetId: null }]);
+    setWeeklies((prev) => [...prev, { id, title: '', description: '', monthlyTargetId: null, ...draftWeeklyDefaults() }]);
     setInlineDraftWeeklyId(id);
   };
 
   const addInlineMonthly = () => {
     const id = newDraftId('monthly');
-    setMonthlies((prev) => [...prev, { id, title: '', description: '' }]);
+    setMonthlies((prev) => [...prev, { id, title: '', description: '', yearlyTargetId: null, ...draftMonthlyDefaults() }]);
     setInlineDraftMonthlyId(id);
+  };
+
+  const addInlineYearly = () => {
+    const id = newDraftId('yearly');
+    setYearlies((prev) => [...prev, { id, title: '', description: '', ...draftYearlyDefaults() }]);
+    setInlineDraftYearlyId(id);
   };
 
   // Inline-add drafts always commit on blur — empty title is allowed and
@@ -973,6 +1171,14 @@ export default function TaskManagement() {
     const draft = monthlies.find((m) => m.id === id);
     if (!draft) return;
     commitMonthlyDraft({ ...draft, title: value });
+  };
+
+  const onYearlyDraftBlur = (id: string, value: string) => {
+    if (inlineDraftYearlyId !== id) return;
+    setInlineDraftYearlyId(null);
+    const draft = yearlies.find((y) => y.id === id);
+    if (!draft) return;
+    commitYearlyDraft({ ...draft, title: value });
   };
 
   const closeTaskPanel = () => {
@@ -1020,19 +1226,34 @@ export default function TaskManagement() {
     setSelectedMonthlyId(null);
   };
 
+  const closeYearlyPanel = () => {
+    const y = selectedYearly;
+    if (y && isDraftId(y.id)) {
+      if (!y.title.trim()) setYearlies((prev) => prev.filter((x) => x.id !== y.id));
+      else commitYearlyDraft(y);
+    }
+    isNewItemRef.current = false;
+    setSelectedYearlyId(null);
+  };
+
   const onPrimaryAdd = () => {
     if (tab === 'tasks') handleNewTask();
     else if (tab === 'weekly') handleNewWeekly();
-    else handleNewMonthly();
+    else if (tab === 'monthly') handleNewMonthly();
+    else handleNewYearly();
   };
 
   const primaryAddLabel =
-    tab === 'tasks' ? 'New Task' : tab === 'weekly' ? 'New Weekly Target' : 'New Monthly Target';
+    tab === 'tasks'   ? 'New Task' :
+    tab === 'weekly'  ? 'New Weekly Target' :
+    tab === 'monthly' ? 'New Monthly Target' :
+                        'New Yearly Target';
 
   const TABS: { k: TabKey; label: string }[] = [
     { k: 'tasks',   label: 'Daily Tasks' },
     { k: 'weekly',  label: 'Weekly Targets' },
     { k: 'monthly', label: 'Monthly Targets' },
+    { k: 'yearly',  label: 'Yearly Targets' },
   ];
 
   return (
@@ -1042,7 +1263,7 @@ export default function TaskManagement() {
         <div>
           <h2 className="text-2xl font-bold text-t1">Task Management</h2>
           <p className="text-sm text-t2 mt-1">
-            Track daily tasks against weekly and monthly targets
+            Daily tasks → weekly → monthly → yearly. Progress flows up; grades show what needs improvement.
           </p>
         </div>
         <button
@@ -1055,22 +1276,87 @@ export default function TaskManagement() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 bg-card rounded-xl border border-border p-1 w-fit">
-        {TABS.map(({ k, label }) => {
-          const active = tab === k;
-          return (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                active ? 'bg-accent text-white' : 'text-t2 hover:bg-surface'
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-1 bg-card rounded-xl border border-border p-1 w-fit">
+          {TABS.map(({ k, label }) => {
+            const active = tab === k;
+            return (
+              <button
+                key={k}
+                onClick={() => setTab(k)}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  active ? 'bg-accent text-white' : 'text-t2 hover:bg-surface'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tasks-only sub-tab: read scope. Default "My tasks" so users land
+            on their own queue, not their delegations. */}
+        {tab === 'tasks' && (
+          <div className="flex items-center gap-1 bg-card rounded-xl border border-border p-1 w-fit">
+            {(['mine', 'created', 'all'] as TaskView[]).map((v) => {
+              const active = taskView === v;
+              return (
+                <button
+                  key={v}
+                  onClick={() => setTaskView(v)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                    active ? 'bg-accent-glow text-accent' : 'text-t2 hover:bg-surface'
+                  }`}
+                  title={
+                    v === 'mine'    ? 'Tasks assigned to you (or self-created with no assignee)'
+                  : v === 'created' ? 'Tasks you created — including ones delegated to others'
+                                    : 'Everything you can see (creator or assignee)'
+                  }
+                >
+                  {TASK_VIEW_LABELS[v]}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      {/* Tasks: at-a-glance count tiles. Cheap, derived client-side. */}
+      {tab === 'tasks' && (() => {
+        const today = startOfDay(new Date());
+        const tomorrow = endOfDay(today);
+        let dueToday = 0, overdue = 0, openCount = 0;
+        for (const t of tasks) {
+          if (t.status === 'completed' || t.status === 'postponed') continue;
+          openCount += 1;
+          if (!t.dueDate) continue;
+          const d = parseISO(t.dueDate);
+          if (!isValidDate(d)) continue;
+          if (d < today) overdue += 1;
+          else if (d <= tomorrow) dueToday += 1;
+        }
+        const completed = tasks.filter((t) => t.status === 'completed').length;
+        return (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-card rounded-xl border border-border px-4 py-3">
+              <p className="text-[11px] uppercase tracking-widest text-t3 font-bold">Open</p>
+              <p className="text-2xl font-bold text-t1 mt-0.5">{openCount}</p>
+            </div>
+            <div className="bg-card rounded-xl border border-border px-4 py-3">
+              <p className="text-[11px] uppercase tracking-widest text-t3 font-bold">Due today</p>
+              <p className={`text-2xl font-bold mt-0.5 ${dueToday > 0 ? 'text-amber-500' : 'text-t1'}`}>{dueToday}</p>
+            </div>
+            <div className="bg-card rounded-xl border border-border px-4 py-3">
+              <p className="text-[11px] uppercase tracking-widest text-t3 font-bold">Overdue</p>
+              <p className={`text-2xl font-bold mt-0.5 ${overdue > 0 ? 'text-rose-400' : 'text-t1'}`}>{overdue}</p>
+            </div>
+            <div className="bg-card rounded-xl border border-border px-4 py-3">
+              <p className="text-[11px] uppercase tracking-widest text-t3 font-bold">Completed</p>
+              <p className="text-2xl font-bold text-emerald-400 mt-0.5">{completed}</p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Filters */}
       <div className="bg-card rounded-xl border border-border p-4">
@@ -1080,11 +1366,10 @@ export default function TaskManagement() {
             <Input
               type="text"
               placeholder={
-                tab === 'tasks'
-                  ? 'Search tasks...'
-                  : tab === 'weekly'
-                  ? 'Search weekly targets...'
-                  : 'Search monthly targets...'
+                tab === 'tasks'   ? 'Search tasks...'
+              : tab === 'weekly'  ? 'Search weekly targets...'
+              : tab === 'monthly' ? 'Search monthly targets...'
+                                  : 'Search yearly targets...'
               }
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -1174,6 +1459,9 @@ export default function TaskManagement() {
           )}
           {tab === 'monthly' && (
             <ColumnSelector cols={MONTHLY_COLS} visible={monthlyColVis} onToggle={monthlyColToggle} />
+          )}
+          {tab === 'yearly' && (
+            <ColumnSelector cols={YEARLY_COLS} visible={yearlyColVis} onToggle={yearlyColToggle} />
           )}
         </div>
       </div>
@@ -1469,18 +1757,32 @@ export default function TaskManagement() {
                       </TableCell>
                       {weeklyColVis.has('title') && (
                         <TableCell className="whitespace-normal break-all">
-                          <EditableTitle
-                            value={w.title}
-                            onChange={(v) => updateWeekly(w.id, { title: v })}
-                            className="text-sm font-medium text-t1"
-                            placeholder="Weekly target name"
-                            autoFocus={inlineDraftWeeklyId === w.id}
-                            onBlur={
-                              inlineDraftWeeklyId === w.id
-                                ? (v) => onWeeklyDraftBlur(w.id, v)
-                                : undefined
-                            }
-                          />
+                          <div className="flex items-start justify-between gap-3">
+                            <EditableTitle
+                              value={w.title}
+                              onChange={(v) => updateWeekly(w.id, { title: v })}
+                              className="text-sm font-medium text-t1 flex-1"
+                              placeholder="Weekly target name"
+                              autoFocus={inlineDraftWeeklyId === w.id}
+                              onBlur={
+                                inlineDraftWeeklyId === w.id
+                                  ? (v) => onWeeklyDraftBlur(w.id, v)
+                                  : undefined
+                              }
+                            />
+                            {w.members.length > 1 && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1.5 shrink-0"
+                                title={`Shared with ${w.members.length - 1} other${w.members.length > 2 ? 's' : ''}`}
+                              >
+                                <MemberAvatarGroup members={w.members} size={6} max={3} />
+                                {!w.isOwner && (
+                                  <Badge variant="muted" className="ml-1">Shared</Badge>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                       )}
                       {weeklyColVis.has('monthly') && (
@@ -1542,6 +1844,7 @@ export default function TaskManagement() {
         const someChecked = visibleIds.some((id) => selectedMonthlyIds.has(id));
         const visibleCols =
           (monthlyColVis.has('title')    ? 1 : 0) +
+          (monthlyColVis.has('yearly')   ? 1 : 0) +
           (monthlyColVis.has('weeklies') ? 1 : 0) +
           (monthlyColVis.has('progress') ? 1 : 0) +
           1; // checkbox column
@@ -1552,6 +1855,7 @@ export default function TaskManagement() {
               <colgroup>
                 <col style={CHECKBOX_COL_STYLE} />
                 {monthlyColVis.has('title')    && <col style={{ width: monthlyColW.title }} />}
+                {monthlyColVis.has('yearly')   && <col style={{ width: monthlyColW.yearly }} />}
                 {monthlyColVis.has('weeklies') && <col style={{ width: monthlyColW.weeklies }} />}
                 {monthlyColVis.has('progress') && <col style={{ width: monthlyColW.progress }} />}
                 <col />
@@ -1568,6 +1872,9 @@ export default function TaskManagement() {
                   </TableHead>
                   {monthlyColVis.has('title')    && (
                     <ResizableTableHead width={monthlyColW.title} onWidthChange={(w) => setMonthlyColW('title', w)}>Monthly Target</ResizableTableHead>
+                  )}
+                  {monthlyColVis.has('yearly')   && (
+                    <ResizableTableHead width={monthlyColW.yearly} onWidthChange={(w) => setMonthlyColW('yearly', w)}>Yearly Target</ResizableTableHead>
                   )}
                   {monthlyColVis.has('weeklies') && (
                     <ResizableTableHead width={monthlyColW.weeklies} onWidthChange={(w) => setMonthlyColW('weeklies', w)}>Weekly Targets</ResizableTableHead>
@@ -1599,17 +1906,42 @@ export default function TaskManagement() {
                       </TableCell>
                       {monthlyColVis.has('title') && (
                         <TableCell className="whitespace-normal break-all">
-                          <EditableTitle
-                            value={m.title}
-                            onChange={(v) => updateMonthly(m.id, { title: v })}
-                            className="text-sm font-medium text-t1"
-                            placeholder="Monthly target name"
-                            autoFocus={inlineDraftMonthlyId === m.id}
-                            onBlur={
-                              inlineDraftMonthlyId === m.id
-                                ? (v) => onMonthlyDraftBlur(m.id, v)
-                                : undefined
-                            }
+                          <div className="flex items-start justify-between gap-3">
+                            <EditableTitle
+                              value={m.title}
+                              onChange={(v) => updateMonthly(m.id, { title: v })}
+                              className="text-sm font-medium text-t1 flex-1"
+                              placeholder="Monthly target name"
+                              autoFocus={inlineDraftMonthlyId === m.id}
+                              onBlur={
+                                inlineDraftMonthlyId === m.id
+                                  ? (v) => onMonthlyDraftBlur(m.id, v)
+                                  : undefined
+                              }
+                            />
+                            {m.members.length > 1 && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1.5 shrink-0"
+                                title={`Shared with ${m.members.length - 1} other${m.members.length > 2 ? 's' : ''}`}
+                              >
+                                <MemberAvatarGroup members={m.members} size={6} max={3} />
+                                {!m.isOwner && (
+                                  <Badge variant="muted" className="ml-1">Shared</Badge>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
+                      {monthlyColVis.has('yearly') && (
+                        <TableCell className="px-2">
+                          <ParentSelect
+                            value={m.yearlyTargetId}
+                            onChange={(id) => updateMonthly(m.id, { yearlyTargetId: id })}
+                            options={yearlyOptions}
+                            placeholder="None"
+                            compact
                           />
                         </TableCell>
                       )}
@@ -1652,6 +1984,139 @@ export default function TaskManagement() {
         );
       })()}
 
+      {/* YEARLY TARGETS */}
+      {tab === 'yearly' && (() => {
+        const visibleIds = filteredYearlies.map((y) => y.id);
+        const allChecked = visibleIds.length > 0 && visibleIds.every((id) => selectedYearlyIds.has(id));
+        const someChecked = visibleIds.some((id) => selectedYearlyIds.has(id));
+        const visibleCols =
+          (yearlyColVis.has('title')     ? 1 : 0) +
+          (yearlyColVis.has('monthlies') ? 1 : 0) +
+          (yearlyColVis.has('progress')  ? 1 : 0) +
+          1; // checkbox column
+        return (
+          <div>
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <Table style={{ tableLayout: 'fixed', minWidth: 0 }}>
+              <colgroup>
+                <col style={CHECKBOX_COL_STYLE} />
+                {yearlyColVis.has('title')     && <col style={{ width: yearlyColW.title }} />}
+                {yearlyColVis.has('monthlies') && <col style={{ width: yearlyColW.monthlies }} />}
+                {yearlyColVis.has('progress')  && <col style={{ width: yearlyColW.progress }} />}
+                <col />
+              </colgroup>
+              <TableHeader>
+                <TableRow>
+                  <TableHead style={CHECKBOX_COL_STYLE}>
+                    <Checkbox
+                      checked={allChecked}
+                      indeterminate={!allChecked && someChecked}
+                      onCheckedChange={(v) => setToggleAll(setSelectedYearlyIds, visibleIds, v)}
+                      ariaLabel="Select all yearly targets"
+                    />
+                  </TableHead>
+                  {yearlyColVis.has('title')     && (
+                    <ResizableTableHead width={yearlyColW.title} onWidthChange={(w) => setYearlyColW('title', w)}>Yearly Target</ResizableTableHead>
+                  )}
+                  {yearlyColVis.has('monthlies') && (
+                    <ResizableTableHead width={yearlyColW.monthlies} onWidthChange={(w) => setYearlyColW('monthlies', w)}>Monthly Targets</ResizableTableHead>
+                  )}
+                  {yearlyColVis.has('progress')  && (
+                    <ResizableTableHead width={yearlyColW.progress} onWidthChange={(w) => setYearlyColW('progress', w)}>Progress</ResizableTableHead>
+                  )}
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredYearlies.map((y) => {
+                  // Yearly progress comes from the backend (per-caller, scoped
+                  // to monthlies the user is a member of). Linked count uses
+                  // local monthlies for snappier UI feedback.
+                  const linkedMonthlies = monthlies.filter((m) => m.yearlyTargetId === y.id);
+                  const selected = selectedYearlyIds.has(y.id);
+                  return (
+                    <TableRow
+                      key={y.id}
+                      data-state={selected ? 'selected' : undefined}
+                      onClick={() => setSelectedYearlyId(y.id)}
+                      className="cursor-pointer"
+                    >
+                      <TableCell style={CHECKBOX_COL_STYLE} onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selected}
+                          onCheckedChange={(v) => setToggle(setSelectedYearlyIds, y.id, v)}
+                          ariaLabel={`Select ${y.title || 'yearly target'}`}
+                        />
+                      </TableCell>
+                      {yearlyColVis.has('title') && (
+                        <TableCell className="whitespace-normal break-all">
+                          <div className="flex items-start justify-between gap-3">
+                            <EditableTitle
+                              value={y.title}
+                              onChange={(v) => updateYearly(y.id, { title: v })}
+                              className="text-sm font-medium text-t1 flex-1"
+                              placeholder="Yearly target name"
+                              autoFocus={inlineDraftYearlyId === y.id}
+                              onBlur={
+                                inlineDraftYearlyId === y.id
+                                  ? (v) => onYearlyDraftBlur(y.id, v)
+                                  : undefined
+                              }
+                            />
+                            {y.members.length > 1 && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1.5 shrink-0"
+                                title={`Shared with ${y.members.length - 1} other${y.members.length > 2 ? 's' : ''}`}
+                              >
+                                <MemberAvatarGroup members={y.members} size={6} max={3} />
+                                {!y.isOwner && (
+                                  <Badge variant="muted" className="ml-1">Shared</Badge>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
+                      {yearlyColVis.has('monthlies') && (
+                        <TableCell className="text-t2">
+                          {linkedMonthlies.length === 0 ? (
+                            <span className="text-xs text-t3 italic">No monthly targets</span>
+                          ) : (
+                            <span>{linkedMonthlies.length}</span>
+                          )}
+                        </TableCell>
+                      )}
+                      {yearlyColVis.has('progress') && (
+                        <TableCell>
+                          <ProgressBar value={y.progress} />
+                        </TableCell>
+                      )}
+                      <TableCell />
+                    </TableRow>
+                  );
+                })}
+                {filteredYearlies.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={visibleCols + 1} className="py-12 text-center text-sm text-t3">
+                      No yearly targets yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <button
+            onClick={addInlineYearly}
+            className="mt-2 flex items-center gap-2 px-3 py-2 text-sm text-t3 hover:text-t1 hover:bg-surface rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" weight="bold" />
+            New yearly target
+          </button>
+          </div>
+        );
+      })()}
+
       {/* TASK PANEL */}
       <AnimatePresence>
       {selectedTask && (
@@ -1679,14 +2144,19 @@ export default function TaskManagement() {
               >
                 <X className="w-4 h-4" weight="bold" />
               </button>
-              <button
-                onClick={deleteSelectedTask}
-                aria-label="Delete task"
-                title="Delete task"
-                className="p-1.5 rounded-md text-t3 hover:bg-red-500/10 hover:text-red-500 transition-colors"
-              >
-                <Trash className="w-4 h-4" weight="bold" />
-              </button>
+              {/* Only the creator can delete a task. Assignees can view + change
+                  status only — backend enforces this too, but hiding the
+                  button avoids the confusing "permission denied" toast. */}
+              {(currentUserId && selectedTask.createdBy === currentUserId) && (
+                <button
+                  onClick={deleteSelectedTask}
+                  aria-label="Delete task"
+                  title="Delete task"
+                  className="p-1.5 rounded-md text-t3 hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                >
+                  <Trash className="w-4 h-4" weight="bold" />
+                </button>
+              )}
             </div>
 
             <OverlayScrollbarsComponent
@@ -1948,6 +2418,118 @@ export default function TaskManagement() {
             </button>
           </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* YEARLY PANEL — opens when a yearly target row is clicked. The
+          description textarea acts as the spec/notes area: users can write
+          what the yearly goal is, why it matters, or leave running notes. */}
+      <AnimatePresence>
+      {selectedYearly && (
+        <motion.div key="yearly-panel-host" className="fixed inset-0 z-[60] flex justify-end">
+          <motion.div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={closeYearlyPanel}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: FADE_DURATION }}
+          />
+          <motion.div
+            className="relative w-full max-w-xl bg-card h-full shadow-2xl flex flex-col"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: PANEL_DURATION, ease: EASE_OUT_FAST }}
+          >
+            <div className="flex items-center px-4 py-3 shrink-0">
+              <button
+                onClick={closeYearlyPanel}
+                aria-label="Close"
+                className="p-1.5 rounded-md text-t3 hover:bg-surface hover:text-t1 transition-colors"
+              >
+                <X className="w-4 h-4" weight="bold" />
+              </button>
+            </div>
+
+            <OverlayScrollbarsComponent
+              className="flex-1 px-12 pb-12"
+              options={{ scrollbars: { autoHide: 'never' } }}
+              defer
+            >
+              <div className="pt-4 pb-6">
+                <EditableTitle
+                  value={selectedYearly.title}
+                  onChange={(v) => updateYearly(selectedYearly.id, { title: v })}
+                  className="text-3xl font-bold text-t1 leading-tight tracking-tight block w-full"
+                  placeholder="Untitled yearly target"
+                  autoFocus={isNewItemRef.current}
+                />
+              </div>
+
+              <div className="space-y-1 mb-8">
+                <PropertyRow icon={Clock} label="Progress">
+                  <ProgressBar value={selectedYearly.progress} />
+                </PropertyRow>
+                {selectedYearly.members.length > 1 && (
+                  <PropertyRow icon={UsersThree} label="Shared with">
+                    <div className="flex items-center gap-2">
+                      <MemberAvatarGroup members={selectedYearly.members} size={6} max={5} />
+                      <span className="text-xs text-t3">
+                        {selectedYearly.members.length} member{selectedYearly.members.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                  </PropertyRow>
+                )}
+              </div>
+
+              <div className="border-t border-border-s mb-4" />
+
+              <h4 className="text-xs font-medium text-t2 uppercase tracking-wider mb-2">
+                Notes & specifications
+              </h4>
+              <textarea
+                value={selectedYearly.description}
+                onChange={(e) => updateYearly(selectedYearly.id, { description: e.target.value })}
+                placeholder="What is this yearly goal? Why does it matter? Any context, constraints, or running notes…"
+                rows={6}
+                className="w-full bg-transparent text-sm text-t1 placeholder-t3 outline-none resize-none leading-relaxed mb-6"
+              />
+
+              <div>
+                <h4 className="text-xs font-medium text-t2 uppercase tracking-wider mb-3">
+                  Monthly targets
+                </h4>
+                <div className="space-y-1">
+                  {monthlies.filter((m) => m.yearlyTargetId === selectedYearly.id).length === 0 && (
+                    <p className="text-xs text-t3 italic">
+                      No monthly targets linked yet — progress is 100% by default. Link a monthly to this yearly from the Monthly Targets tab.
+                    </p>
+                  )}
+                  {monthlies
+                    .filter((m) => m.yearlyTargetId === selectedYearly.id)
+                    .map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => {
+                          setSelectedYearlyId(null);
+                          setSelectedMonthlyId(m.id);
+                        }}
+                        className="flex items-start justify-between w-full px-2 py-2 rounded-md hover:bg-surface text-left gap-3"
+                      >
+                        <span className="text-sm text-t1 break-all min-w-0">
+                          {m.title || <span className="text-t3 italic">Untitled</span>}
+                        </span>
+                        <span className="text-xs text-t3 shrink-0">
+                          {monthlyProgress(m.id, weeklies, tasks)}%
+                        </span>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            </OverlayScrollbarsComponent>
+          </motion.div>
+        </motion.div>
+      )}
       </AnimatePresence>
 
       {/* MONTHLY PANEL */}
