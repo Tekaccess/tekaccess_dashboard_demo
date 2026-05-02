@@ -18,7 +18,7 @@ const SLUG_LABELS: Record<string, string> = {
   operations: 'Operations',
   inventory: 'Inventory',
   procurement: 'Procurement',
-  data_entry: 'Data Entry',
+  data_entry: 'IT & Development',
 };
 
 interface HeaderProps {
@@ -836,7 +836,7 @@ const DASHBOARD_LABELS: Record<string, string> = {
   executive: 'Executive', finance: 'Finance', transport: 'Transport',
   operations: 'Operations', inventory: 'Inventory',
   procurement: 'Procurement',
-  data_entry: 'Data Entry', system: 'Account',
+  data_entry: 'IT & Development', system: 'Account',
 };
 
 function ActivityEntry({ log }: { log: import('../lib/api').ActivityLog }) {

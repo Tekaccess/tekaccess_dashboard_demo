@@ -316,11 +316,11 @@ export const departmentsData = [
   },
   {
     id: "data_team",
-    name: "Data Entry",
-    role: "Data Engineer",
+    name: "IT & Development",
+    role: "IT Developer",
     sections: [
       {
-        title: "Data Team",
+        title: "IT & Development",
         items: [
           {
             name: "Pipelines & Jobs",

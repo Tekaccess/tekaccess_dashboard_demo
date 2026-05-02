@@ -11,7 +11,7 @@ const DEPT_LABELS: Record<string, string> = {
   sales: 'Sales',
   hr: 'HR',
   admin: 'Admin',
-  data_team: 'Data Team',
+  data_team: 'IT & Development',
 };
 
 const STATUS_DOTS: Record<string, string> = {

@@ -13,7 +13,7 @@ import {
 const DASHBOARD_SLUGS = ['executive', 'finance', 'transport', 'operations', 'procurement', 'inventory', 'data_entry'];
 const SLUG_LABELS: Record<string, string> = {
   executive: 'Executive', finance: 'Finance', transport: 'Transport',
-  operations: 'Operations', procurement: 'Procurement', inventory: 'Inventory', data_entry: 'Data Entry',
+  operations: 'Operations', procurement: 'Procurement', inventory: 'Inventory', data_entry: 'IT & Development',
 };
 const ROLES: UserRole[] = ['super_admin', 'admin', 'user'];
 const ROLE_LABELS: Record<string, string> = { super_admin: 'Super Admin', admin: 'Admin', user: 'User' };

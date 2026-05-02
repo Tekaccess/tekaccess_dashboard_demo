@@ -43,8 +43,8 @@ export const employeesData: Employee[] = [
     fullName: "Gusenga Thierry",
     email: "thierry.gusenga@tekaccess.com",
     phone: "+250 788 123 456",
-    department: "Data Team",
-    role: "Data Engineer",
+    department: "IT & Development",
+    role: "IT Developer",
     status: "active",
     personalInfo: {
       dateOfBirth: "1995-03-15",
@@ -144,11 +144,11 @@ export const departmentsOverview: DepartmentOverview[] = [
   },
   {
     id: "data_team",
-    name: "Data Team",
+    name: "IT & Development",
     manager: "Gusenga Thierry",
     employeeCount: 2,
     budget: "1,500,000 RWF",
     status: "active",
-    description: "Data engineering, analytics, and reporting",
+    description: "Internal tools, integrations, and platform development",
   },
 ];
