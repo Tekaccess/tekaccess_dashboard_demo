@@ -675,19 +675,51 @@ function PropertyRow({
   );
 }
 
+function SkeletonRow({ cols }: { cols: number }) {
+  return (
+    <TableRow className="pointer-events-none">
+      {Array.from({ length: cols }).map((_, i) => (
+        <TableCell key={i}>
+          <div className="h-4 bg-surface rounded animate-pulse" />
+        </TableCell>
+      ))}
+    </TableRow>
+  );
+}
+
+// Module-scope cache so navigating away from the page and back doesn't show
+// an empty / loading state — we render last-known data instantly and refetch
+// silently. Lives until full reload or logout.
+type TaskMgmtCacheShape = {
+  tasks: Task[];
+  weeklies: WeeklyTarget[];
+  monthlies: MonthlyTarget[];
+  yearlies: YearlyTarget[];
+  users: User[];
+  taskView: TaskView;
+};
+let taskMgmtCache: TaskMgmtCacheShape | null = null;
+
 export default function TaskManagement() {
   const [tab, setTab] = useState<TabKey>('tasks');
   // Default to "mine" so users land on their own queue, not their delegations.
-  const [taskView, setTaskView] = useState<TaskView>('mine');
+  const [taskView, setTaskView] = useState<TaskView>(taskMgmtCache?.taskView ?? 'mine');
 
   const { user: currentUser } = useAuth();
   const currentUserId = (currentUser as { _id?: string } | null)?._id ?? null;
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [weeklies, setWeeklies] = useState<WeeklyTarget[]>([]);
-  const [monthlies, setMonthlies] = useState<MonthlyTarget[]>([]);
-  const [yearlies, setYearlies] = useState<YearlyTarget[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState<Task[]>(taskMgmtCache?.tasks ?? []);
+  const [weeklies, setWeeklies] = useState<WeeklyTarget[]>(taskMgmtCache?.weeklies ?? []);
+  const [monthlies, setMonthlies] = useState<MonthlyTarget[]>(taskMgmtCache?.monthlies ?? []);
+  const [yearlies, setYearlies] = useState<YearlyTarget[]>(taskMgmtCache?.yearlies ?? []);
+  const [users, setUsers] = useState<User[]>(taskMgmtCache?.users ?? []);
+  // Skip the loading state when we have cached data — the silent background
+  // refetch below will update everything if anything changed.
+  const [loading, setLoading] = useState(!taskMgmtCache);
+
+  // Keep the module cache in sync so the next mount has the latest data.
+  useEffect(() => {
+    taskMgmtCache = { tasks, weeklies, monthlies, yearlies, users, taskView };
+  }, [tasks, weeklies, monthlies, yearlies, users, taskView]);
 
   const getUser = useCallback(
     (id: string | null): User | null => (id ? users.find((u) => u._id === id) ?? null : null),
@@ -1590,7 +1622,10 @@ export default function TaskManagement() {
                     </TableRow>
                   );
                 })}
-                {filteredTasks.length === 0 && (
+                {filteredTasks.length === 0 && loading && (
+                  Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={`sk-${i}`} cols={visibleCols + 1} />)
+                )}
+                {filteredTasks.length === 0 && !loading && (
                   <TableRow>
                     <TableCell colSpan={visibleCols + 1} className="py-12 text-center text-sm text-t3">
                       No tasks match your filters.
@@ -1803,7 +1838,10 @@ export default function TaskManagement() {
                     </TableRow>
                   );
                 })}
-                {filteredWeeklies.length === 0 && (
+                {filteredWeeklies.length === 0 && loading && (
+                  Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={`sk-${i}`} cols={visibleCols + 1} />)
+                )}
+                {filteredWeeklies.length === 0 && !loading && (
                   <TableRow>
                     <TableCell colSpan={visibleCols + 1} className="py-12 text-center text-sm text-t3">
                       No weekly targets yet.
@@ -1950,7 +1988,10 @@ export default function TaskManagement() {
                     </TableRow>
                   );
                 })}
-                {filteredMonthlies.length === 0 && (
+                {filteredMonthlies.length === 0 && loading && (
+                  Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={`sk-${i}`} cols={visibleCols + 1} />)
+                )}
+                {filteredMonthlies.length === 0 && !loading && (
                   <TableRow>
                     <TableCell colSpan={visibleCols + 1} className="py-12 text-center text-sm text-t3">
                       No monthly targets yet.
@@ -2083,7 +2124,10 @@ export default function TaskManagement() {
                     </TableRow>
                   );
                 })}
-                {filteredYearlies.length === 0 && (
+                {filteredYearlies.length === 0 && loading && (
+                  Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={`sk-${i}`} cols={visibleCols + 1} />)
+                )}
+                {filteredYearlies.length === 0 && !loading && (
                   <TableRow>
                     <TableCell colSpan={visibleCols + 1} className="py-12 text-center text-sm text-t3">
                       No yearly targets yet.

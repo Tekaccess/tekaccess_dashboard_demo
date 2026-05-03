@@ -88,19 +88,41 @@ const DEFAULT_LAYERS: Layers = { events: true, tasks: true, weekly: false, month
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+// Module-scope cache so navigating away and back doesn't show an empty
+// loading state. Keyed by `yyyy-MM` so flipping between months also benefits.
+type CalendarMonthCache = {
+  events: CalendarEventRecord[];
+  tasks: TaskRecord[];
+  weeklies: WeeklyTargetRecord[];
+  monthlies: MonthlyTargetRecord[];
+};
+const calendarMonthCache = new Map<string, CalendarMonthCache>();
+let calendarUsersCache: AssignableUser[] | null = null;
+const monthKey = (d: Date) => format(d, 'yyyy-MM');
+
 export default function CalendarPage() {
   const [month, setMonth] = useState<Date>(() => new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [layers, setLayers] = useState<Layers>(DEFAULT_LAYERS);
 
-  const [events, setEvents] = useState<CalendarEventRecord[]>([]);
-  const [tasks, setTasks] = useState<TaskRecord[]>([]);
-  const [weeklies, setWeeklies] = useState<WeeklyTargetRecord[]>([]);
-  const [monthlies, setMonthlies] = useState<MonthlyTargetRecord[]>([]);
+  const initialMonthCache = calendarMonthCache.get(monthKey(new Date()));
+  const [events, setEvents] = useState<CalendarEventRecord[]>(initialMonthCache?.events ?? []);
+  const [tasks, setTasks] = useState<TaskRecord[]>(initialMonthCache?.tasks ?? []);
+  const [weeklies, setWeeklies] = useState<WeeklyTargetRecord[]>(initialMonthCache?.weeklies ?? []);
+  const [monthlies, setMonthlies] = useState<MonthlyTargetRecord[]>(initialMonthCache?.monthlies ?? []);
 
-  const [users, setUsers] = useState<AssignableUser[]>([]);
+  const [users, setUsers] = useState<AssignableUser[]>(calendarUsersCache ?? []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Sync the per-month cache as state evolves (mutations, refetches).
+  useEffect(() => {
+    calendarMonthCache.set(monthKey(month), { events, tasks, weeklies, monthlies });
+  }, [month, events, tasks, weeklies, monthlies]);
+
+  useEffect(() => {
+    if (users.length > 0) calendarUsersCache = users;
+  }, [users]);
 
   // Modal: create or edit event
   const [editingEvent, setEditingEvent] = useState<CalendarEventRecord | null>(null);
@@ -112,7 +134,16 @@ export default function CalendarPage() {
 
   // Reload everything for the visible month range plus a small buffer.
   const loadAll = useCallback(async () => {
-    setLoading(true);
+    const cached = calendarMonthCache.get(monthKey(month));
+    // Hydrate immediately from cache so the user sees data without a flicker.
+    if (cached) {
+      setEvents(cached.events);
+      setTasks(cached.tasks);
+      setWeeklies(cached.weeklies);
+      setMonthlies(cached.monthlies);
+    }
+    // Only show the spinner when we genuinely have nothing to display.
+    if (!cached) setLoading(true);
     setError('');
     try {
       const dateFrom = startOfMonth(month).toISOString();
@@ -128,7 +159,7 @@ export default function CalendarPage() {
       if (wRes.success) setWeeklies(wRes.data.weeklyTargets);
       if (mRes.success) setMonthlies(mRes.data.monthlyTargets);
     } catch {
-      setError('Failed to load calendar data.');
+      if (!cached) setError('Failed to load calendar data.');
     } finally {
       setLoading(false);
     }
@@ -137,6 +168,7 @@ export default function CalendarPage() {
   useEffect(() => { loadAll(); }, [loadAll]);
 
   useEffect(() => {
+    if (calendarUsersCache && calendarUsersCache.length > 0) return;
     apiListAssignableUsers().then((r) => { if (r.success) setUsers(r.data.users); });
   }, []);
 
