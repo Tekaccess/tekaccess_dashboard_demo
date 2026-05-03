@@ -869,7 +869,7 @@ export default function OperationsDashboard() {
             No warehouses configured yet.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3">
             {warehouseStock.map((wh) => (
               <WarehouseStockCard key={wh.warehouseId} wh={wh} />
             ))}
@@ -883,7 +883,7 @@ export default function OperationsDashboard() {
           <p className="text-xs font-black text-t3 uppercase tracking-widest mb-3">
             Stock Summary — Today
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
             <StockKpiCard
               label="Inbound"
               value={`${s.inboundToday.tons}t`}
