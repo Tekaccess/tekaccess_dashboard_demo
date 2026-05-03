@@ -1698,6 +1698,173 @@ export async function apiUpdateTrip(id: string, data: Partial<Trip>) {
   return request<{ trip: Trip }>(`/transport/trips/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
+// ─── Truck Allocations ───────────────────────────────────────────────────────
+
+export type TruckType = 'tipper' | 'flatbed';
+
+export type TipperStage =
+  | 'allocated' | 'waiting_mine' | 'loading_mine' | 'shunting'
+  | 'waiting_crushing' | 'loading_crushed' | 'transit';
+
+export type FlatbedStage =
+  | 'wait_shunting' | 'allocated' | 'waiting_bagged' | 'loading_bagged'
+  | 'waiting_crushing' | 'loading' | 'transit';
+
+export type AllocationStage = TipperStage | FlatbedStage;
+
+export type AllocationHistoryEntry = {
+  stage: AllocationStage;
+  enteredAt: string;
+  fromLocation?: string | null;
+  toLocation?: string | null;
+  weighbridgeUrl?: string | null;
+  netWeight?: number | null;
+  postedByName?: string | null;
+  notes?: string | null;
+};
+
+export type TruckAllocation = {
+  _id: string;
+  allocationRef: string;
+  truckId: string;
+  plateNumber: string;
+  trailerNumber: string | null;
+  truckType: TruckType;
+  driverId: string | null;
+  driverName: string;
+  driverContact: string | null;
+  transporterId: string | null;
+  transporterName: string | null;
+  supplierId: string | null;
+  supplierName: string;
+  productId: string | null;
+  productName: string;
+  quantity: number;
+  purchaseOrderId: string | null;
+  purchaseOrderRef: string | null;
+  contractId: string | null;
+  contractRef: string | null;
+  warehouseId: string | null;
+  warehouseName: string;
+  currentStage: AllocationStage;
+  history: AllocationHistoryEntry[];
+  allocatedAt: string;
+  status: 'active' | 'completed' | 'cancelled';
+  completedAt: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  tripId: string | null;
+  tripRef: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AllocationsSummary = {
+  activeByType: Record<string, { count: number; tons: number }>;
+  activeByStage: { truckType: TruckType; stage: AllocationStage; count: number; tons: number }[];
+  completedToday: number;
+  cancelledToday: number;
+};
+
+export async function apiListAllocations(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams({ limit: '200', ...params }).toString();
+  return request<{ allocations: TruckAllocation[]; pagination: { total: number; pages: number; page: number; limit: number } }>(
+    `/transport/allocations?${qs}`
+  );
+}
+
+export async function apiGetAllocationById(id: string) {
+  return request<{ allocation: TruckAllocation }>(`/transport/allocations/${id}`);
+}
+
+export async function apiGetAllocationsSummary() {
+  return request<{ summary: AllocationsSummary }>('/transport/allocations/summary');
+}
+
+export async function apiCreateAllocation(data: {
+  truckId: string;
+  plateNumber: string;
+  trailerNumber?: string;
+  truckType: TruckType;
+  driverName: string;
+  driverContact?: string;
+  driverId?: string;
+  transporterId?: string;
+  transporterName?: string;
+  supplierId?: string;
+  supplierName: string;
+  productId?: string;
+  productName: string;
+  quantity: number;
+  purchaseOrderId?: string;
+  purchaseOrderRef?: string;
+  contractId?: string;
+  contractRef?: string;
+  warehouseId?: string;
+  warehouseName: string;
+  currentStage?: AllocationStage;
+  notes?: string;
+}) {
+  return request<{ allocation: TruckAllocation }>('/transport/allocations', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiAdvanceAllocationStage(id: string, data: {
+  nextStage?: AllocationStage;
+  netWeight?: number;
+  weighbridgeUrl?: string;
+  fromLocation?: string;
+  toLocation?: string;
+  notes?: string;
+}) {
+  return request<{ allocation: TruckAllocation }>(`/transport/allocations/${id}/advance`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiCancelAllocation(id: string, reason?: string) {
+  return request<{ allocation: TruckAllocation }>(`/transport/allocations/${id}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+// ─── Operations Dashboard (live data) ─────────────────────────────────────────
+
+export type WarehouseStockLive = {
+  warehouseId: string;
+  warehouseName: string;
+  siteRole: 'standard' | 'crushing_site' | 'loading_site';
+  uncrushedTons: number;
+  crushedTons: number;
+  totalCapacity: number | null;
+  capacityUnit: string | null;
+};
+
+export type StockSummaryLive = {
+  inboundToday: { count: number; tons: number };
+  processingToday: { count: number; tons: number };
+  transferToday: { count: number; tons: number };
+  outboundToday: { count: number; tons: number };
+  transitNow: { count: number; tons: number };
+};
+
+export type OperationsDashboardData = {
+  allocations: { tippers: TruckAllocation[]; flatbeds: TruckAllocation[] };
+  warehouseStock: WarehouseStockLive[];
+  stockSummary: StockSummaryLive;
+  counts: { activeAllocations: number; tippers: number; flatbeds: number };
+  asOf: string;
+};
+
+export async function apiGetOperationsDashboard() {
+  return request<OperationsDashboardData>('/operations/dashboard');
+}
+
 // Fuel Logs
 export async function apiListFuelLogs(params: Record<string, string> = {}) {
   const qs = new URLSearchParams({ limit: '200', ...params }).toString();

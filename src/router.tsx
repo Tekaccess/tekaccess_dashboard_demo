@@ -43,6 +43,7 @@ import FleetPage from "./pages/transport/FleetPage";
 import TripsPage from "./pages/transport/TripsPage";
 import FuelPage from "./pages/transport/FuelPage";
 import MaintenancePage from "./pages/transport/MaintenancePage";
+import AllocationsPage from "./pages/transport/AllocationsPage";
 import ProcurementInvoicesPage from "./pages/procurement/InvoicesPage";
 // Procurement and Sales now reuse the unified ContractsPage from operations.
 // Each path (operations/procurement/sales) mounts the same component, which
@@ -270,6 +271,12 @@ const maintenanceRoute = createRoute({
   component: MaintenancePage,
 });
 
+const allocationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/transport/allocations",
+  component: AllocationsPage,
+});
+
 // ── Explicit Operations Routes ──────────────────────────────────────────────
 const contractsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -473,6 +480,7 @@ const routeTree = rootRoute.addChildren([
   tripsRoute,
   fuelRoute,
   maintenanceRoute,
+  allocationsRoute,
   // Procurement explicit pages
   purchaseOrdersRoute,
   projectsRoute,

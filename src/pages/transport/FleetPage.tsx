@@ -273,17 +273,7 @@ export default function FleetPage() {
       </section>
 
       <section className="space-y-4">
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Service & Compliance</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelClass}>Last Service Date</label>
-            <input className={inputClass} type="date" value={draft.lastServiceDate} onChange={e => updateDraft({ lastServiceDate: e.target.value })} />
-          </div>
-          <div>
-            <label className={labelClass}>Next Service (km)</label>
-            <input className={inputClass} type="number" value={draft.nextServiceDueKm} onChange={e => updateDraft({ nextServiceDueKm: e.target.value })} placeholder="e.g. 130000" />
-          </div>
-        </div>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Compliance</p>
         <div>
           <label className={labelClass}>Insurance Expiry</label>
           <input className={inputClass} type="date" value={draft.insuranceExpiry} onChange={e => updateDraft({ insuranceExpiry: e.target.value })} />

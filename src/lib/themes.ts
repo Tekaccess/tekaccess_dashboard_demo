@@ -14,9 +14,12 @@ export type ThemeColors = {
   scrollbarThumb: string;
 };
 
+export type ThemeMode = 'light' | 'dark';
+
 export type ThemeDef = {
   id: string;
   name: string;
+  mode: ThemeMode;
   colors: ThemeColors;
 };
 
@@ -24,6 +27,7 @@ export const THEMES: ThemeDef[] = [
   {
     id: 'default',
     name: 'TekAccess',
+    mode: 'light',
     colors: {
       appBg: '#f6f6f6',
       cardBg: '#ffffff',
@@ -43,6 +47,7 @@ export const THEMES: ThemeDef[] = [
   {
     id: 'notion',
     name: 'Notion',
+    mode: 'light',
     colors: {
       appBg: '#f7f7f5',
       cardBg: '#ffffff',
@@ -62,6 +67,7 @@ export const THEMES: ThemeDef[] = [
   {
     id: 'pinterest',
     name: 'Pinterest',
+    mode: 'light',
     colors: {
       appBg: '#f9f9f9',
       cardBg: '#ffffff',
@@ -81,6 +87,7 @@ export const THEMES: ThemeDef[] = [
   {
     id: 'github',
     name: 'GitHub',
+    mode: 'light',
     colors: {
       appBg: '#f6f8fa',
       cardBg: '#ffffff',
@@ -100,6 +107,7 @@ export const THEMES: ThemeDef[] = [
   {
     id: 'slate',
     name: 'Slate',
+    mode: 'light',
     colors: {
       appBg: '#f1f5f9',
       cardBg: '#ffffff',
@@ -119,6 +127,7 @@ export const THEMES: ThemeDef[] = [
   {
     id: 'emerald',
     name: 'Emerald',
+    mode: 'light',
     colors: {
       appBg: '#f5f8f6',
       cardBg: '#ffffff',
@@ -138,6 +147,7 @@ export const THEMES: ThemeDef[] = [
   {
     id: 'amber',
     name: 'Amber',
+    mode: 'light',
     colors: {
       appBg: '#f8f6f1',
       cardBg: '#ffffff',
@@ -157,6 +167,7 @@ export const THEMES: ThemeDef[] = [
   {
     id: 'rose',
     name: 'Rose',
+    mode: 'light',
     colors: {
       appBg: '#f8f5f5',
       cardBg: '#ffffff',
@@ -176,6 +187,7 @@ export const THEMES: ThemeDef[] = [
   {
     id: 'violet',
     name: 'Violet',
+    mode: 'light',
     colors: {
       appBg: '#f7f6f9',
       cardBg: '#ffffff',
@@ -195,6 +207,7 @@ export const THEMES: ThemeDef[] = [
   {
     id: 'ocean',
     name: 'Ocean',
+    mode: 'light',
     colors: {
       appBg: '#f4f8f8',
       cardBg: '#ffffff',
@@ -209,6 +222,168 @@ export const THEMES: ThemeDef[] = [
       borderS: 'rgba(22,40,40,0.06)',
       scrollbarBg: '#dce8e6',
       scrollbarThumb: '#90b4b0',
+    },
+  },
+
+  // ── Dark themes ────────────────────────────────────────────────────────────
+  {
+    id: 'midnight',
+    name: 'Midnight',
+    mode: 'dark',
+    colors: {
+      appBg: '#000000',
+      cardBg: '#0a0a0a',
+      surface: '#111111',
+      surfaceHover: '#1a1a1a',
+      text1: '#ffffff',
+      text2: '#a0a0a0',
+      text3: '#6b6b6b',
+      accent: '#3b82f6',
+      accentH: '#2563eb',
+      border: 'rgba(255,255,255,0.08)',
+      borderS: 'rgba(255,255,255,0.04)',
+      scrollbarBg: '#0a0a0a',
+      scrollbarThumb: '#2a2a2a',
+    },
+  },
+  {
+    id: 'claude',
+    name: 'Claude',
+    mode: 'dark',
+    colors: {
+      appBg: '#2a2521',
+      cardBg: '#353029',
+      surface: '#3a342d',
+      surfaceHover: '#44403a',
+      text1: '#faf6f0',
+      text2: '#c4b8a8',
+      text3: '#8a7e6e',
+      accent: '#cc785c',
+      accentH: '#b56849',
+      border: 'rgba(250,246,240,0.08)',
+      borderS: 'rgba(250,246,240,0.04)',
+      scrollbarBg: '#2a2521',
+      scrollbarThumb: '#4a4439',
+    },
+  },
+  {
+    id: 'notion-dark',
+    name: 'Notion Dark',
+    mode: 'dark',
+    colors: {
+      appBg: '#191919',
+      cardBg: '#202020',
+      surface: '#2f2f2f',
+      surfaceHover: '#393939',
+      text1: '#ffffff',
+      text2: '#b3b3b3',
+      text3: '#6e6e6e',
+      accent: '#2eaadc',
+      accentH: '#1d8eb8',
+      border: 'rgba(255,255,255,0.07)',
+      borderS: 'rgba(255,255,255,0.04)',
+      scrollbarBg: '#1f1f1f',
+      scrollbarThumb: '#4a4a4a',
+    },
+  },
+  {
+    id: 'github-dark',
+    name: 'GitHub Dark',
+    mode: 'dark',
+    colors: {
+      appBg: '#0d1117',
+      cardBg: '#161b22',
+      surface: '#1c2128',
+      surfaceHover: '#262c36',
+      text1: '#e6edf3',
+      text2: '#9198a1',
+      text3: '#6e7681',
+      accent: '#2f81f7',
+      accentH: '#1f6feb',
+      border: 'rgba(240,246,252,0.10)',
+      borderS: 'rgba(240,246,252,0.06)',
+      scrollbarBg: '#161b22',
+      scrollbarThumb: '#30363d',
+    },
+  },
+  {
+    id: 'slate-dark',
+    name: 'Slate Dark',
+    mode: 'dark',
+    colors: {
+      appBg: '#0f172a',
+      cardBg: '#1e293b',
+      surface: '#1e293b',
+      surfaceHover: '#334155',
+      text1: '#f1f5f9',
+      text2: '#cbd5e1',
+      text3: '#94a3b8',
+      accent: '#38bdf8',
+      accentH: '#0ea5e9',
+      border: 'rgba(241,245,249,0.10)',
+      borderS: 'rgba(241,245,249,0.05)',
+      scrollbarBg: '#1e293b',
+      scrollbarThumb: '#475569',
+    },
+  },
+  {
+    id: 'dracula',
+    name: 'Dracula',
+    mode: 'dark',
+    colors: {
+      appBg: '#282a36',
+      cardBg: '#343746',
+      surface: '#44475a',
+      surfaceHover: '#55586d',
+      text1: '#f8f8f2',
+      text2: '#bfbfb5',
+      text3: '#6272a4',
+      accent: '#bd93f9',
+      accentH: '#9d6cf2',
+      border: 'rgba(248,248,242,0.09)',
+      borderS: 'rgba(248,248,242,0.05)',
+      scrollbarBg: '#343746',
+      scrollbarThumb: '#5e6377',
+    },
+  },
+  {
+    id: 'nord',
+    name: 'Nord',
+    mode: 'dark',
+    colors: {
+      appBg: '#2e3440',
+      cardBg: '#3b4252',
+      surface: '#434c5e',
+      surfaceHover: '#4c566a',
+      text1: '#eceff4',
+      text2: '#d8dee9',
+      text3: '#8a93a3',
+      accent: '#88c0d0',
+      accentH: '#5e95a8',
+      border: 'rgba(236,239,244,0.09)',
+      borderS: 'rgba(236,239,244,0.05)',
+      scrollbarBg: '#3b4252',
+      scrollbarThumb: '#4c566a',
+    },
+  },
+  {
+    id: 'ocean-dark',
+    name: 'Ocean Dark',
+    mode: 'dark',
+    colors: {
+      appBg: '#0a1929',
+      cardBg: '#122236',
+      surface: '#1a3050',
+      surfaceHover: '#234063',
+      text1: '#e8f0f8',
+      text2: '#94aac0',
+      text3: '#6580a0',
+      accent: '#14b8a6',
+      accentH: '#0d9488',
+      border: 'rgba(232,240,248,0.08)',
+      borderS: 'rgba(232,240,248,0.04)',
+      scrollbarBg: '#122236',
+      scrollbarThumb: '#2a456a',
     },
   },
 ];

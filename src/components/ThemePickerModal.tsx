@@ -1,9 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, CheckCircle, PaintBrush, CircleNotch } from '@phosphor-icons/react';
+import { X, CheckCircle, PaintBrush, CircleNotch, Sun, Moon } from '@phosphor-icons/react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { THEMES, deriveCustomTheme, applyThemeColors, type ThemeColors } from '../lib/themes';
+import { THEMES, deriveCustomTheme, applyThemeColors, type ThemeColors, type ThemeDef } from '../lib/themes';
+
+function ThemeSwatch({
+  theme, isActive, saving, onSelect,
+}: { theme: ThemeDef; isActive: boolean; saving: string | null; onSelect: () => void }) {
+  return (
+    <button
+      onClick={onSelect}
+      disabled={saving !== null}
+      className={`relative flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all disabled:cursor-wait ${
+        isActive
+          ? 'border-accent bg-accent-glow'
+          : 'border-transparent hover:border-border bg-surface hover:bg-surface-hover'
+      }`}
+    >
+      <div
+        className="w-full h-12 rounded-lg overflow-hidden relative"
+        style={{ background: theme.colors.appBg }}
+      >
+        <div
+          className="absolute bottom-0 left-0 right-0 h-5"
+          style={{ background: theme.colors.surface }}
+        />
+        <div
+          className="absolute top-2 left-2 w-7 h-4 rounded-md border"
+          style={{ background: theme.colors.cardBg, borderColor: theme.colors.border }}
+        />
+        <div
+          className="absolute bottom-1.5 right-1.5 w-2.5 h-2.5 rounded-full"
+          style={{ background: theme.colors.accent }}
+        />
+      </div>
+      <span className="text-[10px] font-semibold text-t2 text-center leading-tight">
+        {theme.name}
+      </span>
+      {isActive && (
+        <span className="absolute top-1 right-1">
+          {saving === theme.id
+            ? <CircleNotch size={12} weight="bold" className="text-accent animate-spin" />
+            : <CheckCircle size={12} weight="fill" className="text-accent" />
+          }
+        </span>
+      )}
+    </button>
+  );
+}
 
 interface ThemePickerModalProps {
   isOpen: boolean;
@@ -115,64 +160,40 @@ export default function ThemePickerModal({ isOpen, onClose }: ThemePickerModalPr
               {/* Body */}
               <div className="overflow-y-auto p-5 space-y-4">
 
-                {/* Theme label */}
-                <p className="text-xs font-semibold text-t3 uppercase tracking-widest">Preset Themes</p>
-
-                {/* Preset grid */}
+                {/* Light themes */}
+                <div className="flex items-center gap-2">
+                  <Sun size={12} weight="duotone" className="text-amber-500" />
+                  <p className="text-xs font-semibold text-t3 uppercase tracking-widest">Light Themes</p>
+                </div>
                 <div className="grid grid-cols-5 gap-2">
-                  {THEMES.map(theme => {
-                    const isActive = activeId === theme.id;
-                    return (
-                      <button
-                        key={theme.id}
-                        onClick={() => handleSelectPreset(theme.id)}
-                        disabled={saving !== null}
-                        className={`relative flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all disabled:cursor-wait ${
-                          isActive
-                            ? 'border-accent bg-accent-glow'
-                            : 'border-transparent hover:border-border bg-surface hover:bg-surface-hover'
-                        }`}
-                      >
-                        {/* Swatch preview */}
-                        <div
-                          className="w-full h-12 rounded-lg overflow-hidden relative"
-                          style={{ background: theme.colors.appBg }}
-                        >
-                          <div
-                            className="absolute bottom-0 left-0 right-0 h-5"
-                            style={{ background: theme.colors.surface }}
-                          />
-                          <div
-                            className="absolute top-2 left-2 w-7 h-4 rounded-md border"
-                            style={{
-                              background: theme.colors.cardBg,
-                              borderColor: theme.colors.border,
-                            }}
-                          />
-                          <div
-                            className="absolute bottom-1.5 right-1.5 w-2.5 h-2.5 rounded-full"
-                            style={{ background: theme.colors.accent }}
-                          />
-                        </div>
+                  {THEMES.filter(t => t.mode === 'light').map(theme => (
+                    <ThemeSwatch
+                      key={theme.id}
+                      theme={theme}
+                      isActive={activeId === theme.id}
+                      saving={saving}
+                      onSelect={() => handleSelectPreset(theme.id)}
+                    />
+                  ))}
+                </div>
 
-                        <span className="text-[10px] font-semibold text-t2 text-center leading-tight">
-                          {theme.name}
-                        </span>
+                {/* Dark themes */}
+                <div className="flex items-center gap-2 pt-1">
+                  <Moon size={12} weight="duotone" className="text-indigo-400" />
+                  <p className="text-xs font-semibold text-t3 uppercase tracking-widest">Dark Themes</p>
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {THEMES.filter(t => t.mode === 'dark').map(theme => (
+                    <ThemeSwatch
+                      key={theme.id}
+                      theme={theme}
+                      isActive={activeId === theme.id}
+                      saving={saving}
+                      onSelect={() => handleSelectPreset(theme.id)}
+                    />
+                  ))}
 
-                        {/* Active indicator */}
-                        {isActive && (
-                          <span className="absolute top-1 right-1">
-                            {saving === theme.id
-                              ? <CircleNotch size={12} weight="bold" className="text-accent animate-spin" />
-                              : <CheckCircle size={12} weight="fill" className="text-accent" />
-                            }
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-
-                  {/* Custom card */}
+                  {/* Custom card lives at the end of the dark grid */}
                   <button
                     onClick={handleSelectCustom}
                     disabled={saving !== null}

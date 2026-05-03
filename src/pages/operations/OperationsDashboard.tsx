@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Truck,
   Hourglass,
@@ -15,12 +15,9 @@ import {
   ArrowUp,
   Users,
   Buildings,
+  Spinner,
 } from "@phosphor-icons/react";
 import {
-  mockTruckAllocations,
-  mockMovementRecords,
-  mockStockSummary,
-  mockWarehouseStock,
   TIPPER_STAGE_CONFIGS,
   FLATBED_STAGE_CONFIGS,
   type TruckAllocation,
@@ -30,6 +27,12 @@ import {
   type MovementRecord,
   type WarehouseStock,
 } from "../../data/truckMovements";
+import {
+  apiGetOperationsDashboard,
+  type OperationsDashboardData,
+  type TruckAllocation as ApiTruckAllocation,
+  type WarehouseStockLive,
+} from "../../lib/api";
 
 // ─── Color Helpers ────────────────────────────────────────────────────────────
 
@@ -137,18 +140,18 @@ function StageCard({
       >
         {count}
       </p>
-      <p className="text-[11px] text-t3 mt-0.5 leading-tight">
+      <p className="text-xs text-t3 mt-0.5 leading-tight font-medium">
         {config.shortLabel}
       </p>
       {count > 0 && (
-        <p className={`text-[10px] font-semibold mt-1 ${c.text}`}>
+        <p className={`text-xs font-semibold mt-1 ${c.text}`}>
           {totalTons}t
         </p>
       )}
       <p
-        className={`text-[10px] font-semibold text-accent mt-2 inline-flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity`}
+        className={`text-xs font-semibold text-accent mt-2 inline-flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity`}
       >
-        View <ArrowRight size={10} weight="bold" />
+        View <ArrowRight size={11} weight="bold" />
       </p>
     </button>
   );
@@ -183,10 +186,10 @@ function TruckTypeSection({
           />
         </div>
         <div>
-          <p className="text-sm font-bold text-t1">
+          <p className="text-base font-bold text-t1">
             {type === "tipper" ? "Tipper Trucks" : "Flatbed Trucks"}
           </p>
-          <p className="text-xs text-t3">
+          <p className="text-sm text-t3">
             {trucks.length} trucks · {totalTons}t allocated today
           </p>
         </div>
@@ -303,7 +306,7 @@ function TruckJourneyRow({
                     }`}
                   />
                   <p
-                    className={`text-[9px] text-center mt-1 leading-tight max-w-[64px] ${
+                    className={`text-[11px] text-center mt-1 leading-tight max-w-[72px] ${
                       status === "current"
                         ? `font-bold ${c.text}`
                         : status === "completed"
@@ -314,7 +317,7 @@ function TruckJourneyRow({
                     {cfg.shortLabel}
                   </p>
                   {historyEntry && (
-                    <p className="text-[8px] text-t3 mt-0.5">
+                    <p className="text-[10px] text-t3 mt-0.5">
                       {formatTime(historyEntry.enteredAt)}
                     </p>
                   )}
@@ -339,7 +342,7 @@ function TruckJourneyRow({
 
       {/* Last posted by */}
       {lastEntry && (
-        <p className="text-[10px] text-t3 mt-3">
+        <p className="text-xs text-t3 mt-3">
           Last updated by <span className="text-t2">{lastEntry.postedBy}</span>
           {lastEntry.fromLocation && lastEntry.toLocation && (
             <>
@@ -448,28 +451,28 @@ function WarehouseStockCard({ wh }: { wh: WarehouseStock }) {
       <div className="flex items-start gap-2 mb-3">
         <div className={`p-2 rounded-lg shrink-0 ${isCrusher ? 'bg-purple-500/10' : 'bg-accent-glow'}`}>
           <Buildings
-            size={14}
+            size={16}
             weight="duotone"
             className={isCrusher ? 'text-purple-400' : 'text-accent'}
           />
         </div>
         <div className="min-w-0">
-          <p className="text-xs font-bold text-t1 truncate">{wh.warehouseName}</p>
-          <p className="text-[10px] text-t3 capitalize">
+          <p className="text-sm font-bold text-t1 truncate">{wh.warehouseName}</p>
+          <p className="text-xs text-t3 capitalize">
             {isCrusher ? 'Crushing site' : 'Warehouse'}
           </p>
         </div>
       </div>
       <p className="text-2xl font-bold text-t1 leading-tight">{total}t</p>
-      <p className="text-[10px] text-t3 mt-0.5">Total on hand</p>
+      <p className="text-xs text-t3 mt-0.5">Total on hand</p>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <div className="bg-surface rounded-md px-2 py-1.5">
-          <p className="text-[10px] text-t3 leading-tight">Uncrushed</p>
-          <p className="text-sm font-bold text-amber-500 leading-tight">{wh.uncrushedTons}t</p>
+          <p className="text-xs text-t3 leading-tight">Uncrushed</p>
+          <p className="text-base font-bold text-amber-500 leading-tight">{wh.uncrushedTons}t</p>
         </div>
         <div className="bg-surface rounded-md px-2 py-1.5">
-          <p className="text-[10px] text-t3 leading-tight">Crushed</p>
-          <p className="text-sm font-bold text-emerald-400 leading-tight">{wh.crushedTons}t</p>
+          <p className="text-xs text-t3 leading-tight">Crushed</p>
+          <p className="text-base font-bold text-emerald-400 leading-tight">{wh.crushedTons}t</p>
         </div>
       </div>
     </div>
@@ -542,7 +545,7 @@ function StandbyQueueTable({ trucks, stageId }: { trucks: TruckAllocation[]; sta
                 {['Plate', 'Driver', 'Contact', 'Added', 'In queue'].map((h, i, arr) => (
                   <th
                     key={h}
-                    className={`text-left text-[10px] font-black text-t3 uppercase tracking-widest px-3 py-2 ${i === 0 ? 'pl-5' : ''} ${i === arr.length - 1 ? 'pr-5' : ''}`}
+                    className={`text-left text-xs font-black text-t3 uppercase tracking-widest px-3 py-2.5 ${i === 0 ? 'pl-5' : ''} ${i === arr.length - 1 ? 'pr-5' : ''}`}
                   >
                     {h}
                   </th>
@@ -554,18 +557,18 @@ function StandbyQueueTable({ trucks, stageId }: { trucks: TruckAllocation[]; sta
                 const enteredAt = t.history.find((h) => h.stage === stageId)?.enteredAt ?? t.allocatedAt;
                 return (
                   <tr key={t._id} className="divide-x divide-border">
-                    <td className="pl-5 pr-3 py-2.5">
-                      <span className="font-mono text-xs font-bold text-t1">{t.plateNumber}</span>
+                    <td className="pl-5 pr-3 py-3">
+                      <span className="font-mono text-sm font-bold text-t1">{t.plateNumber}</span>
                       {t.trailerNumber && (
                         <p className="text-xs text-t3">+ {t.trailerNumber}</p>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-t1">{t.driverName}</td>
-                    <td className="px-3 py-2.5 text-xs text-t2 font-mono">
+                    <td className="px-3 py-3 text-sm text-t1">{t.driverName}</td>
+                    <td className="px-3 py-3 text-sm text-t2 font-mono">
                       {t.driverContact ?? '—'}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-t2">{formatHm(enteredAt)}</td>
-                    <td className="pl-3 pr-5 py-2.5 text-xs text-t2">
+                    <td className="px-3 py-3 text-sm text-t2">{formatHm(enteredAt)}</td>
+                    <td className="pl-3 pr-5 py-3 text-sm text-t2">
                       {timeAgo(enteredAt)}
                     </td>
                   </tr>
@@ -597,8 +600,8 @@ function StockKpiCard({
     <div className={`bg-card rounded-xl border border-border p-4`}>
       <div className={`w-2 h-2 rounded-full ${c.dot} mb-3`} />
       <p className={`text-2xl font-bold ${c.text} leading-tight`}>{value}</p>
-      <p className="text-xs text-t3 mt-0.5">{label}</p>
-      {sub && <p className="text-[10px] text-t3 mt-1">{sub}</p>}
+      <p className="text-sm font-medium text-t2 mt-0.5">{label}</p>
+      {sub && <p className="text-xs text-t3 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -726,30 +729,121 @@ type ModalState = {
   stageId: TruckStage;
 } | null;
 
+// Map the live API payload into the shape the existing UI components expect.
+// The API type is a superset of the local type — null fields become empty
+// strings / undefined to match the optional/required mix in the local TS type.
+function adaptAllocation(a: ApiTruckAllocation): TruckAllocation {
+  return {
+    _id: a._id,
+    plateNumber: a.plateNumber,
+    trailerNumber: a.trailerNumber || undefined,
+    truckType: a.truckType,
+    driverName: a.driverName,
+    driverContact: a.driverContact || undefined,
+    transporterId: a.transporterId || '',
+    transporterName: a.transporterName || '',
+    supplierId: a.supplierId || '',
+    supplierName: a.supplierName,
+    productId: a.productId || '',
+    productName: a.productName,
+    purchaseOrderRef: a.purchaseOrderRef || '',
+    quantity: a.quantity,
+    warehouseName: a.warehouseName,
+    currentStage: a.currentStage as TruckStage,
+    allocatedAt: a.allocatedAt,
+    history: a.history.map(h => ({
+      stage: h.stage as TruckStage,
+      enteredAt: h.enteredAt,
+      fromLocation: h.fromLocation || undefined,
+      toLocation: h.toLocation || undefined,
+      weighbridgePicture: h.weighbridgeUrl || undefined,
+      postedBy: h.postedByName || '',
+      quantity: h.netWeight ?? undefined,
+    })),
+  };
+}
+
+function adaptWarehouse(w: WarehouseStockLive): WarehouseStock {
+  return {
+    warehouseId: w.warehouseId,
+    warehouseName: w.warehouseName,
+    siteRole: w.siteRole,
+    uncrushedTons: w.uncrushedTons,
+    crushedTons: w.crushedTons,
+  };
+}
+
 export default function OperationsDashboard() {
   const [modal, setModal] = useState<ModalState>(null);
+  const [data, setData] = useState<OperationsDashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const tipperAllocations = mockTruckAllocations.filter(
-    (t) => t.truckType === "tipper",
-  );
-  const flatbedAllocations = mockTruckAllocations.filter(
-    (t) => t.truckType === "flatbed",
-  );
+  const load = useCallback(async () => {
+    const res = await apiGetOperationsDashboard();
+    if (res.success) {
+      setData(res.data);
+      setError(null);
+    } else {
+      setError((res as any).message || 'Failed to load dashboard');
+    }
+    setLoading(false);
+  }, []);
 
-  const s = mockStockSummary;
+  useEffect(() => {
+    load();
+    // Light polling — keeps the floor view current without a websocket.
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+  }, [load]);
+
+  if (loading && !data) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Spinner size={32} className="animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <div className="bg-card border border-border rounded-xl p-6 text-center">
+        <Warning size={32} weight="duotone" className="mx-auto text-rose-400 mb-2" />
+        <p className="text-sm text-t1 font-bold">Could not load operations data</p>
+        <p className="text-xs text-t3 mt-1">{error}</p>
+        <button onClick={load}
+          className="mt-3 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-bold hover:opacity-90">
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const tippers = (data?.allocations.tippers || []).map(adaptAllocation);
+  const flatbeds = (data?.allocations.flatbeds || []).map(adaptAllocation);
+  const allAllocations = [...tippers, ...flatbeds];
+  const warehouseStock = (data?.warehouseStock || []).map(adaptWarehouse);
+  const s = data?.stockSummary;
 
   return (
     <div className="space-y-6">
       {/* ── Truck Movements ── */}
       <div>
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">
-          Truck Movements
-        </p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-black text-t3 uppercase tracking-widest">
+            Truck Movements
+          </p>
+          {data && (
+            <p className="text-xs text-t3">
+              live · {tippers.length + flatbeds.length} active · updated {new Date(data.asOf).toLocaleTimeString()}
+            </p>
+          )}
+        </div>
         <div className="space-y-3">
           <TruckTypeSection
             type="tipper"
             stageConfigs={TIPPER_STAGE_CONFIGS}
-            allocations={mockTruckAllocations}
+            allocations={allAllocations}
             onCardClick={(stageId) =>
               setModal({ truckType: "tipper", stageId })
             }
@@ -757,7 +851,7 @@ export default function OperationsDashboard() {
           <TruckTypeSection
             type="flatbed"
             stageConfigs={FLATBED_STAGE_CONFIGS}
-            allocations={mockTruckAllocations}
+            allocations={allAllocations}
             onCardClick={(stageId) =>
               setModal({ truckType: "flatbed", stageId })
             }
@@ -767,54 +861,62 @@ export default function OperationsDashboard() {
 
       {/* ── Warehouse Stock On Hand ── */}
       <div>
-        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">
+        <p className="text-xs font-black text-t3 uppercase tracking-widest mb-3">
           Warehouses — Stock On Hand
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-          {mockWarehouseStock.map((wh) => (
-            <WarehouseStockCard key={wh.warehouseId} wh={wh} />
-          ))}
-        </div>
+        {warehouseStock.length === 0 ? (
+          <div className="bg-card border border-border rounded-xl p-6 text-center text-sm text-t3">
+            No warehouses configured yet.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+            {warehouseStock.map((wh) => (
+              <WarehouseStockCard key={wh.warehouseId} wh={wh} />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* ── Stock Summary ── */}
-      <div>
-        {/* <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">
-          Stock Summary — Today
-        </p> */}
-        {/*<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <StockKpiCard
-            label="Inbound"
-            value={`${s.inboundToday.tons}t`}
-            sub={`${s.inboundToday.count} movements`}
-            color="emerald"
-          />
-          <StockKpiCard
-            label="Processing / Crushing"
-            value={`${s.processingToday.tons}t`}
-            sub={`${s.processingToday.count} movements`}
-            color="purple"
-          />
-          <StockKpiCard
-            label="Transfers"
-            value={`${s.transferToday.tons}t`}
-            sub={`${s.transferToday.count} movements`}
-            color="blue"
-          />
-          <StockKpiCard
-            label="Outbound"
-            value={`${s.outboundToday.tons}t`}
-            sub={`${s.outboundToday.count} movements`}
-            color="orange"
-          />
-          <StockKpiCard
-            label="Currently in Transit"
-            value={`${s.transitNow.tons}t`}
-            sub={`${s.transitNow.count} trucks`}
-            color="indigo"
-          />
-        </div>*/}
-      </div>
+      {/* ── Stock Summary — Today ── */}
+      {s && (
+        <div>
+          <p className="text-xs font-black text-t3 uppercase tracking-widest mb-3">
+            Stock Summary — Today
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <StockKpiCard
+              label="Inbound"
+              value={`${s.inboundToday.tons}t`}
+              sub={`${s.inboundToday.count} movements`}
+              color="emerald"
+            />
+            <StockKpiCard
+              label="Processing / Crushing"
+              value={`${s.processingToday.tons}t`}
+              sub={`${s.processingToday.count} movements`}
+              color="purple"
+            />
+            <StockKpiCard
+              label="Transfers"
+              value={`${s.transferToday.tons}t`}
+              sub={`${s.transferToday.count} movements`}
+              color="blue"
+            />
+            <StockKpiCard
+              label="Outbound"
+              value={`${s.outboundToday.tons}t`}
+              sub={`${s.outboundToday.count} movements`}
+              color="orange"
+            />
+            <StockKpiCard
+              label="Currently in Transit"
+              value={`${s.transitNow.tons}t`}
+              sub={`${s.transitNow.count} trucks`}
+              color="indigo"
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── Modal ── */}
       {modal && (
@@ -828,8 +930,8 @@ export default function OperationsDashboard() {
           }
           allocations={
             modal.truckType === "tipper"
-              ? tipperAllocations
-              : flatbedAllocations
+              ? tippers
+              : flatbeds
           }
           onClose={() => setModal(null)}
         />

@@ -143,6 +143,11 @@ export const departmentsData = [
         title: "Transport Department",
         items: [
           {
+            name: "Allocations",
+            icon: ClipboardText,
+            path: "/transport/allocations",
+          },
+          {
             name: "Fleet",
             icon: Truck,
             subItems: ["All Trucks", "Operating", "Idle", "In Maintenance"],
