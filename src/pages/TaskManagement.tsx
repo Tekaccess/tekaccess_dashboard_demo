@@ -77,6 +77,7 @@ import {
 import DatePicker from '../components/ui/DatePicker';
 import { AvatarGroup as MemberAvatarGroup } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
+import AiAssistant from '../components/AiAssistant';
 
 type Status = 'not-started' | 'in-progress' | 'completed' | 'postponed';
 type TabKey = 'tasks' | 'weekly' | 'monthly' | 'yearly';
@@ -2599,6 +2600,8 @@ export default function TaskManagement() {
         </motion.div>
       )}
       </AnimatePresence>
+
+      <AiAssistant />
     </div>
   );
 }
