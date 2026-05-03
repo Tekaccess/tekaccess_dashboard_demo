@@ -126,7 +126,12 @@ const TRANSPORT_METHODS = [
 ];
 
 interface NewMovementDraft {
-  mode: "inbound" | "outbound" | "transfer";
+  mode: "inbound" | "outbound";
+  // For outbound: where the stock is going. "warehouse" subsumes the old
+  // Transfer mode (creates a TRANSFER_OUT/TRANSFER_IN pair under the hood).
+  // "client_site" routes the stock to a Site whose clientId is set, which
+  // triggers the backend to upsert a Delivery aggregating tons by (client, PO).
+  outboundDestType: "warehouse" | "client_site";
   stockItemId: string;
   warehouseId: string;
   productId: string;
@@ -135,7 +140,7 @@ interface NewMovementDraft {
   reason: string;
   notes: string;
   destinationWarehouseId: string;
-  // Outbound destination — a Loading Site (operations.sites with siteType='loading')
+  // Outbound destination — a Site, either a loading site or a client site.
   destinationSiteId: string;
   destinationSiteName: string;
   // Inbound / weighbridge fields
@@ -169,6 +174,7 @@ interface NewMovementDraft {
 function emptyDraft(): NewMovementDraft {
   return {
     mode: "inbound",
+    outboundDestType: "warehouse",
     stockItemId: "",
     warehouseId: "",
     productId: "",
@@ -343,21 +349,21 @@ export default function MovementsPage() {
     ]);
   }, []);
 
-  // For Transfer mode: detect when the chosen source warehouse is a stop on
-  // some stock record's route. If so, that record's final warehouse is the
+  // For Outbound→Warehouse: detect when the chosen source warehouse is a stop
+  // on some stock record's route. If so, that record's final warehouse is the
   // natural transfer destination. Returned as a structured match so the form
   // can both prefill and render a banner.
   const transferRouteMatch = useMemo(() => {
-    if (draft.mode !== "transfer" || !draft.warehouseId) return null;
+    if (draft.mode !== "outbound" || draft.outboundDestType !== "warehouse" || !draft.warehouseId) return null;
     return (
       routedRecords.find((rec) =>
         rec.routeStops?.some((s) => s.warehouseId === draft.warehouseId),
       ) || null
     );
-  }, [draft.mode, draft.warehouseId, routedRecords]);
+  }, [draft.mode, draft.outboundDestType, draft.warehouseId, routedRecords]);
 
-  // Auto-fill the transfer destination when a route match is found and the
-  // user hasn't picked one yet.
+  // Auto-fill the outbound→warehouse destination when a route match is found
+  // and the user hasn't picked one yet.
   useEffect(() => {
     if (!transferRouteMatch) return;
     if (draft.destinationWarehouseId) return;
@@ -499,6 +505,21 @@ export default function MovementsPage() {
     [sites],
   );
 
+  // Client sites = sites with clientId set. These are the destinations that
+  // trigger an auto-Delivery upsert on the backend when an outbound is posted.
+  const clientSiteOptions = useMemo<SearchSelectOption[]>(
+    () =>
+      sites
+        .filter((s) => !!s.clientId)
+        .map((s) => ({
+          value: s._id,
+          label: s.name,
+          sublabel: s.siteCode,
+          meta: s.clientName || s.region || s.country || "",
+        })),
+    [sites],
+  );
+
   const selectedStock = stockItems.find((s) => s._id === draft.stockItemId);
   const destWhOptions = useMemo<SearchSelectOption[]>(
     () =>
@@ -608,18 +629,33 @@ export default function MovementsPage() {
       destinationSiteName: draft.destinationSiteName || undefined,
     } as any;
 
-    if (draft.mode === "transfer") {
+    if (draft.mode === "outbound" && draft.outboundDestType === "warehouse") {
       if (!draft.destinationWarehouseId) {
         setError("Destination warehouse is required.");
         setSaving(false);
         return;
       }
+      const sourceWh = draft.warehouseId || selectedStock?.warehouseId || "";
+      if (!sourceWh) {
+        setError("Pick the source stock item so we know which warehouse the stock leaves.");
+        setSaving(false);
+        return;
+      }
       res = await apiCreateTransfer({
         qty,
+        sourceWarehouseId: sourceWh,
         destinationWarehouseId: draft.destinationWarehouseId,
         notes: draft.notes || undefined,
       });
     } else if (draft.mode === "outbound") {
+      // Outbound to a tracked Site (loading site or client site). When the
+      // Site has a clientId set, the backend upserts a Delivery aggregating
+      // tons by (clientId, linkedPoId).
+      if (draft.outboundDestType === "client_site" && !draft.destinationSiteId) {
+        setError("Pick a client site as the destination.");
+        setSaving(false);
+        return;
+      }
       res = await apiCreateMovement({
         movementType: "OUTBOUND",
         ...commonMovementFields,
@@ -781,15 +817,20 @@ export default function MovementsPage() {
   // user gets the same dynamic UX (truck/supplier search-select autofill,
   // weighbridge live net, etc.) when editing as when creating.
   function openEditFullForm(m: StockMovement) {
+    // Transfer movements were a separate mode pre-refactor; they now live
+    // under Outbound→Warehouse. Map them so editing existing transfer rows
+    // still opens with sensible defaults.
     const modeForType: Record<string, NewMovementDraft["mode"]> = {
       INBOUND: "inbound",
       OUTBOUND: "outbound",
-      TRANSFER_OUT: "transfer",
-      TRANSFER_IN: "transfer",
+      TRANSFER_OUT: "outbound",
+      TRANSFER_IN: "outbound",
     };
+    const isTransferType = m.movementType === "TRANSFER_OUT" || m.movementType === "TRANSFER_IN";
     setDraft({
       ...emptyDraft(),
       mode: modeForType[m.movementType] || "inbound",
+      outboundDestType: isTransferType ? "warehouse" : "client_site",
       stockItemId: "",
       warehouseId: m.warehouseId || "",
       productId: "",
@@ -908,7 +949,6 @@ export default function MovementsPage() {
       <div className="flex gap-2">
         {modeBtn("inbound", "Inbound")}
         {modeBtn("outbound", "Outbound")}
-        {modeBtn("transfer", "Transfer")}
       </div>
 
       {editingMovementId && (
@@ -1214,81 +1254,132 @@ export default function MovementsPage() {
           />
         )}
 
-        {draft.mode === "transfer" && (
-          <>
-            {transferRouteMatch ? (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs">
-                <Hammer
-                  size={14}
-                  weight="duotone"
-                  className="text-emerald-400 mt-0.5 shrink-0"
-                />
-                <div className="text-emerald-200 leading-relaxed">
-                  Completing route for{" "}
-                  <span className="font-bold">
-                    {transferRouteMatch.item_code}
-                  </span>{" "}
-                  → final destination{" "}
-                  <span className="font-bold">
-                    {transferRouteMatch.warehouse_name}
-                  </span>
-                  . Capture the second weighbridge reading and any processing
-                  costs below.
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs">
-                <Hammer
-                  size={14}
-                  weight="duotone"
-                  className="text-emerald-400 mt-0.5 shrink-0"
-                />
-                <div className="text-emerald-200 leading-relaxed">
-                  Use <span className="font-bold">Transfer</span> to move
-                  material from a <span className="font-bold">Crushing Site</span>{" "}
-                  to a regular warehouse once it has been processed, or to
-                  rebalance stock between any two warehouses.
-                </div>
-              </div>
-            )}
-            <SearchSelect
-              label="Destination Warehouse *"
-              options={destWhOptions}
-              value={draft.destinationWarehouseId || null}
-              disabled={!!editingMovementId}
-              onChange={(v) => upd({ destinationWarehouseId: v ?? "" })}
-              placeholder="Select destination..."
-              clearable={false}
-            />
-          </>
-        )}
-
         {draft.mode === "outbound" && (
           <>
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs">
-              <MapPin
-                size={14}
-                weight="duotone"
-                className="text-rose-400 mt-0.5 shrink-0"
-              />
-              <div className="text-rose-200 leading-relaxed">
-                Pick the <span className="font-bold">Loading Site</span> where
-                this stock is being dropped off. Optional — leave blank if the
-                outbound is not headed to a tracked site.
+            {/* Destination type toggle: warehouse vs client site. Replaces
+                the old standalone Transfer mode. */}
+            <div>
+              <p className="text-[10px] text-t3 mb-2 uppercase font-bold tracking-wider">
+                Destination
+              </p>
+              <div className="flex gap-2">
+                {(
+                  [
+                    { id: "warehouse", label: "Warehouse" },
+                    { id: "client_site", label: "Client Site" },
+                  ] as { id: NewMovementDraft["outboundDestType"]; label: string }[]
+                ).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    disabled={!!editingMovementId}
+                    onClick={() =>
+                      upd({
+                        outboundDestType: opt.id,
+                        // Clear the inactive picker so we don't accidentally
+                        // ship both fields to the backend.
+                        destinationWarehouseId:
+                          opt.id === "warehouse" ? draft.destinationWarehouseId : "",
+                        destinationSiteId:
+                          opt.id === "client_site" ? draft.destinationSiteId : "",
+                        destinationSiteName:
+                          opt.id === "client_site" ? draft.destinationSiteName : "",
+                      })
+                    }
+                    className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                      draft.outboundDestType === opt.id
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border text-t2 hover:text-t1"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
-            <SearchSelect
-              label="Destination Loading Site"
-              options={loadingSiteOptions}
-              value={draft.destinationSiteId || null}
-              onChange={(v, opt) =>
-                upd({
-                  destinationSiteId: v ?? "",
-                  destinationSiteName: opt?.label || "",
-                })
-              }
-              placeholder="Search loading site..."
-            />
+
+            {draft.outboundDestType === "warehouse" ? (
+              <>
+                {transferRouteMatch ? (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs">
+                    <Hammer
+                      size={14}
+                      weight="duotone"
+                      className="text-emerald-400 mt-0.5 shrink-0"
+                    />
+                    <div className="text-emerald-200 leading-relaxed">
+                      Completing route for{" "}
+                      <span className="font-bold">
+                        {transferRouteMatch.item_code}
+                      </span>{" "}
+                      → final destination{" "}
+                      <span className="font-bold">
+                        {transferRouteMatch.warehouse_name}
+                      </span>
+                      .
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30 text-xs">
+                    <Hammer
+                      size={14}
+                      weight="duotone"
+                      className="text-blue-400 mt-0.5 shrink-0"
+                    />
+                    <div className="text-blue-200 leading-relaxed">
+                      Outbound to a warehouse moves stock between warehouses
+                      (the old Transfer flow). Posts a paired TRANSFER_OUT /
+                      TRANSFER_IN under the hood.
+                    </div>
+                  </div>
+                )}
+                <SearchSelect
+                  label="Destination Warehouse *"
+                  options={destWhOptions}
+                  value={draft.destinationWarehouseId || null}
+                  disabled={!!editingMovementId}
+                  onChange={(v) => upd({ destinationWarehouseId: v ?? "" })}
+                  placeholder="Select destination..."
+                  clearable={false}
+                />
+              </>
+            ) : (
+              <>
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs">
+                  <MapPin
+                    size={14}
+                    weight="duotone"
+                    className="text-rose-400 mt-0.5 shrink-0"
+                  />
+                  <div className="text-rose-200 leading-relaxed">
+                    Pick the <span className="font-bold">Client Site</span> where
+                    this stock is being delivered. A Delivery is auto-created
+                    (or appended) per (client, PO).
+                    {clientSiteOptions.length === 0 && (
+                      <>
+                        {" "}
+                        <span className="text-rose-300">
+                          No client sites yet — mark a Site as a client's
+                          delivery point in Operations → Sites.
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <SearchSelect
+                  label="Destination Client Site *"
+                  options={clientSiteOptions}
+                  value={draft.destinationSiteId || null}
+                  onChange={(v, opt) =>
+                    upd({
+                      destinationSiteId: v ?? "",
+                      destinationSiteName: opt?.label || "",
+                    })
+                  }
+                  placeholder="Search client site..."
+                />
+              </>
+            )}
           </>
         )}
       </section>
@@ -1528,10 +1619,10 @@ export default function MovementsPage() {
             onChange={(e) => upd({ reason: e.target.value })}
             placeholder={
               draft.mode === "outbound"
-                ? "e.g. Issued to site"
-                : draft.mode === "transfer"
+                ? draft.outboundDestType === "warehouse"
                   ? "e.g. Stock rebalancing"
-                  : "e.g. Purchase receipt"
+                  : "e.g. Delivered to client"
+                : "e.g. Purchase receipt"
             }
           />
         </div>

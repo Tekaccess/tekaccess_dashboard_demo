@@ -968,6 +968,11 @@ export type Site = {
   siteCode: string;
   name: string;
   siteType: ('loading' | 'offloading' | 'depot' | 'workshop')[];
+  // When set, this site is a delivery point belonging to a specific client.
+  // Outbounds posted with destinationSiteId pointing at such a site auto-
+  // create / append a Delivery on the operations side.
+  clientId: string | null;
+  clientName: string | null;
   address: string | null;
   region: string | null;
   country: string;
@@ -1338,6 +1343,10 @@ export async function apiCreateMovement(data: {
   samplingCost?: number;
   otherProcessingCost?: number;
   otherProcessingDescription?: string;
+  // Outbound destination — when the site has a clientId, the backend
+  // upserts a Delivery aggregating tons by (clientId, linkedPoId).
+  destinationSiteId?: string;
+  destinationSiteName?: string;
 }) {
   return request<{ movement: StockMovement }>('/inventory/movements', { method: 'POST', body: JSON.stringify(data) });
 }
@@ -1386,6 +1395,10 @@ export async function apiUpdateMovement(id: string, data: Partial<{
 
 export async function apiCreateTransfer(data: {
   qty: number;
+  // Source warehouse must be sent so the backend can post the matching
+  // TRANSFER_OUT and decrement the source's currentQty. Outbound→warehouse
+  // calls (which subsume the old Transfer mode) always know the source.
+  sourceWarehouseId?: string;
   destinationWarehouseId: string;
   notes?: string;
 }) {

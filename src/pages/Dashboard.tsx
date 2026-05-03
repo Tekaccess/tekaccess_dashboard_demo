@@ -279,6 +279,26 @@ function formatCompact(value: number): string {
   return value.toLocaleString();
 }
 
+const PO_STATUS_COLOR: Record<string, string> = {
+  draft: '#94a3b8',
+  approved: '#3b82f6',
+  sent_to_supplier: '#f59e0b',
+  partially_received: '#f97316',
+  fully_received: '#10b981',
+  closed: '#6366f1',
+  cancelled: '#ef4444',
+};
+
+const PO_STATUS_LABEL: Record<string, string> = {
+  draft: 'Draft',
+  approved: 'Approved',
+  sent_to_supplier: 'Sent',
+  partially_received: 'Partial',
+  fully_received: 'Received',
+  closed: 'Closed',
+  cancelled: 'Cancelled',
+};
+
 function ActionCard({
   label, count, sub, Icon, tone, onClick,
 }: {
@@ -345,28 +365,58 @@ function ProcurementDashboard() {
   const ts = transporterSummary ?? {};
   const activeProjects = projects.filter(p => p.status === 'active');
 
+  const poByStatus: { _id: string; count: number; value: number }[] = procSummary?.poByStatus ?? [];
+  const poStatusDonut = poByStatus
+    .filter(s => s.count > 0)
+    .map(s => ({ name: PO_STATUS_LABEL[s._id] ?? s._id, status: s._id, value: s.count }));
+  const poValueRows = [...poByStatus]
+    .filter(s => s.value > 0)
+    .sort((a, b) => b.value - a.value);
+  const poValueMax = poValueRows.reduce((m, r) => Math.max(m, r.value), 0);
+  const poTotalCount = poByStatus.reduce((sum, s) => sum + s.count, 0);
+
   return (
     <div className="space-y-6">
-      {/* Active Projects */}
-      <div className="bg-card rounded-xl border border-border p-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-accent-glow shrink-0">
-              <BriefcaseMetal size={18} weight="duotone" className="text-accent" />
-            </div>
-            <div>
-              <p className="text-xs text-t3">Active Projects</p>
-              <p className="text-2xl font-bold text-t1 leading-tight">{activeProjects.length}</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate({ to: '/procurement/projects' })}
-            className="text-xs font-semibold text-accent hover:underline inline-flex items-center gap-1"
-          >
-            View all <ArrowRight size={12} weight="bold" />
-          </button>
-        </div>
+      {/* Pipeline KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <KpiCard
+          label="Active Projects"
+          value={activeProjects.length}
+          Icon={BriefcaseMetal}
+          bg="bg-accent-glow"
+          color="text-accent"
+        />
+        <KpiCard
+          label="Active POs"
+          value={ps.activePOs ?? 0}
+          Icon={ShoppingCart}
+          bg="bg-blue-500/10"
+          color="text-blue-400"
+          sub={ps.activePoValue ? `${formatCompact(ps.activePoValue)} value` : undefined}
+        />
+        <KpiCard
+          label="Active Suppliers"
+          value={ps.activeSuppliers ?? 0}
+          Icon={Buildings}
+          bg="bg-purple-500/10"
+          color="text-purple-400"
+        />
+        <KpiCard
+          label="In Transit"
+          value={ps.shipmentsInTransit ?? 0}
+          Icon={Boat}
+          bg="bg-emerald-500/10"
+          color="text-emerald-400"
+          sub="shipments"
+        />
+        <KpiCard
+          label="At Customs"
+          value={ps.shipmentsAtCustoms ?? 0}
+          Icon={Package}
+          bg={(ps.shipmentsAtCustoms ?? 0) > 0 ? 'bg-amber-500/10' : 'bg-surface'}
+          color={(ps.shipmentsAtCustoms ?? 0) > 0 ? 'text-amber-500' : 'text-t3'}
+          sub="awaiting clearance"
+        />
       </div>
 
       {/* Action Required */}
@@ -406,6 +456,72 @@ function ProcurementDashboard() {
             onClick={() => navigate({ to: '/procurement/spare-parts' })}
           />
         </div>
+      </div>
+
+      {/* PO Pipeline: count donut + value-by-status list */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ChartCard title="Purchase Orders by Status">
+          {poStatusDonut.length > 0 ? (
+            <ResponsiveContainer width="100%" height={240}>
+              <PieChart>
+                <Pie
+                  data={poStatusDonut}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={95}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {poStatusDonut.map((entry, i) => (
+                    <Cell key={i} fill={PO_STATUS_COLOR[entry.status] ?? '#6366f1'} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(v: any, _n: any, ctx: any) => {
+                    const pct = poTotalCount > 0 ? Math.round((Number(v) / poTotalCount) * 100) : 0;
+                    return [`${v} (${pct}%)`, ctx?.payload?.name];
+                  }}
+                />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: 'var(--color-t2)' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-t3 text-center py-12">No purchase orders to display</p>
+          )}
+        </ChartCard>
+
+        <ChartCard title="Pipeline Value by Status">
+          {poValueRows.length > 0 ? (
+            <div className="space-y-3">
+              {poValueRows.map(row => {
+                const pct = poValueMax > 0 ? (row.value / poValueMax) * 100 : 0;
+                const color = PO_STATUS_COLOR[row._id] ?? '#6366f1';
+                return (
+                  <div key={row._id}>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="inline-flex items-center gap-2 text-t2">
+                        <span className="w-2 h-2 rounded-full" style={{ background: color }} />
+                        {PO_STATUS_LABEL[row._id] ?? row._id}
+                        <span className="text-t3">· {row.count}</span>
+                      </span>
+                      <span className="font-semibold text-t1">{formatCompact(row.value)}</span>
+                    </div>
+                    <div className="h-1.5 bg-surface rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, background: color }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-t3 text-center py-12">No pipeline value to display</p>
+          )}
+        </ChartCard>
       </div>
     </div>
   );

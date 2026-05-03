@@ -4,8 +4,9 @@ import {
   Plus, MagnifyingGlass, MapPin, Eye, PencilSimple,
   Spinner, Truck, Trash,
 } from '@phosphor-icons/react';
-import { apiListSites, apiCreateSite, apiUpdateSite, apiDeleteSite, Site } from '../../lib/api';
+import { apiListSites, apiCreateSite, apiUpdateSite, apiDeleteSite, apiListClients, Site, Client } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
+import SearchSelect from '../../components/ui/SearchSelect';
 import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
 
 const SITE_TYPES = ['loading', 'offloading', 'depot', 'workshop'];
@@ -23,10 +24,18 @@ interface DraftSite {
   siteCode: string; name: string; siteType: string[];
   address: string; region: string; country: string;
   contactName: string; contactPhone: string; truckCapacity: number; notes: string;
+  // Marks this site as a client's delivery point. When set, outbounds posted
+  // to this site auto-create / append a Delivery on the operations side.
+  clientId: string;
+  clientName: string;
 }
 
 function emptyDraft(): DraftSite {
-  return { siteCode: '', name: '', siteType: ['loading'], address: '', region: '', country: 'Rwanda', contactName: '', contactPhone: '', truckCapacity: 0, notes: '' };
+  return {
+    siteCode: '', name: '', siteType: ['loading'], address: '', region: '', country: 'Rwanda',
+    contactName: '', contactPhone: '', truckCapacity: 0, notes: '',
+    clientId: '', clientName: '',
+  };
 }
 
 const inp = 'w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-t1 placeholder-t3 outline-none focus:border-accent transition-colors';
@@ -42,6 +51,7 @@ const SITE_COLS: ColDef[] = [
 
 export default function SitesPage() {
   const [sites, setSites] = useState<Site[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -65,6 +75,10 @@ export default function SitesPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    apiListClients().then(r => { if (r.success) setClients(r.data.clients); });
+  }, []);
+
   function toggleType(t: string) {
     setDraft(d => {
       const types = d.siteType.includes(t)
@@ -82,6 +96,7 @@ export default function SitesPage() {
       address: s.address || '', region: s.region || '', country: s.country,
       contactName: s.contactName || '', contactPhone: s.contactPhone || '',
       truckCapacity: s.truckCapacity || 0, notes: '',
+      clientId: s.clientId || '', clientName: s.clientName || '',
     });
     setSelected(s); setError(null); setModalMode('edit');
   }
@@ -91,7 +106,15 @@ export default function SitesPage() {
       setError('Site code, name and at least one type are required.'); return;
     }
     setSaving(true); setError(null);
-    const payload = { ...draft, siteType: draft.siteType, truckCapacity: Number(draft.truckCapacity) || undefined } as any;
+    const payload = {
+      ...draft,
+      siteType: draft.siteType,
+      truckCapacity: Number(draft.truckCapacity) || undefined,
+      // Empty string → null on the wire so the backend strips the linkage
+      // rather than treating it as a literal empty id.
+      clientId: draft.clientId || null,
+      clientName: draft.clientId ? draft.clientName || null : null,
+    } as any;
     const res = modalMode === 'new'
       ? await apiCreateSite(payload)
       : await apiUpdateSite(selected!._id, payload);
@@ -152,6 +175,26 @@ export default function SitesPage() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div>
+        <p className="text-[11px] font-black text-t3 uppercase tracking-widest mb-3">
+          Client (optional)
+        </p>
+        <p className="text-[11px] text-t3 leading-relaxed mb-2">
+          Mark this site as a client's delivery point. Outbounds posted to it
+          will auto-create / append a Delivery keyed on (client, PO).
+        </p>
+        <SearchSelect
+          options={clients.map(c => ({ value: c._id, label: c.name, sublabel: c.clientCode }))}
+          value={draft.clientId || null}
+          onChange={(v, opt) => setDraft(d => ({
+            ...d,
+            clientId: v ?? '',
+            clientName: opt?.label || '',
+          }))}
+          placeholder="Search client..."
+        />
       </div>
 
       <div>
@@ -299,6 +342,7 @@ export default function SitesPage() {
           ['Truck Cap.', selected.truckCapacity ? String(selected.truckCapacity) : '—'],
           ['Contact', selected.contactName || '—'],
           ['Phone', selected.contactPhone || '—'],
+          ['Client', selected.clientName || (selected.clientId ? '(linked)' : '—')],
         ].map(([k, v]) => (
           <div key={k}>
             <p className="text-xs text-t3">{k}</p>
