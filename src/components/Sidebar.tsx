@@ -41,7 +41,6 @@ const EXPLICIT_ROUTES: Record<string, string> = {
   "finance/approvals": "/finance/approvals",
   "finance/invoices": "/finance/invoices",
   "finance/receivables": "/finance/invoices",
-  "sales/invoices": "/sales/invoices",
   "sales/projects": "/sales/projects",
   "sales/expected-inflow": "/sales/inflow",
   "executive/employees": "/admin",

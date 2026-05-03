@@ -294,6 +294,11 @@ export const departmentsData = [
             icon: FileText,
             subItems: [],
           },
+          {
+            name: "Invoices",
+            icon: Invoice,
+            subItems: [],
+          },
         ],
       },
     ],

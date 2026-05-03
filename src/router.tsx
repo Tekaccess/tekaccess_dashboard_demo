@@ -37,6 +37,7 @@ import ApprovalsPage from "./pages/finance/ApprovalsPage";
 import InvoicesPage from "./pages/finance/InvoicesPage";
 import ProjectLifecyclePage from "./pages/sales/ProjectLifecyclePage";
 import ExpectedInflowPage from "./pages/sales/ExpectedInflowPage";
+import SalesInvoicesPage from "./pages/sales/InvoicesPage";
 import ProcurementReportsPage from "./pages/ProcurementReportsPage";
 import TransportersPage from "./pages/TransportersPage";
 import FleetPage from "./pages/transport/FleetPage";
@@ -325,11 +326,13 @@ const financeInvoicesRoute = createRoute({
   component: InvoicesPage,
 });
 
-const financeReceivablesRoute = createRoute({
+const salesInvoicesRoute = createRoute({
   getParentRoute: () => rootRoute,
-  // Sales also needs visibility into invoicing so Joy can close the loop.
+  // Sales has its own simpler invoice view (sales-side workflow: pick a
+  // confirmed delivery → invoice). Finance retains the full receivables
+  // surface at /finance/invoices for collection / aging work.
   path: "/sales/invoices",
-  component: InvoicesPage,
+  component: SalesInvoicesPage,
 });
 
 const salesProjectsListRoute = createRoute({
@@ -507,7 +510,7 @@ const routeTree = rootRoute.addChildren([
   // Finance explicit pages
   financeApprovalsRoute,
   financeInvoicesRoute,
-  financeReceivablesRoute,
+  salesInvoicesRoute,
   salesProjectsListRoute,
   salesProjectLifecycleRoute,
   salesInflowRoute,
