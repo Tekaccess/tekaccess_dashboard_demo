@@ -179,7 +179,7 @@ const STATUSES: Status[] = ['not-started', 'in-progress', 'completed', 'postpone
 const STATUS_LABELS: Record<Status, string> = {
   'not-started': 'Not Started',
   'in-progress': 'In Progress',
-  completed:     'Completed',
+  completed:     'Done',
   postponed:     'Postponed',
 };
 
@@ -1326,7 +1326,7 @@ export default function TaskManagement() {
               <p className={`text-2xl font-bold mt-0.5 ${overdue > 0 ? 'text-rose-400' : 'text-t1'}`}>{overdue}</p>
             </div>
             <div className="bg-card rounded-xl border border-border px-4 py-3">
-              <p className="text-[11px] uppercase tracking-widest text-t3 font-bold">Completed</p>
+              <p className="text-[11px] uppercase tracking-widest text-t3 font-bold">Done</p>
               <p className="text-2xl font-bold text-emerald-400 mt-0.5">{completed}</p>
             </div>
           </div>
