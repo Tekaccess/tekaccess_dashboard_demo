@@ -156,9 +156,43 @@ const purchaseOrdersRoute = createRoute({
   component: PurchaseOrdersPage,
 });
 
+// "Projects" is a shared cross-department feature — every department mounts
+// the same ProjectsPage under its own URL prefix so the active department
+// stays put when the user clicks Projects from the sidebar's main menu.
+// Sales is the exception: /sales/projects is its lifecycle picker.
 const projectsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/procurement/projects",
+  component: ProjectsPage,
+});
+const projectsFinanceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/finance/projects",
+  component: ProjectsPage,
+});
+const projectsTransportRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/transport/projects",
+  component: ProjectsPage,
+});
+const projectsOperationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/operations/projects",
+  component: ProjectsPage,
+});
+const projectsExecutiveRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/executive/projects",
+  component: ProjectsPage,
+});
+const projectsAdminHrRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin_hr/projects",
+  component: ProjectsPage,
+});
+const projectsDataTeamRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/data_team/projects",
   component: ProjectsPage,
 });
 
@@ -442,6 +476,12 @@ const routeTree = rootRoute.addChildren([
   // Procurement explicit pages
   purchaseOrdersRoute,
   projectsRoute,
+  projectsFinanceRoute,
+  projectsTransportRoute,
+  projectsOperationsRoute,
+  projectsExecutiveRoute,
+  projectsAdminHrRoute,
+  projectsDataTeamRoute,
   suppliersRoute,
   shipmentsRoute,
   sparePartsRoute,

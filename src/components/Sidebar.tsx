@@ -179,7 +179,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
                         : item.name === "Task management"
                           ? location.pathname === "/tasks"
                           : item.name === "Projects"
-                            ? location.pathname === "/procurement/projects"
+                            ? location.pathname.endsWith("/projects")
                             : false;
 
                 return (
@@ -190,7 +190,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
                         else if (item.name === "Reports") navigate({ to: "/reports" });
                         else if (item.name === "Calendar") navigate({ to: "/calendar" });
                         else if (item.name === "Task management") navigate({ to: "/tasks" });
-                        else if (item.name === "Projects") navigate({ to: "/procurement/projects" });
+                        else if (item.name === "Projects") navigate({ to: `/${currentDepartmentId}/projects` });
                         if (onClose) onClose();
                       }}
                       className={navItemClass(isActive)}

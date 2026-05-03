@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   UserPlus, Envelope, User, WarningCircle, Buildings, X,
   CircleNotch, UserMinus, Eye, EyeSlash, PencilSimple, ShieldCheck,
+  Crown, CurrencyCircleDollar, Truck, Package, ShoppingCart,
+  Handshake, UsersThree, Code, Warehouse,
 } from "@phosphor-icons/react";
 import { useAuth, type UserRole } from "../contexts/AuthContext";
 import {
@@ -10,10 +12,39 @@ import {
   type BackendUser,
 } from "../lib/api";
 
-const DASHBOARD_SLUGS = ['executive', 'finance', 'transport', 'operations', 'procurement', 'inventory', 'data_entry'];
+// One row per user-facing dashboard. Slugs match the canonical dept ids the
+// router uses to route into each dashboard. Keep this list in sync with the
+// backend enum in schemas/shared_foundation/users.schema.js.
+const DASHBOARD_SLUGS = [
+  'executive', 'finance', 'transport', 'operations',
+  'procurement', 'sales', 'admin_hr', 'data_entry',
+];
 const SLUG_LABELS: Record<string, string> = {
-  executive: 'Executive', finance: 'Finance', transport: 'Transport',
-  operations: 'Operations', procurement: 'Procurement', inventory: 'Inventory', data_entry: 'IT & Development',
+  executive: 'Executive',
+  finance: 'Finance',
+  transport: 'Transport',
+  operations: 'Operations',
+  procurement: 'Procurement',
+  sales: 'Sales',
+  admin_hr: 'Admin & HR',
+  data_entry: 'IT & Development',
+  // Sub-access slugs — accepted by the backend, not exposed in the picker.
+  inventory: 'Inventory',
+  admin: 'Admin',
+  hr: 'HR',
+};
+const SLUG_ICONS: Record<string, React.ComponentType<any>> = {
+  executive: Crown,
+  finance: CurrencyCircleDollar,
+  transport: Truck,
+  operations: Package,
+  procurement: ShoppingCart,
+  sales: Handshake,
+  admin_hr: UsersThree,
+  data_entry: Code,
+  inventory: Warehouse,
+  admin: ShieldCheck,
+  hr: UsersThree,
 };
 const ROLES: UserRole[] = ['super_admin', 'admin', 'user'];
 const ROLE_LABELS: Record<string, string> = { super_admin: 'Super Admin', admin: 'Admin', user: 'User' };
@@ -36,6 +67,7 @@ function DashboardCheckboxes({ value, onChange, disabled }: { value: string[]; o
     <div className="grid grid-cols-2 gap-1.5">
       {DASHBOARD_SLUGS.map((slug) => {
         const checked = value.includes(slug);
+        const Icon = SLUG_ICONS[slug] ?? Buildings;
         return (
           <button
             key={slug}
@@ -48,7 +80,7 @@ function DashboardCheckboxes({ value, onChange, disabled }: { value: string[]; o
                 : 'border-border bg-surface text-t2 hover:border-accent/40'
             } disabled:opacity-50`}
           >
-            <Buildings size={13} weight={checked ? 'duotone' : 'regular'} className={checked ? 'text-accent' : 'text-t3'} />
+            <Icon size={13} weight={checked ? 'duotone' : 'regular'} className={checked ? 'text-accent' : 'text-t3'} />
             {SLUG_LABELS[slug]}
           </button>
         );
