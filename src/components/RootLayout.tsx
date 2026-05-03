@@ -4,6 +4,7 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import { useAuth } from '../contexts/AuthContext';
+import { AiChatProvider } from '../contexts/AiChatContext';
 
 const ALL_DEPT_IDS = ['executive', 'finance', 'transport', 'operations', 'procurement', 'sales', 'admin_hr', 'data_team'];
 
@@ -83,23 +84,25 @@ export default function RootLayout() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex h-screen bg-app font-sans text-t1 overflow-hidden">
-      <Sidebar
-        currentDepartmentId={currentDepartmentId || defaultDept}
-        isOpen={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
-      />
-      <div className="flex-1 flex flex-col overflow-hidden w-full">
-        <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
-        <OverlayScrollbarsComponent
-          element="main"
-          className="flex-1 p-4 sm:p-6"
-          options={{ scrollbars: { autoHide: 'never' } }}
-          defer
-        >
-          <Outlet />
-        </OverlayScrollbarsComponent>
+    <AiChatProvider>
+      <div className="flex h-screen bg-app font-sans text-t1 overflow-hidden">
+        <Sidebar
+          currentDepartmentId={currentDepartmentId || defaultDept}
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+        />
+        <div className="flex-1 flex flex-col overflow-hidden w-full">
+          <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
+          <OverlayScrollbarsComponent
+            element="main"
+            className="flex-1 p-4 sm:p-6"
+            options={{ scrollbars: { autoHide: 'never' } }}
+            defer
+          >
+            <Outlet />
+          </OverlayScrollbarsComponent>
+        </div>
       </div>
-    </div>
+    </AiChatProvider>
   );
 }

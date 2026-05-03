@@ -735,6 +735,17 @@ export default function TaskManagement() {
     return () => { cancelled = true; };
   }, [taskView]);
 
+  // Refetch when the AI assistant inserts new tasks.
+  useEffect(() => {
+    const handler = () => {
+      apiListTasks({ view: taskView })
+        .then((r) => { if (r.success && r.data) setTasks(r.data.tasks.map(mapTaskFromApi)); })
+        .catch((e) => console.error('apiListTasks (ai-insert refresh) failed', e));
+    };
+    window.addEventListener('tekaccess:tasks-refresh', handler);
+    return () => window.removeEventListener('tekaccess:tasks-refresh', handler);
+  }, [taskView]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFunnel, setStatusFunnel] = useState<string>('all');
   const [dueRange, setDueRange] = useState<DueRange>('this-day');

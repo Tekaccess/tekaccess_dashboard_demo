@@ -16,9 +16,9 @@ export interface AvatarOption {
 export const AVATARS: AvatarOption[] = [
   {
     id: 'default',
-    name: 'Neo',
+    name: 'TekAccess AI',
     src: '/avatar/default.jpeg',
-    greeting: "Hi, I'm Neo — your AI assistant for tasks, targets and progress.",
+    greeting: "Hi, I'm TekAccess AI. Ask me anything.",
   },
 ];
 
