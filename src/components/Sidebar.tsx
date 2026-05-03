@@ -30,6 +30,7 @@ const EXPLICIT_ROUTES: Record<string, string> = {
   // derives currentDepartmentId from the first URL segment.
   "sales/clients": "/sales/clients",
   "sales/contracts": "/sales/contracts",
+  "sales/invoices": "/sales/invoices",
   "operations/products": "/inventory/products",
   "operations/stock": "/inventory/stock",
   "operations/movements": "/inventory/movements",

@@ -7,6 +7,7 @@ import {
 import { apiListClients, apiCreateClient, apiUpdateClient, apiDeleteClient, apiListContracts, apiInstantiateContract, Client, OperationsContract } from '../../lib/api';
 import ModernModal from '../../components/ui/ModernModal';
 import ColumnSelector, { useColumnVisibility, ColDef } from '../../components/ui/ColumnSelector';
+import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 
 const CLIENT_COLS: ColDef[] = [
   { key: 'ref',      label: 'Ref' },
@@ -66,6 +67,8 @@ export default function ClientsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Client | null>(null);
+  const [quickDeleting, setQuickDeleting] = useState(false);
 
   const loadClients = useCallback(async () => {
     setLoading(true);
@@ -146,6 +149,16 @@ export default function ClientsPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function confirmQuickDelete() {
+    if (!pendingDelete) return;
+    setQuickDeleting(true);
+    const res = await apiDeleteClient(pendingDelete._id);
+    setQuickDeleting(false);
+    if (!res.success) { setError((res as any).message || 'Delete failed.'); return; }
+    setPendingDelete(null);
+    loadClients();
   }
 
   const formContent = modalMode !== 'view' ? (
@@ -530,6 +543,7 @@ export default function ClientsPage() {
                         <div className="flex justify-end gap-2 text-t3">
                           <button onClick={e => { e.stopPropagation(); openEdit(c); }} className="hover:text-t1 p-1"><PencilSimple size={14} /></button>
                           <button onClick={e => { e.stopPropagation(); setSelected(c); setModalMode('view'); }} className="hover:text-t1 p-1"><Eye size={14} /></button>
+                          <button onClick={e => { e.stopPropagation(); setPendingDelete(c); }} className="hover:text-rose-400 p-1"><Trash size={14} /></button>
                         </div>
                       </td>
                     </tr>
@@ -559,6 +573,18 @@ export default function ClientsPage() {
       >
         {modalMode === 'view' ? viewContent : formContent}
       </ModernModal>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(v) => { if (!v) setPendingDelete(null); }}
+        onConfirm={confirmQuickDelete}
+        tone="danger"
+        icon="trash"
+        title={`Delete client${pendingDelete ? ` "${pendingDelete.name}"` : ''}?`}
+        message="This action cannot be undone."
+        confirmLabel="Delete"
+        busy={quickDeleting}
+      />
     </>
   );
 }

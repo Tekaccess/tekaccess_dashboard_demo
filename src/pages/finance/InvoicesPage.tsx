@@ -12,6 +12,7 @@ import {
   Invoice, InvoicesSummary, InvoiceAging, InvoiceableDelivery, BankAccount,
 } from '../../lib/api';
 import DocumentSidePanel from '../../components/DocumentSidePanel';
+import ModernModal from '../../components/ui/ModernModal';
 
 const STATUS_TABS = [
   { id: '', label: 'All' },
@@ -215,60 +216,9 @@ export default function InvoicesPage() {
   const totalPages = Math.ceil(total / PAGE_LIMIT);
 
   // ── Side panel content ──────────────────────────────────────────────────
+  // The create flow uses a centered ModernModal (mounted at the bottom of
+  // this component); the side panel only handles view/pay.
   const formContent = useMemo(() => {
-    if (panelMode === 'create') {
-      return (
-        <div className="space-y-5 pb-10">
-          <section className="space-y-2">
-            <p className="text-[11px] font-black text-t3 uppercase tracking-widest">Create Invoice from Delivery</p>
-            <p className="text-xs text-t3">
-              Pick a confirmed delivery that hasn't been invoiced yet. The invoice
-              is created at the contract's unit price using the weigh-bridge tonnage.
-            </p>
-          </section>
-          {invoiceableDeliveries.length === 0 ? (
-            <div className="p-4 bg-surface border border-border rounded-lg text-sm text-t3 text-center">
-              No invoiceable deliveries. Confirm a delivery from Operations first.
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-72 overflow-auto">
-              {invoiceableDeliveries.map(d => (
-                <button
-                  key={d._id}
-                  onClick={() => setPickedDeliveryId(d._id)}
-                  className={`w-full text-left p-3 rounded-lg border transition-all ${pickedDeliveryId === d._id ? 'border-accent bg-accent/5' : 'border-border bg-surface hover:bg-card'}`}
-                >
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-t1">{d.deliveryRef}</div>
-                      <div className="text-xs text-t3 truncate">{d.clientName} · {d.contractRef}</div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-sm font-bold text-accent">{d.confirmedTons} t</div>
-                      <div className="text-[10px] text-t3">{formatDate(d.confirmedAt)}</div>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-          <div>
-            <label className="block text-[10px] text-t3 mb-1">Tax Rate (%)</label>
-            <input className={inp} type="number" min="0" max="100" step="0.5"
-              value={createTaxRate} onChange={e => setCreateTaxRate(e.target.value)} />
-          </div>
-          {actionError && (
-            <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-lg text-sm text-rose-400">{actionError}</div>
-          )}
-          <button onClick={handleCreate} disabled={submitting || !pickedDeliveryId}
-            className="w-full py-2.5 bg-accent text-white rounded-xl text-sm font-bold hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-1.5">
-            {submitting ? <Spinner size={13} className="animate-spin" /> : <Plus size={14} weight="bold" />}
-            Create Invoice
-          </button>
-        </div>
-      );
-    }
-
     if (panelMode === 'pay' && selected) {
       return (
         <div className="space-y-5 pb-10">
@@ -581,10 +531,9 @@ export default function InvoicesPage() {
       </div>
 
       <DocumentSidePanel
-        isOpen={panelMode !== null}
+        isOpen={panelMode === 'view' || panelMode === 'pay'}
         onClose={() => { setPanelMode(null); setSelected(null); setActionError(null); }}
         title={
-          panelMode === 'create' ? 'New Invoice' :
           panelMode === 'pay' ? `Payment · ${selected?.invoiceRef}` :
           selected?.invoiceRef || 'Invoice'
         }
@@ -592,6 +541,64 @@ export default function InvoicesPage() {
         formContent={formContent}
         previewContent={null}
       />
+
+      <ModernModal
+        isOpen={panelMode === 'create'}
+        onClose={() => { if (!submitting) { setPanelMode(null); setActionError(null); } }}
+        title="New Invoice"
+        summaryContent={
+          <div className="space-y-4">
+            <div>
+              <p className="text-[10px] font-black text-t3 uppercase tracking-widest mb-2">How invoicing works</p>
+              <p className="text-xs text-t3 leading-relaxed">
+                A sales invoice is raised against a confirmed delivery. The invoice
+                amount is computed from the delivery's confirmed tons and the
+                contract's unit price. Tax rate is entered as a percentage
+                (e.g. <span className="font-mono">18</span> for 18% VAT).
+              </p>
+            </div>
+          </div>
+        }
+        actions={
+          <button onClick={handleCreate} disabled={submitting || !pickedDeliveryId}
+            className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent-h disabled:opacity-60 flex items-center gap-2">
+            {submitting && <Spinner size={14} className="animate-spin" />} Create Invoice
+          </button>
+        }
+      >
+        <div className="space-y-5">
+          {actionError && (
+            <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 p-2 rounded-lg">{actionError}</p>
+          )}
+
+          <div>
+            <label className="block text-xs text-t3 mb-1.5 font-bold uppercase tracking-wider">Confirmed Delivery *</label>
+            {invoiceableDeliveries.length === 0 ? (
+              <p className="text-xs text-t3 italic px-3 py-2 bg-surface border border-border rounded-lg">
+                No invoiceable deliveries — confirm a delivery first.
+              </p>
+            ) : (
+              <select className={inp} value={pickedDeliveryId}
+                onChange={e => setPickedDeliveryId(e.target.value)}>
+                <option value="">— Select a delivery —</option>
+                {invoiceableDeliveries.map(d => (
+                  <option key={d._id} value={d._id}>
+                    {d.deliveryRef} · {d.clientName} · {d.confirmedTons.toLocaleString()} t · {d.contractRef}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs text-t3 mb-1.5 font-bold uppercase tracking-wider">Tax Rate (%)</label>
+            <input type="number" min={0} max={100} step={0.5} className={inp}
+              value={createTaxRate} onChange={e => setCreateTaxRate(e.target.value)}
+              placeholder="e.g. 18 for 18%" />
+            <p className="text-[10px] text-t3 mt-1">Leave at 0 if no VAT applies.</p>
+          </div>
+        </div>
+      </ModernModal>
     </div>
   );
 }

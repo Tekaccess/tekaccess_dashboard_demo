@@ -2231,6 +2231,106 @@ export async function apiDeleteProcurementInvoice(id: string) {
   return request(`/procurement/invoices/${id}`, { method: 'DELETE' });
 }
 
+// ─── Sales / AR Invoices ──────────────────────────────────────────────────────
+// Customer-side invoices raised against confirmed deliveries.
+// Backed by /finance/invoices on the server (the AR ledger).
+
+export type SalesInvoiceStatus =
+  | 'draft' | 'issued' | 'partially_paid' | 'paid' | 'overdue' | 'disputed' | 'written_off';
+
+export type SalesInvoiceReceipt = {
+  receiptRef: string;
+  amount: number;
+  receivedAt: string;
+  bankAccountId: string;
+  bankAccountCode: string;
+  paymentMethod: 'bank_transfer' | 'cheque' | 'mobile_money' | 'cash' | 'other';
+  reference: string | null;
+  notes: string | null;
+};
+
+export type SalesInvoice = {
+  _id: string;
+  invoiceRef: string;
+  deliveryId: string;
+  deliveryRef: string;
+  contractId: string;
+  contractRef: string;
+  clientId: string | null;
+  clientName: string;
+  currency: string;
+  invoicedTons: number;
+  unitPrice: number;
+  netAmount: number;
+  taxRate: number;
+  taxAmount: number;
+  totalAmount: number;
+  outstandingAmount: number;
+  totalReceived: number;
+  issuedAt: string;
+  dueDate: string;
+  paidAt: string | null;
+  daysOverdue: number;
+  agingBucket: 'current' | '1_30' | '31_60' | '61_90' | '90_plus' | 'paid';
+  receipts: SalesInvoiceReceipt[];
+  status: SalesInvoiceStatus;
+  disputeReason: string | null;
+  notes: string | null;
+};
+
+export type SalesInvoicesSummary = {
+  draft: number;
+  issued: number;
+  partiallyPaid: number;
+  paid: number;
+  overdue: number;
+  disputed: number;
+  totalOutstanding: number;
+  revenueThisMonth: number;
+  invoicesPaidThisMonth: number;
+  receiptsToday: number;
+  receiptsTodayCount: number;
+};
+
+export async function apiGetSalesInvoicesSummary() {
+  return request<{ summary: SalesInvoicesSummary }>('/finance/invoices/summary');
+}
+
+export async function apiListSalesInvoices(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ invoices: SalesInvoice[]; pagination: { total: number; pages: number; page: number; limit: number } }>(
+    `/finance/invoices${qs ? `?${qs}` : ''}`,
+  );
+}
+
+export async function apiGetSalesInvoiceById(id: string) {
+  return request<{ invoice: SalesInvoice }>(`/finance/invoices/${id}`);
+}
+
+export async function apiCreateSalesInvoice(data: { deliveryId: string; taxRate?: number }) {
+  return request<{ invoice: SalesInvoice }>('/finance/invoices', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateSalesInvoiceStatus(
+  id: string,
+  data: { status?: SalesInvoiceStatus; disputeReason?: string; notes?: string },
+) {
+  return request<{ invoice: SalesInvoice }>(`/finance/invoices/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiVoidSalesInvoice(id: string, reason?: string) {
+  return request<{ invoice: SalesInvoice }>(`/finance/invoices/${id}/void`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 export type NotificationCategory = 'task' | 'target' | 'event' | 'system';

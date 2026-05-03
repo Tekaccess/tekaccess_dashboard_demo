@@ -294,21 +294,6 @@ export const departmentsData = [
             icon: FileText,
             subItems: [],
           },
-          {
-            name: "Invoices",
-            icon: Invoice,
-            path: "/sales/invoices",
-          },
-          {
-            name: "Projects",
-            icon: FileText,
-            path: "/sales/projects",
-          },
-          {
-            name: "Expected Inflow",
-            icon: ChartPie,
-            path: "/sales/inflow",
-          },
         ],
       },
     ],
