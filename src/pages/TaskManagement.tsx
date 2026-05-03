@@ -1263,7 +1263,7 @@ export default function TaskManagement() {
         <div>
           <h2 className="text-2xl font-bold text-t1">Task Management</h2>
           <p className="text-sm text-t2 mt-1">
-            Daily tasks → weekly → monthly → yearly. Progress flows up; grades show what needs improvement.
+            Daily → weekly → monthly → yearly.
           </p>
         </div>
         <button
@@ -1284,8 +1284,8 @@ export default function TaskManagement() {
               <button
                 key={k}
                 onClick={() => setTab(k)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  active ? 'bg-accent text-white' : 'text-t2 hover:bg-surface'
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  active ? 'bg-accent-glow text-accent' : 'text-t2 hover:bg-surface'
                 }`}
               >
                 {label}
@@ -1294,31 +1294,6 @@ export default function TaskManagement() {
           })}
         </div>
 
-        {/* Tasks-only sub-tab: read scope. Default "My tasks" so users land
-            on their own queue, not their delegations. */}
-        {tab === 'tasks' && (
-          <div className="flex items-center gap-1 bg-card rounded-xl border border-border p-1 w-fit">
-            {(['mine', 'created', 'all'] as TaskView[]).map((v) => {
-              const active = taskView === v;
-              return (
-                <button
-                  key={v}
-                  onClick={() => setTaskView(v)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                    active ? 'bg-accent-glow text-accent' : 'text-t2 hover:bg-surface'
-                  }`}
-                  title={
-                    v === 'mine'    ? 'Tasks assigned to you (or self-created with no assignee)'
-                  : v === 'created' ? 'Tasks you created — including ones delegated to others'
-                                    : 'Everything you can see (creator or assignee)'
-                  }
-                >
-                  {TASK_VIEW_LABELS[v]}
-                </button>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {/* Tasks: at-a-glance count tiles. Cheap, derived client-side. */}

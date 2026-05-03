@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import NotificationBell from './NotificationBell';
 import ThemePickerModal from './ThemePickerModal';
+import AnimatedIcon from './AnimatedIcon';
 
 const SLUG_LABELS: Record<string, string> = {
   executive: 'Executive',
@@ -226,7 +227,7 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
           <NotificationBell />
 
           {/* Profile dropdown */}
-          <div className="relative ml-2">
+          <div className="relative">
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               className="flex items-center gap-2 p-1 border border-border rounded-full bg-surface hover:bg-accent-glow transition-all overflow-hidden"
@@ -270,30 +271,50 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                     <div className="p-1.5 space-y-0.5">
                       <button
                         onClick={openActivity}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
+                        className="group w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
                       >
-                        <ClockCounterClockwise size={18} weight="regular" className="text-t3" />
+                        <AnimatedIcon
+                          name="activity"
+                          size={18}
+                          className="text-t3"
+                          fallback={<ClockCounterClockwise size={18} weight="regular" />}
+                        />
                         Activity
                       </button>
                       <button
                         onClick={() => { setIsProfileOpen(false); setShowThemePicker(true); }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
+                        className="group w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
                       >
-                        <PaintBrushIcon size={18} weight="regular" className="text-t3" />
+                        <AnimatedIcon
+                          name="appearance"
+                          size={18}
+                          className="text-t3"
+                          fallback={<PaintBrushIcon size={18} weight="regular" />}
+                        />
                         Appearance
                       </button>
                       <button
                         onClick={openChangePassword}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
+                        className="group w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
                       >
-                        <KeyIcon size={18} weight="regular" className="text-t3" />
+                        <AnimatedIcon
+                          name="key"
+                          size={18}
+                          className="text-t3"
+                          fallback={<KeyIcon size={18} weight="regular" />}
+                        />
                         Change Password
                       </button>
                       <button
                         onClick={openSettings}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
+                        className="group w-full flex items-center gap-2.5 px-3 py-2 text-xs text-t2 hover:bg-surface hover:text-t1 rounded-lg transition-colors"
                       >
-                        <GearIcon size={18} weight="regular" className="text-t3" />
+                        <AnimatedIcon
+                          name="gear"
+                          size={18}
+                          className="text-t3"
+                          fallback={<GearIcon size={18} weight="regular" />}
+                        />
                         Settings
                       </button>
                     </div>
@@ -302,9 +323,13 @@ export default function Header({ onMenuClick, pageTitle = 'Dashboard' }: HeaderP
                     <div className="p-1.5 border-t border-border">
                       <button
                         onClick={() => { setIsProfileOpen(false); setShowLogoutConfirm(true); }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                        className="group w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                       >
-                        <SignOut size={18} weight="regular" />
+                        <AnimatedIcon
+                          name="sign-out"
+                          size={18}
+                          fallback={<SignOut size={18} weight="regular" />}
+                        />
                         Sign Out
                       </button>
                     </div>

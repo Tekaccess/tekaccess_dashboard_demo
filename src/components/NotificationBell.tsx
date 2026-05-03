@@ -21,6 +21,7 @@ import {
   type NotificationRecord,
   type NotificationCategory,
 } from '../lib/api';
+import AnimatedIcon from './AnimatedIcon';
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -170,9 +171,14 @@ export default function NotificationBell() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label="Notifications"
-        className="relative p-1.5 text-t3 hover:text-t1 border border-border rounded-lg bg-card transition-colors"
+        className="relative inline-flex items-center justify-center w-9 h-9 text-t3 hover:text-t1 hover:bg-app rounded-lg transition-colors"
       >
-        <Bell size={18} weight="duotone" />
+        <AnimatedIcon
+          name="bell"
+          size={20}
+          trigger="self"
+          fallback={<Bell size={20} weight="duotone" />}
+        />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full ring-2 ring-card flex items-center justify-center leading-none">
             {badgeText}

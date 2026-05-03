@@ -4,6 +4,7 @@ import { CaretDown, CaretUp, XIcon, UserPlus, Buildings, UserPlusIcon, CaretUpIc
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { sharedMenu, departmentsData } from "../data/navigation";
 import Logo from "./Logo";
+import AnimatedIcon from "./AnimatedIcon";
 import { useAuth } from "../contexts/AuthContext";
 
 const EXPLICIT_ROUTES: Record<string, string> = {
@@ -128,7 +129,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
   };
 
   const navItemClass = (isActive: boolean) =>
-    `w-full flex items-center px-3 py-2 text-sm rounded-lg transition-all ${
+    `group w-full flex items-center px-3 py-2 text-sm rounded-lg transition-all ${
       isActive
         ? "bg-accent-glow text-accent font-semibold"
         : "text-t2 hover:bg-surface hover:text-t1 font-medium"
@@ -196,10 +197,17 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
                       }}
                       className={navItemClass(isActive)}
                     >
-                      <item.icon
+                      <AnimatedIcon
+                        name={item.iconName}
                         size={20}
-                        weight={isActive ? "fill" : "regular"}
-                        className={`mr-2.5 shrink-0 ${isActive ? "text-accent" : "text-t3"}`}
+                        className={`mr-2.5 ${isActive ? "text-accent" : "text-t3"}`}
+                        fallback={
+                          <item.icon
+                            size={20}
+                            weight={isActive ? "fill" : "regular"}
+                            className={isActive ? "text-accent" : "text-t3"}
+                          />
+                        }
                       />
                       {item.name}
                     </button>
@@ -233,10 +241,17 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
                         onClick={() => handleSectionClick(item.name, itemPath)}
                         className={navItemClass(isActive)}
                       >
-                        <item.icon
+                        <AnimatedIcon
+                          name={(item as { iconName?: string }).iconName ?? ""}
                           size={20}
-                          weight={isActive ? "fill" : "regular"}
-                          className={`mr-2.5 shrink-0 ${isActive ? "text-accent" : "text-t3"}`}
+                          className={`mr-2.5 ${isActive ? "text-accent" : "text-t3"}`}
+                          fallback={
+                            <item.icon
+                              size={20}
+                              weight={isActive ? "fill" : "regular"}
+                              className={isActive ? "text-accent" : "text-t3"}
+                            />
+                          }
                         />
                         {item.name}
                       </button>
@@ -257,7 +272,7 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
           <button
             onClick={() => { if (!hasNoDeptAccess) setIsDeptDropdownOpen(!isDeptDropdownOpen); }}
             disabled={hasNoDeptAccess}
-            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all ${
+            className={`group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all ${
               hasNoDeptAccess
                 ? "border-border bg-surface text-t3 cursor-not-allowed"
                 : isDeptDropdownOpen
@@ -268,7 +283,14 @@ export default function Sidebar({ currentDepartmentId, isOpen = true, onClose }:
             <div className={`h-6 w-6 rounded-md flex items-center justify-center shrink-0 ${
               hasNoDeptAccess ? "bg-surface" : isDeptDropdownOpen ? "bg-accent/20" : "bg-accent-glow"
             }`}>
-              <BuildingsIcon size={20} weight="duotone" className={hasNoDeptAccess ? "text-t3" : "text-accent"} />
+              <AnimatedIcon
+                name="buildings"
+                size={20}
+                className={hasNoDeptAccess ? "text-t3" : "text-accent"}
+                fallback={
+                  <BuildingsIcon size={20} weight="duotone" className={hasNoDeptAccess ? "text-t3" : "text-accent"} />
+                }
+              />
             </div>
             <span className={`flex-1 text-left text-xs font-semibold truncate ${hasNoDeptAccess ? "italic" : ""}`}>
               {hasNoDeptAccess

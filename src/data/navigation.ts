@@ -41,17 +41,18 @@ import {
   ChatTextIcon,
   HardDrivesIcon,
   ReceiptIcon,
+  ChartPieIcon,
 } from "@phosphor-icons/react";
 
 
 export const sharedMenu = {
   title: "Main menu",
   items: [
-    { name: "Dashboard", icon: SpeedometerIcon, active: true },
-    { name: "Reports", icon: ClipboardTextIcon },
-    { name: "Calendar", icon: CalendarDotsIcon },
-    { name: "Task management", icon: CheckFatIcon },
-    { name: "Projects", icon: BriefcaseMetal },
+    { name: "Dashboard", icon: SpeedometerIcon, iconName: "dashboard", active: true },
+    { name: "Reports", icon: ClipboardTextIcon, iconName: "reports" },
+    { name: "Calendar", icon: CalendarDotsIcon, iconName: "calendar" },
+    { name: "Task management", icon: CheckFatIcon, iconName: "tasks" },
+    { name: "Projects", icon: BriefcaseMetal, iconName: "projects" },
   ],
 };
 
@@ -64,17 +65,17 @@ export const departmentsData = [
       {
         title: "Departments",
         items: [
-          { name: "Finance Overview", icon: CurrencyCircleDollar },
-          { name: "Transport Overview", icon: Truck },
-          { name: "Operations Overview", icon: Pulse },
-          { name: "Procurement Overview", icon: ShoppingCart },
+          { name: "Finance Overview", icon: CurrencyCircleDollar, iconName: "money" },
+          { name: "Transport Overview", icon: Truck, iconName: "truck" },
+          { name: "Operations Overview", icon: Pulse, iconName: "pulse" },
+          { name: "Procurement Overview", icon: ShoppingCart, iconName: "cart" },
         ],
       },
       {
         title: "Company",
         items: [
-          { name: "Company Settings", icon: Buildings },
-          { name: "Employees", icon: Users },
+          { name: "Company Settings", icon: Buildings, iconName: "buildings" },
+          { name: "Employees", icon: Users, iconName: "users" },
         ],
       },
     ],
@@ -90,11 +91,13 @@ export const departmentsData = [
           {
             name: "Receivables",
             icon: Invoice,
+            iconName: "invoice",
             subItems: ["Invoices", "Client Payments", "Aging Report"],
           },
           {
             name: "Payables",
             icon: CreditCard,
+            iconName: "credit-card",
             subItems: [
               "Supplier Bills",
               "Payment Schedule",
@@ -104,6 +107,7 @@ export const departmentsData = [
           {
             name: "Banking",
             icon: Buildings,
+            iconName: "buildings",
             subItems: [
               "Bank Accounts",
               "Cash Flow Forecast",
@@ -113,21 +117,25 @@ export const departmentsData = [
           {
             name: "Expenses",
             icon: Receipt,
+            iconName: "receipt",
             subItems: ["All Expenses", "Pending Approval", "By Category"],
           },
           {
             name: "Tax & Compliance",
             icon: CheckSquare,
+            iconName: "shield-check",
             subItems: ["Tax Periods", "Filing Status"],
           },
           {
             name: "Invoices",
             icon: Invoice,
+            iconName: "invoice",
             path: "/finance/invoices",
           },
           {
             name: "Approvals",
             icon: CheckFatIcon,
+            iconName: "approval",
             path: "/finance/approvals",
           },
         ],
@@ -145,26 +153,31 @@ export const departmentsData = [
           {
             name: "Allocations",
             icon: ClipboardText,
+            iconName: "clipboard",
             path: "/transport/allocations",
           },
           {
             name: "Fleet",
             icon: Truck,
+            iconName: "truck",
             subItems: ["All Trucks", "Operating", "Idle", "In Maintenance"],
           },
           {
             name: "Trips",
             icon: MapPin,
+            iconName: "map-pin",
             subItems: ["Active Trips", "Trip History", "Schedule"],
           },
           {
             name: "Fuel",
             icon: Pulse,
+            iconName: "fuel",
             subItems: ["Fuel Logs", "Fuel Stock", "Anomaly Flags"],
           },
           {
             name: "Maintenance",
             icon: Wrench,
+            iconName: "wrench",
             subItems: [
               "Open Records",
               "Scheduled Services",
@@ -174,6 +187,7 @@ export const departmentsData = [
           {
             name: "Spare Parts",
             icon: Gear,
+            iconName: "gear",
             subItems: [],
           },
         ],
@@ -191,6 +205,7 @@ export const departmentsData = [
           {
             name: "Contracts",
             icon: FileText,
+            iconName: "file-text",
             subItems: [
               "Active Contracts",
               "Contract Progress",
@@ -200,6 +215,7 @@ export const departmentsData = [
           {
             name: "Deliveries",
             icon: Package,
+            iconName: "package",
             subItems: [
               "Pending Confirmation",
               "Confirmed",
@@ -210,18 +226,20 @@ export const departmentsData = [
           {
             name: "Sites",
             icon: MapPin,
+            iconName: "map-pin",
             subItems: ["Loading Sites", "Offloading Sites", "Site Activity"],
           },
           {
             name: "Clients",
             icon: Users,
+            iconName: "users",
             subItems: ["Client List", "Satisfaction Ratings"],
           },
           // { name: "Products", icon: Package },
-          { name: "Stock", icon: Cube },
-          { name: "Movements", icon: ArrowsCounterClockwise },
-          { name: "Documents", icon: ClipboardText },
-          { name: "Warehouses", icon: Buildings },
+          { name: "Stock", icon: Cube, iconName: "cube" },
+          { name: "Movements", icon: ArrowsCounterClockwise, iconName: "refresh" },
+          { name: "Documents", icon: ClipboardText, iconName: "clipboard" },
+          { name: "Warehouses", icon: Buildings, iconName: "warehouse" },
         ],
       },
     ],
@@ -237,36 +255,43 @@ export const departmentsData = [
           {
             name: "Purchase Orders",
             icon: ShoppingCart,
+            iconName: "cart",
             subItems: [],
           },
           {
             name: "Contracts",
             icon: FileText,
+            iconName: "file-text",
             subItems: [],
           },
           {
             name: "Suppliers",
             icon: Handshake,
+            iconName: "handshake",
             subItems: [],
           },
           {
             name: "Shipments",
             icon: Boat,
+            iconName: "boat",
             subItems: [],
           },
           {
             name: "Transporters",
             icon: Truck,
+            iconName: "truck",
             subItems: [],
           },
           {
             name: "Settlements",
             icon: ReceiptIcon,
+            iconName: "receipt",
             subItems: [],
           },
           {
             name: "Reports",
-            icon: ChartPie,
+            icon: ChartPieIcon,
+            iconName: "chart-pie",
             subItems: [],
           },
         ],
@@ -287,11 +312,13 @@ export const departmentsData = [
           {
             name: "Clients",
             icon: Users,
+            iconName: "users",
             subItems: [],
           },
           {
             name: "Contracts",
             icon: FileText,
+            iconName: "file-text",
             subItems: [],
           },
           {
@@ -311,20 +338,20 @@ export const departmentsData = [
       {
         title: "People",
         items: [
-          { name: "Employees", icon: Users, path: "/employees" },
-          { name: "Org Chart", icon: BriefcaseMetal, path: "/hr/org-chart" },
-          { name: "Performance", icon: ChartPie, path: "/hr/performance" },
-          { name: "Attendance", icon: CheckFatIcon, path: "/hr/attendance" },
-          { name: "Time Off", icon: CalendarDotsIcon, path: "/hr/time-off" },
-          { name: "Payroll", icon: CurrencyCircleDollar, path: "/hr/payroll" },
+          { name: "Employees", icon: Users, iconName: "users", path: "/employees" },
+          { name: "Org Chart", icon: BriefcaseMetal, iconName: "projects", path: "/hr/org-chart" },
+          { name: "Performance", icon: ChartPie, iconName: "chart-pie", path: "/hr/performance" },
+          { name: "Attendance", icon: CheckFatIcon, iconName: "approval", path: "/hr/attendance" },
+          { name: "Time Off", icon: CalendarDotsIcon, iconName: "calendar", path: "/hr/time-off" },
+          { name: "Payroll", icon: CurrencyCircleDollar, iconName: "money", path: "/hr/payroll" },
         ],
       },
       {
         title: "Workspace",
         items: [
-          { name: "Task Tracking", icon: CheckFatIcon, path: "/hr/task-tracking" },
-          { name: "Announcements", icon: ChatTextIcon, path: "/hr/announcements" },
-          { name: "HR Documents", icon: FileText, path: "/hr/documents" },
+          { name: "Task Tracking", icon: CheckFatIcon, iconName: "tasks", path: "/hr/task-tracking" },
+          { name: "Announcements", icon: ChatTextIcon, iconName: "chat", path: "/hr/announcements" },
+          { name: "HR Documents", icon: FileText, iconName: "file-text", path: "/hr/documents" },
         ],
       },
     ],
@@ -340,6 +367,7 @@ export const departmentsData = [
           {
             name: "Pipelines & Jobs",
             icon: GitBranchIcon,
+            iconName: "git-branch",
             subItems: [
               "All Integrations",
               "Snapshot Jobs",
@@ -350,6 +378,7 @@ export const departmentsData = [
           {
             name: "Data Quality",
             icon: ShieldWarningIcon,
+            iconName: "shield-warning",
             subItems: [
               "Open Issues",
               "By Department",
@@ -360,11 +389,13 @@ export const departmentsData = [
           {
             name: "Data Requests",
             icon: ChatTextIcon,
+            iconName: "chat",
             subItems: ["Pending Requests", "Resolved"],
           },
           {
             name: "System",
             icon: HardDrivesIcon,
+            iconName: "server",
             subItems: ["Platform Uptime", "Alert History"],
           },
         ],
