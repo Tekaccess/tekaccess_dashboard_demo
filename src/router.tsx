@@ -34,6 +34,9 @@ import MovementsPage from "./pages/inventory/MovementsPage";
 import StockHistoryPage from "./pages/inventory/StockHistoryPage";
 import DocumentsPage from "./pages/inventory/DocumentsPage";
 import ApprovalsPage from "./pages/finance/ApprovalsPage";
+import InvoicesPage from "./pages/finance/InvoicesPage";
+import ProjectLifecyclePage from "./pages/sales/ProjectLifecyclePage";
+import ExpectedInflowPage from "./pages/sales/ExpectedInflowPage";
 import ProcurementReportsPage from "./pages/ProcurementReportsPage";
 import TransportersPage from "./pages/TransportersPage";
 import FleetPage from "./pages/transport/FleetPage";
@@ -275,6 +278,37 @@ const financeApprovalsRoute = createRoute({
   component: ApprovalsPage,
 });
 
+const financeInvoicesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/finance/invoices",
+  component: InvoicesPage,
+});
+
+const financeReceivablesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  // Sales also needs visibility into invoicing so Joy can close the loop.
+  path: "/sales/invoices",
+  component: InvoicesPage,
+});
+
+const salesProjectsListRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sales/projects",
+  component: ProjectLifecyclePage,
+});
+
+const salesProjectLifecycleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sales/projects/$contractId",
+  component: ProjectLifecyclePage,
+});
+
+const salesInflowRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sales/inflow",
+  component: ExpectedInflowPage,
+});
+
 // ── Explicit Inventory Routes ───────────────────────────────────────────────
 const productsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -424,6 +458,11 @@ const routeTree = rootRoute.addChildren([
   salesClientsRoute,
   // Finance explicit pages
   financeApprovalsRoute,
+  financeInvoicesRoute,
+  financeReceivablesRoute,
+  salesProjectsListRoute,
+  salesProjectLifecycleRoute,
+  salesInflowRoute,
   // Inventory explicit pages
   productsRoute,
   stockRecordsRoute,

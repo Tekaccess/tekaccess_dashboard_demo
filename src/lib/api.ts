@@ -610,6 +610,216 @@ export async function apiRejectFinanceApproval(id: string, data: { notes?: strin
   });
 }
 
+// ─── Customer Invoices (AR) ───────────────────────────────────────────────────
+
+export type InvoiceReceipt = {
+  receiptRef: string;
+  amount: number;
+  receivedAt: string;
+  bankAccountId: string;
+  bankAccountCode: string;
+  paymentMethod: 'bank_transfer' | 'cheque' | 'mobile_money' | 'cash' | 'other';
+  reference: string | null;
+  notes: string | null;
+};
+
+export type Invoice = {
+  _id: string;
+  invoiceRef: string;
+  deliveryId: string;
+  deliveryRef: string;
+  contractId: string;
+  contractRef: string;
+  clientId: string | null;
+  clientName: string;
+  currency: string;
+  invoicedTons: number;
+  unitPrice: number;
+  netAmount: number;
+  taxRate: number;
+  taxAmount: number;
+  totalAmount: number;
+  outstandingAmount: number;
+  totalReceived: number;
+  issuedAt: string;
+  dueDate: string;
+  paidAt: string | null;
+  daysOverdue: number;
+  agingBucket: 'current' | '1_30' | '31_60' | '61_90' | '90_plus' | 'paid';
+  status: 'draft' | 'issued' | 'partially_paid' | 'paid' | 'overdue' | 'disputed' | 'written_off';
+  receipts: InvoiceReceipt[];
+  disputeReason: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InvoicesSummary = {
+  draft: number;
+  issued: number;
+  partiallyPaid: number;
+  paid: number;
+  overdue: number;
+  disputed: number;
+  totalOutstanding: number;
+  revenueThisMonth: number;
+  invoicesPaidThisMonth: number;
+  receiptsToday: number;
+  receiptsTodayCount: number;
+};
+
+export type InvoiceAging = {
+  buckets: { current: number; '1_30': number; '31_60': number; '61_90': number; '90_plus': number };
+  counts:  { current: number; '1_30': number; '31_60': number; '61_90': number; '90_plus': number };
+  totalOutstanding: number;
+  totalOverdue: number;
+  currentCount: number;
+  overdueCount: number;
+};
+
+export type InvoiceableDelivery = {
+  _id: string;
+  deliveryRef: string;
+  contractId: string;
+  contractRef: string;
+  clientId: string | null;
+  clientName: string;
+  confirmedTons: number;
+  confirmedAt: string;
+};
+
+export async function apiListInvoices(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ invoices: Invoice[]; pagination: { page: number; limit: number; total: number; pages: number } }>(
+    `/finance/invoices${qs ? `?${qs}` : ''}`
+  );
+}
+export async function apiGetInvoiceById(id: string) {
+  return request<{ invoice: Invoice }>(`/finance/invoices/${id}`);
+}
+export async function apiGetInvoicesSummary() {
+  return request<{ summary: InvoicesSummary }>('/finance/invoices/summary');
+}
+export async function apiGetInvoicesAging() {
+  return request<{
+    aging: InvoiceAging;
+    byClient: { clientName: string; total: number; overdue: number; count: number }[];
+    open: (Invoice & { daysOverdue: number })[];
+  }>('/finance/invoices/aging');
+}
+export async function apiListInvoiceableDeliveries() {
+  return request<{ deliveries: InvoiceableDelivery[] }>('/finance/invoices/invoiceable-deliveries');
+}
+export async function apiCreateInvoice(data: { deliveryId: string; taxRate?: number }) {
+  return request<{ invoice: Invoice }>('/finance/invoices', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+export async function apiUpdateInvoiceStatus(id: string, data: { status?: Invoice['status']; disputeReason?: string; notes?: string }) {
+  return request<{ invoice: Invoice }>(`/finance/invoices/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+export async function apiPostInvoicePayment(id: string, data: {
+  amount: number;
+  bankAccountId: string;
+  paymentMethod: InvoiceReceipt['paymentMethod'];
+  reference?: string;
+  receivedAt?: string;
+  notes?: string;
+}) {
+  return request<{ invoice: Invoice }>(`/finance/invoices/${id}/payments`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+export async function apiVoidInvoice(id: string, reason?: string) {
+  return request<{ invoice: Invoice }>(`/finance/invoices/${id}/void`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export type ExpectedInflow = {
+  inflow: {
+    overdue: number;
+    dueIn7Days: number;
+    dueIn30Days: number;
+    dueIn60Days: number;
+    totalOpenInvoices: number;
+    expectedFromActiveContracts: number;
+  };
+  activeContracts: {
+    contractRef: string;
+    clientName: string;
+    totalValue: number;
+    pctComplete: number;
+    endDate: string | null;
+    currency: string;
+  }[];
+};
+
+export async function apiGetExpectedInflow() {
+  return request<ExpectedInflow>('/finance/expected-inflow');
+}
+
+// Bank accounts (small surface, just what the invoice payment form needs)
+export type BankAccount = {
+  _id: string;
+  accountCode: string;
+  bankName: string;
+  accountName: string;
+  currency: string;
+  currentBalance: number;
+  isActive: boolean;
+  isPrimary: boolean;
+};
+
+export async function apiListBankAccounts() {
+  return request<{ accounts: BankAccount[] }>('/finance/bank-accounts');
+}
+
+// ─── Contract Lifecycle (per-project view) ────────────────────────────────────
+
+export type ContractLifecycle = {
+  contract: any;
+  lifecycle: {
+    purchaseOrders: Array<{ _id: string; poRef: string; supplierName: string; recipientType: string; totalValueWithTax: number; currency: string; status: string; totalReceivedQty: number; totalOrderedQty: number; issuedAt: string; expectedDeliveryDate: string | null; }>;
+    shipments: Array<{ _id: string; shipmentRef: string; poRef: string; supplierName: string; status: string; estimatedArrivalDate: string; actualArrivalDate: string | null; quantity: number; unit: string; }>;
+    trips: Array<{ _id: string; tripRef: string; truckPlate: string; driverName: string; plannedTons: number; actualTons: number | null; status: string; loadingSiteName: string; offloadingSiteName: string; timeline: any; costs: any; }>;
+    deliveries: Array<{ _id: string; deliveryRef: string; tripRef: string; truckPlate: string; plannedTons: number; confirmedTons: number | null; status: string; deliveryDate: string; confirmedAt: string | null; invoiceRaised: boolean; invoiceId: string | null; clientSatisfaction: { rating: number | null }; }>;
+    invoices: Array<{ _id: string; invoiceRef: string; deliveryRef: string; totalAmount: number; outstandingAmount: number; totalReceived: number; status: string; agingBucket: string; issuedAt: string; dueDate: string; paidAt: string | null; }>;
+    payables: Array<{ _id: string; payableRef: string; supplierName: string; totalAmount: number; outstandingAmount: number; status: string; dueDate: string; purchaseOrderRef: string; }>;
+  };
+  margin: {
+    totalRevenue: number;
+    totalProcurementCost: number;
+    totalTransportCost: number;
+    grossProfit: number;
+    marginPct: number | null;
+    lastComputedAt: string;
+  };
+  counts: { purchaseOrders: number; shipments: number; trips: number; deliveries: number; invoices: number; payables: number; };
+};
+
+export async function apiGetContractLifecycle(contractId: string) {
+  return request<ContractLifecycle>(`/operations/contracts/${contractId}/lifecycle`);
+}
+
+// T4.4: spawn a draft PO from a sales contract
+export async function apiDraftPOFromContract(contractId: string, data: {
+  supplierId: string; supplierName: string;
+  destinationWarehouseId?: string; destinationWarehouseName?: string;
+  currency?: string;
+}) {
+  return request<{ order: { _id: string; poRef: string } }>(`/procurement/contracts/${contractId}/draft-po`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // ─── Operations ───────────────────────────────────────────────────────────────
 
 export type Project = {

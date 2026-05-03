@@ -121,6 +121,11 @@ export const departmentsData = [
             subItems: ["Tax Periods", "Filing Status"],
           },
           {
+            name: "Invoices",
+            icon: Invoice,
+            path: "/finance/invoices",
+          },
+          {
             name: "Approvals",
             icon: CheckFatIcon,
             path: "/finance/approvals",
@@ -283,6 +288,21 @@ export const departmentsData = [
             name: "Contracts",
             icon: FileText,
             subItems: [],
+          },
+          {
+            name: "Invoices",
+            icon: Invoice,
+            path: "/sales/invoices",
+          },
+          {
+            name: "Projects",
+            icon: FileText,
+            path: "/sales/projects",
+          },
+          {
+            name: "Expected Inflow",
+            icon: ChartPie,
+            path: "/sales/inflow",
           },
         ],
       },

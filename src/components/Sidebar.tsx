@@ -37,6 +37,11 @@ const EXPLICIT_ROUTES: Record<string, string> = {
   "operations/crushing-sites": "/inventory/crushing-sites",
   "operations/loading-sites": "/inventory/loading-sites",
   "finance/approvals": "/finance/approvals",
+  "finance/invoices": "/finance/invoices",
+  "finance/receivables": "/finance/invoices",
+  "sales/invoices": "/sales/invoices",
+  "sales/projects": "/sales/projects",
+  "sales/expected-inflow": "/sales/inflow",
   "executive/employees": "/admin",
 };
 
