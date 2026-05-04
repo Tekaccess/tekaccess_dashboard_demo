@@ -21,34 +21,16 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../../components/ui/table';
+import DateRangeFilter, {
+  DUE_RANGE_LABELS,
+  getDueRangeBounds,
+  type DueRange,
+} from '../../components/ui/DateRangeFilter';
 
-type RangeKey = 'all' | 'this-week' | 'this-month' | 'last-month';
-
-const RANGE_LABELS: Record<RangeKey, string> = {
-  'all': 'All time',
-  'this-week': 'This week',
-  'this-month': 'This month',
-  'last-month': 'Last month',
-};
-
-function rangeBounds(range: RangeKey): { from?: string; to?: string } {
-  const now = new Date();
-  if (range === 'all') return {};
-  if (range === 'this-week') {
-    const day = now.getDay() || 7; // Mon=1..Sun=7
-    const start = new Date(now); start.setDate(now.getDate() - day + 1); start.setHours(0,0,0,0);
-    const end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23,59,59,999);
-    return { from: start.toISOString(), to: end.toISOString() };
-  }
-  if (range === 'this-month') {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-    return { from: start.toISOString(), to: end.toISOString() };
-  }
-  // last-month
-  const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
-  const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-  return { from: start.toISOString(), to: end.toISOString() };
+function rangeBounds(range: DueRange): { from?: string; to?: string } {
+  const b = getDueRangeBounds(range);
+  if (!b) return {};
+  return { from: b.start.toISOString(), to: b.end.toISOString() };
 }
 
 function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
@@ -109,9 +91,9 @@ function Avatar({ name, url }: { name: string; url: string | null }) {
 }
 
 function UserDrillDown({
-  userId, userName, onClose,
+  userId, userName, range, onClose,
 }: {
-  userId: string; userName: string; onClose: () => void;
+  userId: string; userName: string; range: DueRange; onClose: () => void;
 }) {
   const [tasks, setTasks] = useState<TrackingUserTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,10 +101,15 @@ function UserDrillDown({
 
   useEffect(() => {
     setLoading(true);
-    apiHrTaskTrackingUserTasks(userId, { status: statusFilter === 'all' ? undefined : statusFilter })
+    const { from, to } = rangeBounds(range);
+    apiHrTaskTrackingUserTasks(userId, {
+      status: statusFilter === 'all' ? undefined : statusFilter,
+      dueFrom: from,
+      dueTo: to,
+    })
       .then(r => { if (r.success) setTasks(r.data.tasks); })
       .finally(() => setLoading(false));
-  }, [userId, statusFilter]);
+  }, [userId, statusFilter, range]);
 
   return (
     <motion.div
@@ -210,7 +197,7 @@ function UserDrillDown({
 }
 
 export default function TaskTrackingPage() {
-  const [range, setRange] = useState<RangeKey>('this-month');
+  const [range, setRange] = useState<DueRange>('this-month');
   const [rows, setRows] = useState<TaskTrackingRow[]>([]);
   const [summary, setSummary] = useState<TaskTrackingSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -241,19 +228,7 @@ export default function TaskTrackingPage() {
           <h1 className="text-2xl font-bold text-t1">Task Tracking</h1>
           <p className="text-sm text-t3 mt-1">See who's working on what across the company.</p>
         </div>
-        <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-1">
-          {(Object.keys(RANGE_LABELS) as RangeKey[]).map(k => (
-            <button
-              key={k}
-              onClick={() => setRange(k)}
-              className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
-                range === k ? 'bg-accent-glow text-accent font-medium' : 'text-t2 hover:text-t1 hover:bg-surface'
-              }`}
-            >
-              {RANGE_LABELS[k]}
-            </button>
-          ))}
-        </div>
+        <DateRangeFilter value={range} onChange={setRange} label="Due" />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -286,7 +261,7 @@ export default function TaskTrackingPage() {
             <TargetIcon size={20} weight="fill" className="text-emerald-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-t3">Top performer ({RANGE_LABELS[range].toLowerCase()})</p>
+            <p className="text-xs text-t3">Top performer ({DUE_RANGE_LABELS[range].toLowerCase()})</p>
             <p className="text-sm font-medium text-t1 truncate">
               {topPerformer.user.fullName}{' '}
               <span className="text-t3 font-normal">— {topPerformer.tasks.completionRate}% on {topPerformer.tasks.total} tasks</span>
@@ -390,6 +365,7 @@ export default function TaskTrackingPage() {
           <UserDrillDown
             userId={drillUser.id}
             userName={drillUser.name}
+            range={range}
             onClose={() => setDrillUser(null)}
           />
         )}

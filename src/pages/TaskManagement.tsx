@@ -357,6 +357,65 @@ function monthlyProgress(monthlyId: string, weeklies: WeeklyTarget[], tasks: Tas
   return Math.round(sum / linked.length);
 }
 
+function BulkLinkPopover({
+  label,
+  items,
+  onPick,
+}: {
+  label: string;
+  items: { id: string; title: string }[];
+  onPick: (id: string | null) => void;
+}) {
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button
+          aria-label={`Link to ${label.toLowerCase()}`}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium text-t1 hover:bg-surface transition-colors"
+        >
+          <Target size={14} weight="bold" />
+          <span className="hidden sm:inline">Link</span>
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          side="top"
+          align="center"
+          sideOffset={10}
+          className="z-[100] w-64 bg-card border border-border rounded-xl shadow-2xl p-1 max-h-(--radix-popover-content-available-height) overflow-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+        >
+          <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-t3">
+            Link to {label.toLowerCase()}
+          </p>
+          <Popover.Close asChild>
+            <button
+              onClick={() => onPick(null)}
+              className="w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-surface text-left transition-colors"
+            >
+              <span className="text-sm text-t3 italic">Unlinked</span>
+            </button>
+          </Popover.Close>
+          {items.length === 0 ? (
+            <p className="px-2 py-2 text-xs text-t3">No {label.toLowerCase()}s yet.</p>
+          ) : (
+            items.map((it) => (
+              <Popover.Close asChild key={it.id}>
+                <button
+                  onClick={() => onPick(it.id)}
+                  className="w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-surface text-left transition-colors"
+                >
+                  <Target size={14} weight="duotone" className="text-accent shrink-0" />
+                  <span className="text-sm text-t1 truncate">{it.title}</span>
+                </button>
+              </Popover.Close>
+            ))
+          )}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
 function StatusPill({ status, className = '' }: { status: Status; className?: string }) {
   return (
     <span
