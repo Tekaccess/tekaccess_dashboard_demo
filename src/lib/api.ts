@@ -2037,6 +2037,26 @@ export async function apiBulkReassignTasks(ids: string[], assignee: string | nul
     method: 'POST', body: JSON.stringify({ ids, assignee }),
   });
 }
+export async function apiBulkUpdateTaskStatus(ids: string[], status: TaskStatus) {
+  return request<{ matched: number; modified: number }>('/task-management/tasks/bulk-status', {
+    method: 'POST', body: JSON.stringify({ ids, status }),
+  });
+}
+export async function apiBulkLinkTasksToWeekly(ids: string[], weeklyTargetId: string | null) {
+  return request<{ matched: number; modified: number }>('/task-management/tasks/bulk-link-weekly', {
+    method: 'POST', body: JSON.stringify({ ids, weeklyTargetId }),
+  });
+}
+export async function apiBulkLinkWeekliesToMonthly(ids: string[], monthlyTargetId: string | null) {
+  return request<{ matched: number; modified: number }>('/task-management/weekly-targets/bulk-link-monthly', {
+    method: 'POST', body: JSON.stringify({ ids, monthlyTargetId }),
+  });
+}
+export async function apiBulkLinkMonthliesToYearly(ids: string[], yearlyTargetId: string | null) {
+  return request<{ matched: number; modified: number }>('/task-management/monthly-targets/bulk-link-yearly', {
+    method: 'POST', body: JSON.stringify({ ids, yearlyTargetId }),
+  });
+}
 
 // Weekly targets
 export async function apiListWeeklyTargets(params: Record<string, string> = {}) {

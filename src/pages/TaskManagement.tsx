@@ -24,6 +24,7 @@ import {
   Check,
   Minus,
   UsersThree,
+  CheckCircle,
 } from '@phosphor-icons/react';
 import {
   format,
@@ -54,7 +55,8 @@ import { Input } from '../components/ui/input';
 import { useAuth } from '../contexts/AuthContext';
 import {
   apiListTasks, apiCreateTask, apiUpdateTask, apiDeleteTask,
-  apiBulkDeleteTasks, apiBulkReassignTasks,
+  apiBulkDeleteTasks, apiBulkReassignTasks, apiBulkUpdateTaskStatus,
+  apiBulkLinkTasksToWeekly, apiBulkLinkWeekliesToMonthly, apiBulkLinkMonthliesToYearly,
   apiListWeeklyTargets, apiCreateWeeklyTarget, apiUpdateWeeklyTarget, apiDeleteWeeklyTarget,
   apiBulkDeleteWeeklyTargets,
   apiListMonthlyTargets, apiCreateMonthlyTarget, apiUpdateMonthlyTarget, apiDeleteMonthlyTarget,
@@ -928,6 +930,70 @@ export default function TaskManagement() {
     ids.forEach((id) => (v ? next.add(id) : next.delete(id)));
     return next;
   });
+
+  const handleBulkStatusChange = (status: Status) => {
+    if (tab !== 'tasks' || selectedTaskIds.size === 0) return;
+    const ids = [...selectedTaskIds];
+    const nonDraft = ids.filter((id) => !isDraftId(id));
+    const now = new Date().toISOString();
+    setTasks((prev) =>
+      prev.map((t) => (selectedTaskIds.has(t.id) ? { ...t, status, updatedAt: now } : t)),
+    );
+    setSelectedTaskIds(new Set());
+    if (nonDraft.length > 0) {
+      apiBulkUpdateTaskStatus(nonDraft, status).catch((e) =>
+        console.error('apiBulkUpdateTaskStatus failed', e),
+      );
+    }
+  };
+
+  const handleBulkLinkTasksToWeekly = (weeklyId: string | null) => {
+    if (tab !== 'tasks' || selectedTaskIds.size === 0) return;
+    const ids = [...selectedTaskIds];
+    const nonDraft = ids.filter((id) => !isDraftId(id));
+    const now = new Date().toISOString();
+    setTasks((prev) =>
+      prev.map((t) =>
+        selectedTaskIds.has(t.id) ? { ...t, weeklyTargetId: weeklyId, updatedAt: now } : t,
+      ),
+    );
+    setSelectedTaskIds(new Set());
+    if (nonDraft.length > 0) {
+      apiBulkLinkTasksToWeekly(nonDraft, weeklyId).catch((e) =>
+        console.error('apiBulkLinkTasksToWeekly failed', e),
+      );
+    }
+  };
+
+  const handleBulkLinkWeekliesToMonthly = (monthlyId: string | null) => {
+    if (tab !== 'weekly' || selectedWeeklyIds.size === 0) return;
+    const ids = [...selectedWeeklyIds];
+    const nonDraft = ids.filter((id) => !isDraftId(id));
+    setWeeklies((prev) =>
+      prev.map((w) => (selectedWeeklyIds.has(w.id) ? { ...w, monthlyTargetId: monthlyId } : w)),
+    );
+    setSelectedWeeklyIds(new Set());
+    if (nonDraft.length > 0) {
+      apiBulkLinkWeekliesToMonthly(nonDraft, monthlyId).catch((e) =>
+        console.error('apiBulkLinkWeekliesToMonthly failed', e),
+      );
+    }
+  };
+
+  const handleBulkLinkMonthliesToYearly = (yearlyId: string | null) => {
+    if (tab !== 'monthly' || selectedMonthlyIds.size === 0) return;
+    const ids = [...selectedMonthlyIds];
+    const nonDraft = ids.filter((id) => !isDraftId(id));
+    setMonthlies((prev) =>
+      prev.map((m) => (selectedMonthlyIds.has(m.id) ? { ...m, yearlyTargetId: yearlyId } : m)),
+    );
+    setSelectedMonthlyIds(new Set());
+    if (nonDraft.length > 0) {
+      apiBulkLinkMonthliesToYearly(nonDraft, yearlyId).catch((e) =>
+        console.error('apiBulkLinkMonthliesToYearly failed', e),
+      );
+    }
+  };
 
   const handleBulkReassign = (userId: string | null) => {
     if (tab !== 'tasks' || selectedTaskIds.size === 0) return;
@@ -2392,15 +2458,54 @@ export default function TaskManagement() {
             className="fixed bottom-6 left-1/2 z-50 flex items-center gap-1 bg-card/95 backdrop-blur-md border border-border shadow-2xl rounded-2xl pl-4 pr-2 py-2"
           >
             <span className="text-sm font-medium text-t1">
-              {activeSelected.size} <span className="text-t3 font-normal">{activeNoun} selected</span>
+              {activeSelected.size}
+              <span className="hidden sm:inline text-t3 font-normal"> {activeNoun} selected</span>
             </span>
             <div className="h-5 w-px bg-border mx-2" />
             {tab === 'tasks' && (
               <Popover.Root>
                 <Popover.Trigger asChild>
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium text-t1 hover:bg-surface transition-colors">
+                  <button
+                    aria-label="Set status"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium text-t1 hover:bg-surface transition-colors"
+                  >
+                    <CheckCircle size={14} weight="bold" />
+                    <span className="hidden sm:inline">Status</span>
+                  </button>
+                </Popover.Trigger>
+                <Popover.Portal>
+                  <Popover.Content
+                    side="top"
+                    align="center"
+                    sideOffset={10}
+                    className="z-[100] w-52 bg-card border border-border rounded-xl shadow-2xl p-1 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+                  >
+                    <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-t3">
+                      Set status to
+                    </p>
+                    {STATUSES.map((s) => (
+                      <Popover.Close asChild key={s}>
+                        <button
+                          onClick={() => handleBulkStatusChange(s)}
+                          className="w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-surface text-left transition-colors"
+                        >
+                          <StatusPill status={s} />
+                        </button>
+                      </Popover.Close>
+                    ))}
+                  </Popover.Content>
+                </Popover.Portal>
+              </Popover.Root>
+            )}
+            {tab === 'tasks' && (
+              <Popover.Root>
+                <Popover.Trigger asChild>
+                  <button
+                    aria-label="Reassign"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium text-t1 hover:bg-surface transition-colors"
+                  >
                     <UsersThree size={14} weight="bold" />
-                    Reassign
+                    <span className="hidden sm:inline">Reassign</span>
                   </button>
                 </Popover.Trigger>
                 <Popover.Portal>
@@ -2433,12 +2538,34 @@ export default function TaskManagement() {
                 </Popover.Portal>
               </Popover.Root>
             )}
+            {tab === 'tasks' && (
+              <BulkLinkPopover
+                label="Weekly target"
+                items={weeklies.map((w) => ({ id: w.id, title: w.title || 'Untitled weekly target' }))}
+                onPick={handleBulkLinkTasksToWeekly}
+              />
+            )}
+            {tab === 'weekly' && (
+              <BulkLinkPopover
+                label="Monthly target"
+                items={monthlies.map((m) => ({ id: m.id, title: m.title || 'Untitled monthly target' }))}
+                onPick={handleBulkLinkWeekliesToMonthly}
+              />
+            )}
+            {tab === 'monthly' && (
+              <BulkLinkPopover
+                label="Yearly target"
+                items={yearlies.map((y) => ({ id: y.id, title: y.title || 'Untitled yearly target' }))}
+                onPick={handleBulkLinkMonthliesToYearly}
+              />
+            )}
             <button
               onClick={handleBulkDelete}
+              aria-label="Delete"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors"
             >
               <Trash size={14} weight="bold" />
-              Delete
+              <span className="hidden sm:inline">Delete</span>
             </button>
             <button
               onClick={() => setActiveSelected(new Set())}

@@ -272,10 +272,8 @@ export default function CalendarPage() {
             month={month}
             onMonthChange={setMonth}
             selectedDate={selectedDate}
-            onSelectDate={(d) => {
-              setSelectedDate(d);
-              openNewEvent(d);
-            }}
+            onSelectDate={(d) => setSelectedDate(d)}
+            onCreateForDate={(d) => { setSelectedDate(d); openNewEvent(d); }}
             onOpenEvent={(id) => setViewingEventId(id)}
             itemsByDay={itemsByDay}
             loading={loading}
@@ -410,6 +408,7 @@ function BigCalendar({
   onMonthChange,
   selectedDate,
   onSelectDate,
+  onCreateForDate,
   onOpenEvent,
   itemsByDay,
   loading,
@@ -418,6 +417,7 @@ function BigCalendar({
   onMonthChange: (d: Date) => void;
   selectedDate: Date;
   onSelectDate: (d: Date) => void;
+  onCreateForDate: (d: Date) => void;
   onOpenEvent: (eventId: string) => void;
   itemsByDay: Map<string, CalendarItem[]>;
   loading: boolean;
@@ -427,9 +427,14 @@ function BigCalendar({
   // exposes, then plug a custom DayButton that lays out vertically.
   const renderDayButton = useCallback(
     (props: React.ComponentProps<typeof DayButton>) => (
-      <BigDayButton {...props} itemsByDay={itemsByDay} onOpenEvent={onOpenEvent} />
+      <BigDayButton
+        {...props}
+        itemsByDay={itemsByDay}
+        onOpenEvent={onOpenEvent}
+        onCreateForDate={onCreateForDate}
+      />
     ),
-    [itemsByDay, onOpenEvent],
+    [itemsByDay, onOpenEvent, onCreateForDate],
   );
 
   return (
@@ -473,11 +478,13 @@ function BigDayButton({
   modifiers,
   itemsByDay,
   onOpenEvent,
+  onCreateForDate,
   className,
   ...props
 }: React.ComponentProps<typeof DayButton> & {
   itemsByDay: Map<string, CalendarItem[]>;
   onOpenEvent: (eventId: string) => void;
+  onCreateForDate: (d: Date) => void;
 }) {
   const key = format(day.date, 'yyyy-MM-dd');
   const items = itemsByDay.get(key) ?? [];
@@ -489,9 +496,11 @@ function BigDayButton({
 
   return (
     <button
+      {...props}
       type="button"
       data-day={day.date.toLocaleDateString()}
       data-selected-single={isSelected}
+      onDoubleClick={() => onCreateForDate(day.date)}
       className={`
         group/day h-full w-full p-1.5 text-left flex flex-col gap-1
         transition-colors outline-none
@@ -500,7 +509,6 @@ function BigDayButton({
         focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-inset
         ${className ?? ''}
       `}
-      {...props}
     >
       <span
         className={`
@@ -541,6 +549,7 @@ function DayChip({
         role="button"
         tabIndex={0}
         onClick={(e) => { e.stopPropagation(); onOpenEvent(item.id); }}
+        onDoubleClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();

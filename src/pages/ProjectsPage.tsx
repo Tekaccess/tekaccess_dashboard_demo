@@ -293,7 +293,7 @@ export default function ProjectsPage() {
         </div>
 
         {/* Table card */}
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="bg-card rounded-xl border border-border">
           {/* Filter bar */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border flex-wrap">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
