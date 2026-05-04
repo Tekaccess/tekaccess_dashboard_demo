@@ -1,8 +1,7 @@
-import { GoogleGenAI, Type } from '@google/genai';
+const API_KEY = import.meta.env.VITE_GROQ_API_KEY as string | undefined;
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
-
-const client = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
+const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+const MODEL = 'llama-3.3-70b-versatile';
 
 export interface ChatHistoryEntry {
   role: 'user' | 'model';
@@ -20,10 +19,10 @@ export interface GeneratedTaskBatch {
   tasks: GeneratedTaskDraft[];
 }
 
-// Soft cap for the visual "memory" indicator. Gemini 2.5 Flash supports
-// ~1M tokens, but a session budget of 32k tokens makes the progress ring
-// give meaningful feedback as a chat grows.
-export const MEMORY_LIMIT_TOKENS = 32_000;
+// Session budget. Each turn re-sends the whole transcript, so cost grows
+// quadratically — a tight cap keeps requests cheap and nudges the user to
+// clear once the chat has served its purpose.
+export const MEMORY_LIMIT_TOKENS = 2_000;
 
 export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
@@ -44,49 +43,53 @@ Rules:
 - Generate 1-10 tasks based on context. Don't pad. Don't merge unrelated items.
 - Never link tasks to weekly/monthly/yearly targets unless the user explicitly asks (and even then, you cannot read their target list — just say so).
 - The "note" field is a single short sentence summarizing what you produced.
-- No emojis, no preamble, no closing pleasantries.`;
+- No emojis, no preamble, no closing pleasantries.
+
+Respond ONLY with a JSON object of the shape:
+{
+  "note": string,
+  "tasks": [ { "title": string, "description": string, "dueDate": "YYYY-MM-DD" } ]
+}`;
 
 export async function generateTasks(history: ChatHistoryEntry[]): Promise<GeneratedTaskBatch> {
-  if (!client) {
-    throw new Error('Gemini is not configured. Set VITE_GEMINI_API_KEY in .env.local and restart the dev server.');
+  if (!API_KEY) {
+    throw new Error('Groq is not configured. Set VITE_GROQ_API_KEY in .env.local and restart the dev server.');
   }
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const contents = history.map((e) => ({
-    role: e.role,
-    parts: [{ text: e.text }],
-  }));
+  const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+    { role: 'system', content: `${SYSTEM_INSTRUCTION}\n\nToday's date is ${today}.` },
+    ...history.map((e) => ({
+      role: e.role === 'model' ? ('assistant' as const) : ('user' as const),
+      content: e.text,
+    })),
+  ];
 
-  const response = await client.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents,
-    config: {
-      systemInstruction: `${SYSTEM_INSTRUCTION}\n\nToday's date is ${today}.`,
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          note: { type: Type.STRING },
-          tasks: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title:       { type: Type.STRING },
-                description: { type: Type.STRING },
-                dueDate:     { type: Type.STRING },
-              },
-              required: ['title', 'description', 'dueDate'],
-            },
-          },
-        },
-        required: ['note', 'tasks'],
-      },
+  const response = await fetch(GROQ_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${API_KEY}`,
     },
+    body: JSON.stringify({
+      model: MODEL,
+      messages,
+      temperature: 0.4,
+      response_format: { type: 'json_object' },
+    }),
   });
 
-  const raw = response.text ?? '';
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    throw new Error(`Groq request failed (${response.status}): ${errText || response.statusText}`);
+  }
+
+  const data = (await response.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  const raw = data.choices?.[0]?.message?.content ?? '';
+
   let parsed: GeneratedTaskBatch;
   try {
     parsed = JSON.parse(raw) as GeneratedTaskBatch;

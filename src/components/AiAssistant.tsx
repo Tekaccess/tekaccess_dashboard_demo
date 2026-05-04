@@ -9,7 +9,7 @@ import {
   MEMORY_LIMIT_TOKENS,
   estimateConversationTokens,
   type ChatHistoryEntry,
-} from '../lib/gemini';
+} from '../lib/groq';
 
 interface AiAssistantProps {
   avatarId?: string;
@@ -33,6 +33,87 @@ function MemoryRing({ percent }: { percent: number }) {
         className="text-accent transition-[stroke-dashoffset] duration-300"
       />
     </svg>
+  );
+}
+
+function MemoryRingWithPopover({
+  percent,
+  tokensUsed,
+  tokensRemaining,
+  limit,
+}: {
+  percent: number;
+  tokensUsed: number;
+  tokensRemaining: number;
+  limit: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const showTimer = useRef<number | null>(null);
+  const hideTimer = useRef<number | null>(null);
+
+  const show = () => {
+    if (hideTimer.current) window.clearTimeout(hideTimer.current);
+    showTimer.current = window.setTimeout(() => setOpen(true), 80);
+  };
+  const hide = () => {
+    if (showTimer.current) window.clearTimeout(showTimer.current);
+    hideTimer.current = window.setTimeout(() => setOpen(false), 80);
+  };
+  useEffect(() => () => {
+    if (showTimer.current) window.clearTimeout(showTimer.current);
+    if (hideTimer.current) window.clearTimeout(hideTimer.current);
+  }, []);
+
+  const pct = Math.round(percent);
+
+  return (
+    <span
+      className="relative inline-flex"
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
+    >
+      <button
+        type="button"
+        aria-label={`Session memory: ${tokensRemaining.toLocaleString()} tokens remaining`}
+        aria-expanded={open}
+        className="inline-flex rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      >
+        <MemoryRing percent={percent} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="tooltip"
+            initial={{ opacity: 0, y: 4, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.96 }}
+            transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute left-1/2 top-full z-50 mt-2 w-60 -translate-x-1/2 rounded-xl border border-border bg-card p-3 shadow-xl"
+          >
+            <div className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-l border-t border-border bg-card" />
+            <div className="relative">
+              <p className="text-xs font-semibold text-t1">Session memory</p>
+              <p className="mt-1 text-xs text-t2">
+                <span className="font-semibold text-accent">{tokensRemaining.toLocaleString()}</span>{' '}
+                tokens remaining
+              </p>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface">
+                <div
+                  className="h-full rounded-full bg-accent transition-[width] duration-300"
+                  style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+                />
+              </div>
+              <div className="mt-1.5 flex items-center justify-between text-[10px] text-t3">
+                <span>{tokensUsed.toLocaleString()} / {limit.toLocaleString()} used</span>
+                <span>{pct}%</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </span>
   );
 }
 
@@ -223,6 +304,8 @@ export default function AiAssistant({ avatarId = 'default' }: AiAssistantProps) 
     );
   }, [entries]);
   const memoryPercent = (tokensUsed / MEMORY_LIMIT_TOKENS) * 100;
+  const tokensRemaining = Math.max(0, MEMORY_LIMIT_TOKENS - tokensUsed);
+  const memoryFull = tokensUsed >= MEMORY_LIMIT_TOKENS;
 
   // Close on Escape, focus the input when the popup opens.
   useEffect(() => {
@@ -238,15 +321,32 @@ export default function AiAssistant({ avatarId = 'default' }: AiAssistantProps) 
     };
   }, [open]);
 
-  // Auto-scroll to the latest entry / loader.
+  // Auto-scroll behavior:
+  // - When a NEW model response arrives, pin it to the top of the visible area
+  //   (so the user reads it from the start, not from the bottom edge).
+  // - Otherwise (user just typed, loader showing) keep the latest in view.
+  const lastScrolledModelIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!scrollRef.current) return;
-    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const lastEntry = entries[entries.length - 1];
+    const isNewModelResponse =
+      lastEntry?.role === 'model' && lastEntry.id !== lastScrolledModelIdRef.current;
+
+    if (isNewModelResponse) {
+      lastScrolledModelIdRef.current = lastEntry.id;
+      const el = scrollRef.current.querySelector<HTMLElement>(
+        `[data-entry-id="${lastEntry.id}"]`,
+      );
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      const last = scrollRef.current.lastElementChild as HTMLElement | null;
+      last?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
   }, [entries, loading]);
 
   const send = () => {
     const text = prompt.trim();
-    if (!text || loading) return;
+    if (!text || loading || memoryFull) return;
     setPrompt('');
     void sendMessage(text);
   };
@@ -289,12 +389,14 @@ export default function AiAssistant({ avatarId = 'default' }: AiAssistantProps) 
             >
               {entries.length > 0 && (
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-                  <div
-                    className="flex items-center gap-2"
-                    title={`Session memory: ${tokensUsed.toLocaleString()} / ${MEMORY_LIMIT_TOKENS.toLocaleString()} tokens (${Math.round(memoryPercent)}%)`}
-                  >
+                  <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-t1">{avatar.name}</span>
-                    <MemoryRing percent={memoryPercent} />
+                    <MemoryRingWithPopover
+                      percent={memoryPercent}
+                      tokensUsed={tokensUsed}
+                      tokensRemaining={tokensRemaining}
+                      limit={MEMORY_LIMIT_TOKENS}
+                    />
                   </div>
                   <button
                     type="button"
@@ -313,7 +415,7 @@ export default function AiAssistant({ avatarId = 'default' }: AiAssistantProps) 
                 <div className="px-6 pt-6 pb-10 shrink-0">
                   <p className="text-sm font-semibold text-t1 mb-1">{avatar.name}</p>
                   <p className="text-sm text-t2 leading-relaxed">
-                    I will help you create tasks faster, Tell me what you'll work on and a date.
+                    I will help you create tasks faster, Tell me what you'll work.
                   </p>
                 </div>
               ) : (
@@ -325,13 +427,13 @@ export default function AiAssistant({ avatarId = 'default' }: AiAssistantProps) 
                   <div ref={scrollRef} className="px-4 py-4 space-y-3">
                     {entries.map((entry) =>
                       entry.role === 'user' ? (
-                        <div key={entry.id} className="flex justify-end">
+                        <div key={entry.id} data-entry-id={entry.id} className="flex justify-end">
                           <div className="bg-accent text-white px-3 py-2 rounded-2xl rounded-br-md max-w-[85%] text-sm break-words whitespace-pre-wrap">
                             {entry.content}
                           </div>
                         </div>
                       ) : (
-                        <div key={entry.id} className="max-w-[92%]">
+                        <div key={entry.id} data-entry-id={entry.id} className="max-w-[92%] scroll-mt-4">
                           <ModelEntryView entry={entry} />
                         </div>
                       ),
@@ -349,14 +451,34 @@ export default function AiAssistant({ avatarId = 'default' }: AiAssistantProps) 
               )}
 
               <div className="px-3 pb-1.5 shrink-0">
+                {memoryFull && (
+                  <div className="mb-2 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                    <WarningCircle size={14} weight="fill" className="mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-medium">Session memory full</p>
+                      <p className="mt-0.5 text-amber-700/80 dark:text-amber-300/80">
+                        Clear the chat or refresh the page to start a fresh session.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={clear}
+                        disabled={loading}
+                        className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-amber-500/20 px-2 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-500/30 disabled:opacity-50 dark:text-amber-200"
+                      >
+                        <Trash size={11} weight="bold" />
+                        Clear chat
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="bg-surface/60 border border-border rounded-2xl px-3 pt-2.5 pb-2">
                   <textarea
                     ref={inputRef}
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={onInputKeyDown}
-                    placeholder="Tell me what to plan…"
-                    disabled={loading}
+                    placeholder={memoryFull ? 'Session memory full — clear to continue' : 'Tell me what to plan…'}
+                    disabled={loading || memoryFull}
                     rows={1}
                     style={{ maxHeight: MAX_INPUT_HEIGHT }}
                     className="w-full bg-transparent text-sm text-t1 placeholder-t3 focus:outline-none disabled:opacity-60 resize-none overflow-y-auto leading-snug"
@@ -366,7 +488,7 @@ export default function AiAssistant({ avatarId = 'default' }: AiAssistantProps) 
                       type="button"
                       aria-label="Send"
                       onClick={send}
-                      disabled={!prompt.trim() || loading}
+                      disabled={!prompt.trim() || loading || memoryFull}
                       className="w-8 h-8 rounded-full bg-accent text-white hover:bg-accent-h transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading
@@ -376,7 +498,7 @@ export default function AiAssistant({ avatarId = 'default' }: AiAssistantProps) 
                   </div>
                 </div>
               </div>
-              <p className='px-4 pb-1.5 text-t3 text-xs text-center'>Be very cautious of what you text here.</p>
+              <p className='px-4 pb-1.5 text-t3 text-xs text-center'>Be very cautious of what you type here.</p>
             </motion.div>
           </>
         )}

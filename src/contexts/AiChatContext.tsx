@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { generateTasks, type ChatHistoryEntry } from '../lib/gemini';
+import { generateTasks, type ChatHistoryEntry } from '../lib/groq';
 import { apiCreateTask } from '../lib/api';
 import { useAuth } from './AuthContext';
 
