@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { generateTasks, type ChatHistoryEntry } from '../lib/gemini';
 import { apiCreateTask } from '../lib/api';
+import { useAuth } from './AuthContext';
 
 export interface DraftTask {
   id: string;
@@ -48,6 +49,7 @@ function serializeForHistory(entry: ChatEntry): ChatHistoryEntry {
 }
 
 export function AiChatProvider({ children }: { children: ReactNode }) {
+  const { user: currentUser } = useAuth();
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [inserting, setInserting] = useState(false);
@@ -136,7 +138,7 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
           description: task.description,
           status: 'not-started',
           dueDate: task.dueDate || null,
-          assignee: null,
+          assignee: currentUser?.id ?? null,
           weeklyTargetId: null,
         });
         const ok = res.success;
@@ -178,7 +180,7 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
       // Tell any open task list to refetch.
       window.dispatchEvent(new CustomEvent('tekaccess:tasks-refresh'));
     }
-  }, []);
+  }, [currentUser?.id]);
 
   return (
     <AiChatContext.Provider
