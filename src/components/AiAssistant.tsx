@@ -385,7 +385,7 @@ export default function AiAssistant({ avatarId = 'default' }: AiAssistantProps) 
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.96 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-6 z-40 w-full sm:w-[380px] h-full sm:h-auto bg-card sm:border sm:border-border rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col sm:max-h-[70vh] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:pt-0 sm:pb-0"
+              className="fixed left-0 right-0 top-0 h-[100dvh] sm:top-auto sm:left-auto sm:right-6 sm:bottom-24 sm:h-auto z-40 w-full sm:w-[380px] bg-card sm:border sm:border-border rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col sm:max-h-[70vh] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:pt-0 sm:pb-0"
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
                 <div className="flex items-center gap-2 min-w-0">
@@ -424,7 +424,7 @@ export default function AiAssistant({ avatarId = 'default' }: AiAssistantProps) 
               </div>
 
               {entries.length === 0 ? (
-                <div className="px-6 pt-6 pb-10 shrink-0">
+                <div className="flex-1 min-h-0 px-6 pt-6 pb-10">
                   <p className="text-sm text-t2 leading-relaxed">
                     I will help you create tasks faster. Tell me what you'll work on and I'll plan today's tasks.
                   </p>
@@ -485,6 +485,7 @@ export default function AiAssistant({ avatarId = 'default' }: AiAssistantProps) 
                 <div className="bg-surface/60 border border-border rounded-2xl px-3 pt-2.5 pb-2">
                   <textarea
                     ref={inputRef}
+                    autoFocus
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={onInputKeyDown}

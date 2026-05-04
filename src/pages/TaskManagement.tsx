@@ -1432,7 +1432,7 @@ export default function TaskManagement() {
         <div>
           <h2 className="text-2xl font-bold text-t1">Task Management</h2>
           <p className="text-sm text-t2 mt-1">
-            Daily → weekly → monthly → yearly.
+            Plan, track, and complete your goals in one place.
           </p>
         </div>
         <button
