@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowUp, CircleNotch, Trash, Check, CheckCircle, WarningCircle } from '@phosphor-icons/react';
+import { ArrowUp, CircleNotch, Trash, Check, CheckCircle, WarningCircle, X } from '@phosphor-icons/react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import { getAvatar } from '../lib/avatars';
 import { useAiChat, type ChatEntry, type DraftTask } from '../contexts/AiChatContext';
@@ -90,9 +90,9 @@ function MemoryRingWithPopover({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.96 }}
             transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute left-1/2 top-full z-50 mt-2 w-60 -translate-x-1/2 rounded-xl border border-border bg-card p-3 shadow-xl"
+            className="absolute left-0 top-full z-50 mt-2 w-60 rounded-xl border border-border bg-card p-3 shadow-xl sm:left-1/2 sm:-translate-x-1/2"
           >
-            <div className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-l border-t border-border bg-card" />
+            <div className="absolute -top-1.5 left-3 h-3 w-3 rotate-45 border-l border-t border-border bg-card sm:left-1/2 sm:-translate-x-1/2" />
             <div className="relative">
               <p className="text-xs font-semibold text-t1">Session memory</p>
               <p className="mt-1 text-xs text-t2">
@@ -364,7 +364,7 @@ export default function AiAssistant({ avatarId = 'default' }: AiAssistantProps) 
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label={open ? 'Close TekAccess AI' : 'Open TekAccess AI'}
-        className="fixed bottom-6 right-6 z-50 group flex items-center justify-center w-14 h-14 transition-transform hover:scale-105 active:scale-95"
+        className={`fixed bottom-6 right-6 z-50 group items-center justify-center w-14 h-14 transition-transform hover:scale-105 active:scale-95 ${open ? 'hidden sm:flex' : 'flex'}`}
       >
         <img
           src={avatar.src}
@@ -377,7 +377,7 @@ export default function AiAssistant({ avatarId = 'default' }: AiAssistantProps) 
       <AnimatePresence>
         {open && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+            <div className="fixed inset-0 z-40 hidden sm:block" onClick={() => setOpen(false)} />
 
             <motion.div
               key="ai-popup"
@@ -385,37 +385,48 @@ export default function AiAssistant({ avatarId = 'default' }: AiAssistantProps) 
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.96 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed bottom-24 right-6 z-40 w-[340px] sm:w-[380px] bg-card border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[70vh]"
+              className="fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-6 z-40 w-full sm:w-[380px] h-full sm:h-auto bg-card sm:border sm:border-border rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col sm:max-h-[70vh] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:pt-0 sm:pb-0"
             >
-              {entries.length > 0 && (
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-t1">{avatar.name}</span>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm font-semibold text-t1 truncate">{avatar.name}</span>
+                  {entries.length > 0 && (
                     <MemoryRingWithPopover
                       percent={memoryPercent}
                       tokensUsed={tokensUsed}
                       tokensRemaining={tokensRemaining}
                       limit={MEMORY_LIMIT_TOKENS}
                     />
-                  </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  {entries.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={clear}
+                      disabled={loading}
+                      aria-label="Clear chat"
+                      className="flex items-center gap-1 text-sm font-medium cursor-pointer text-t3 hover:text-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors px-1"
+                    >
+                      <Trash size={16} weight="bold" />
+                      <span className="hidden sm:inline">Clear</span>
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={clear}
-                    disabled={loading}
-                    aria-label="Clear chat"
-                    className="flex items-center gap-1 text-sm font-medium cursor-pointer text-t3 hover:text-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    onClick={() => setOpen(false)}
+                    aria-label="Close"
+                    className="sm:hidden p-1.5 rounded-md text-t3 hover:text-t1 hover:bg-surface transition-colors"
                   >
-                    <Trash size={16} weight="bold" />
-                    Clear
+                    <X size={18} weight="bold" />
                   </button>
                 </div>
-              )}
+              </div>
 
               {entries.length === 0 ? (
                 <div className="px-6 pt-6 pb-10 shrink-0">
-                  <p className="text-sm font-semibold text-t1 mb-1">{avatar.name}</p>
                   <p className="text-sm text-t2 leading-relaxed">
-                    I will help you create tasks faster, Tell me what you'll work.
+                    I will help you create tasks faster. Tell me what you'll work on and I'll plan today's tasks.
                   </p>
                 </div>
               ) : (
